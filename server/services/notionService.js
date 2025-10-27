@@ -1,9 +1,5 @@
 import { Client } from '@notionhq/client';
 
-const notion = new Client({
-  auth: process.env.NOTION_API_KEY,
-});
-
 const MAX_BLOCKS_PER_REQUEST = 100;
 
 /**
@@ -22,6 +18,11 @@ export async function sendToNotion(content, pageId = process.env.NOTION_PAGE_ID)
     if (!pageId) {
       throw new Error('NOTION_PAGE_ID not provided');
     }
+
+    console.log('Initializing Notion client with API key:', process.env.NOTION_API_KEY ? `${process.env.NOTION_API_KEY.substring(0, 10)}...` : 'undefined');
+    const notion = new Client({
+      auth: process.env.NOTION_API_KEY,
+    });
 
     const blocks = markdownToNotionBlocks(content);
     console.log(`Generated ${blocks.length} Notion blocks`);
