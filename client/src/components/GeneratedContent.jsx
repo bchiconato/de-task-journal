@@ -1,86 +1,170 @@
-import { useState } from 'react';
+import ReactMarkdown from 'react-markdown';
+import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
+import { tomorrow } from 'react-syntax-highlighter/dist/esm/styles/prism';
+import remarkGfm from 'remark-gfm';
 
-function GeneratedContent({ content, onSendToNotion, isSending }) {
-  const [copied, setCopied] = useState(false);
-  const [sendSuccess, setSendSuccess] = useState(false);
-
+/**
+ * Generated documentation preview with markdown rendering
+ * @param {Object} props
+ * @param {string} props.content - Markdown content to render
+ * @param {Function} props.onSendToNotion - Send to Notion handler
+ * @param {boolean} props.isSending - Whether send is in progress
+ * @param {Function} props.onCopySuccess - Toast callback for copy success
+ * @param {Function} props.onCopyError - Toast callback for copy error
+ * @param {Function} props.onSendSuccess - Toast callback for send success
+ * @param {Function} props.onSendError - Toast callback for send error
+ */
+function GeneratedContent({
+  content,
+  onSendToNotion,
+  isSending,
+  onCopySuccess,
+  onCopyError,
+  onSendSuccess,
+  onSendError,
+}) {
   const handleCopy = async () => {
     try {
       await navigator.clipboard.writeText(content);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
+      if (onCopySuccess) {
+        onCopySuccess();
+      }
     } catch (err) {
       console.error('Failed to copy:', err);
+      if (onCopyError) {
+        onCopyError();
+      }
     }
   };
 
   const handleSendToNotion = async () => {
-    const success = await onSendToNotion(content);
-    if (success) {
-      setSendSuccess(true);
-      setTimeout(() => setSendSuccess(false), 3000);
+    try {
+      const success = await onSendToNotion(content);
+      if (success && onSendSuccess) {
+        onSendSuccess();
+      } else if (!success && onSendError) {
+        onSendError();
+      }
+    } catch (err) {
+      console.error('Failed to send to Notion:', err);
+      if (onSendError) {
+        onSendError();
+      }
     }
   };
 
   if (!content) return null;
 
   return (
-    <div className="w-full max-w-4xl mx-auto p-6 mt-6">
+    <aside
+      className="lg:sticky lg:top-4 lg:max-h-[calc(100vh-2rem)] lg:overflow-y-auto custom-scrollbar"
+      aria-labelledby="preview-heading"
+    >
       <div className="bg-white rounded-lg shadow-md p-6">
-        <div className="flex justify-between items-center mb-4">
-          <h2 className="text-2xl font-bold text-gray-800">
-            Generated Documentation
+        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-6 pb-4 border-b border-gray-200">
+          <h2
+            id="preview-heading"
+            className="text-2xl font-bold text-gray-900"
+          >
+            Generated documentation
           </h2>
-          <div className="flex gap-3">
+          <div className="flex gap-2 flex-wrap">
             <button
               onClick={handleCopy}
-              className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-                copied
-                  ? 'bg-green-500 text-white'
-                  : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-              }`}
+              className="px-4 py-2 rounded-lg font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 focus:bg-gray-200 transition-colors"
+              aria-label="Copy all documentation to clipboard"
             >
-              {copied ? '✓ Copied!' : 'Copy to Clipboard'}
+              Copy all
             </button>
             <button
               onClick={handleSendToNotion}
               disabled={isSending}
               className={`px-4 py-2 rounded-lg font-medium text-white transition-colors ${
-                sendSuccess
-                  ? 'bg-green-500'
-                  : isSending
+                isSending
                   ? 'bg-gray-400 cursor-not-allowed'
-                  : 'bg-purple-600 hover:bg-purple-700'
+                  : 'bg-purple-600 hover:bg-purple-700 focus:bg-purple-700'
               }`}
+              aria-label="Send documentation to Notion"
+              aria-busy={isSending}
             >
-              {sendSuccess
-                ? '✓ Sent to Notion!'
-                : isSending
-                ? 'Sending...'
-                : 'Send to Notion'}
+              {isSending ? 'Sending...' : 'Send to Notion'}
             </button>
           </div>
         </div>
 
-        {/* Display content */}
-        <div className="prose max-w-none">
-          <div className="bg-gray-50 rounded-lg p-6 border border-gray-200">
-            <pre className="whitespace-pre-wrap font-sans text-sm text-gray-800">
-              {content}
-            </pre>
-          </div>
-        </div>
+        <div
+          className="prose prose-sm sm:prose lg:prose-lg max-w-none"
+          role="article"
+          aria-live="polite"
+        >
+          <ReactMarkdown
+            remarkPlugins={[remarkGfm]}
+            components={{
+              code({ node, inline, className, children, ...props }) {
+                const match = /language-(\w+)/.exec(className || '');
+                const language = match ? match[1] : '';
 
-        {/* Success message */}
-        {sendSuccess && (
-          <div className="mt-4 p-4 bg-green-50 border border-green-200 rounded-lg">
-            <p className="text-green-800 font-medium">
-              Documentation successfully sent to your Notion page!
-            </p>
-          </div>
-        )}
+                return !inline && language ? (
+                  <SyntaxHighlighter
+                    style={tomorrow}
+                    language={language}
+                    PreTag="div"
+                    customStyle={{
+                      borderRadius: '0.5rem',
+                      padding: '1rem',
+                      fontSize: '0.875rem',
+                    }}
+                    {...props}
+                  >
+                    {String(children).replace(/\n$/, '')}
+                  </SyntaxHighlighter>
+                ) : (
+                  <code className={className} {...props}>
+                    {children}
+                  </code>
+                );
+              },
+              h1: ({ children }) => (
+                <h2 className="text-3xl font-bold mt-6 mb-3 text-gray-900">
+                  {children}
+                </h2>
+              ),
+              h2: ({ children }) => (
+                <h3 className="text-2xl font-semibold mt-5 mb-2 text-gray-900">
+                  {children}
+                </h3>
+              ),
+              h3: ({ children }) => (
+                <h4 className="text-xl font-semibold mt-4 mb-2 text-gray-900">
+                  {children}
+                </h4>
+              ),
+              a: ({ href, children }) => (
+                <a
+                  href={href}
+                  className="text-primary-600 underline hover:text-primary-700"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  {children}
+                </a>
+              ),
+              ul: ({ children }) => (
+                <ul className="list-disc pl-6 space-y-1 my-3">{children}</ul>
+              ),
+              ol: ({ children }) => (
+                <ol className="list-decimal pl-6 space-y-1 my-3">{children}</ol>
+              ),
+              p: ({ children }) => (
+                <p className="my-3 text-gray-800 leading-relaxed">{children}</p>
+              ),
+            }}
+          >
+            {content}
+          </ReactMarkdown>
+        </div>
       </div>
-    </div>
+    </aside>
   );
 }
 
