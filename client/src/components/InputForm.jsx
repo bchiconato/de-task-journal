@@ -4,10 +4,12 @@ import { FormField } from './FormField';
 import { validateForm, hasErrors, getErrorCount } from '../utils/validation';
 
 /**
- * Documentation input form with accessibility and inline validation
+ * @component InputForm
+ * @description Documentation input form with accessibility and inline validation
  * @param {Object} props
  * @param {Function} props.onGenerate - Form submission handler
  * @param {boolean} props.isLoading - Whether generation is in progress
+ * @returns {JSX.Element} Form with context, code, and challenges fields
  */
 export function InputForm({ onGenerate, isLoading}) {
   const [formData, setFormData] = useState({

@@ -7,7 +7,9 @@ import { useToast } from './hooks/useToast';
 import { generateDocumentation, sendToNotion } from './utils/api';
 
 /**
- * Main application component with two-column layout and toast notifications
+ * @component App
+ * @description Main application component with two-column layout and toast notifications
+ * @returns {JSX.Element} Main app component with form, preview, and toast system
  */
 function App() {
   const [documentation, setDocumentation] = useState('');

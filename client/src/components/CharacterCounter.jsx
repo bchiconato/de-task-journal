@@ -1,11 +1,13 @@
 import { useMemo } from 'react';
 
 /**
- * Character counter component with optional max length
+ * @component CharacterCounter
+ * @description Character counter component with optional max length and color-coded warnings
  * @param {Object} props
  * @param {number} props.current - Current character count
  * @param {number} props.max - Optional maximum character count
  * @param {string} props.id - Unique ID for aria-describedby linking
+ * @returns {JSX.Element} Character counter with accessibility support
  */
 export function CharacterCounter({ current, max, id }) {
   const colorClass = useMemo(() => {

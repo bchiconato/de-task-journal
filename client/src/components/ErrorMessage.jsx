@@ -1,8 +1,10 @@
 /**
- * Error message component with accessibility support
+ * @component ErrorMessage
+ * @description Error message component with accessibility support and optional dismiss button
  * @param {Object} props
  * @param {string} props.message - Error message to display
  * @param {Function} props.onDismiss - Optional dismiss handler
+ * @returns {JSX.Element} Error alert with icon and dismiss option
  */
 export function ErrorMessage({ message, onDismiss }) {
   return (

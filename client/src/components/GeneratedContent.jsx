@@ -4,7 +4,8 @@ import { tomorrow } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import remarkGfm from 'remark-gfm';
 
 /**
- * Generated documentation preview with markdown rendering
+ * @component GeneratedContent
+ * @description Generated documentation preview with markdown rendering and action buttons
  * @param {Object} props
  * @param {string} props.content - Markdown content to render
  * @param {Function} props.onSendToNotion - Send to Notion handler
@@ -13,6 +14,7 @@ import remarkGfm from 'remark-gfm';
  * @param {Function} props.onCopyError - Toast callback for copy error
  * @param {Function} props.onSendSuccess - Toast callback for send success
  * @param {Function} props.onSendError - Toast callback for send error
+ * @returns {JSX.Element|null} Rendered markdown preview or null if no content
  */
 export function GeneratedContent({
   content,

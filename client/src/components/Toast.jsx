@@ -1,13 +1,15 @@
 import { useEffect, useState } from 'react';
 
 /**
- * Accessible toast notification component
+ * @component Toast
+ * @description Accessible toast notification component with auto-dismiss and animations
  * @param {Object} props
  * @param {string} props.message - Toast message content
  * @param {('success'|'error'|'info')} props.type - Toast variant
  * @param {number} props.duration - Auto-dismiss duration in ms (default: 3000)
  * @param {Function} props.onClose - Callback when toast is closed
  * @param {boolean} props.show - Controls visibility
+ * @returns {JSX.Element|null} Toast notification or null if not visible
  */
 export function Toast({ message, type = 'info', duration = 3000, onClose, show = true }) {
   const [isVisible, setIsVisible] = useState(show);

@@ -2,7 +2,8 @@ import { cloneElement } from 'react';
 import { CharacterCounter } from './CharacterCounter';
 
 /**
- * Reusable form field wrapper with accessibility features
+ * @component FormField
+ * @description Reusable form field wrapper with accessibility features and character counting
  * @param {Object} props
  * @param {string} props.label - Field label text
  * @param {boolean} props.required - Whether field is required
@@ -12,6 +13,7 @@ import { CharacterCounter } from './CharacterCounter';
  * @param {string} props.id - Unique field ID
  * @param {number} props.characterCount - Current character count (for counter)
  * @param {number} props.maxLength - Maximum length (for counter)
+ * @returns {JSX.Element} Form field wrapper with label, helper text, error handling
  */
 export function FormField({
   label,

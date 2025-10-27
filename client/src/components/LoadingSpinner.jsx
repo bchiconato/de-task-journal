@@ -1,7 +1,9 @@
 /**
- * Loading spinner component with accessibility support
+ * @component LoadingSpinner
+ * @description Loading spinner component with accessibility support and customizable message
  * @param {Object} props
  * @param {string} props.message - Loading message to display
+ * @returns {JSX.Element} Animated loading spinner with message
  */
 export function LoadingSpinner({ message = 'Loading...' }) {
   return (
