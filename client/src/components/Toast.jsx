@@ -9,7 +9,7 @@ import { useEffect, useState } from 'react';
  * @param {Function} props.onClose - Callback when toast is closed
  * @param {boolean} props.show - Controls visibility
  */
-export default function Toast({ message, type = 'info', duration = 3000, onClose, show = true }) {
+export function Toast({ message, type = 'info', duration = 3000, onClose, show = true }) {
   const [isVisible, setIsVisible] = useState(show);
   const [isExiting, setIsExiting] = useState(false);
 

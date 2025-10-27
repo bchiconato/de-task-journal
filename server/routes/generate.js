@@ -48,4 +48,4 @@ async function generateDocsHandler(req, res) {
 
 router.post('/', generateDocsHandler);
 
-export default router;
+export { router as generateRouter };

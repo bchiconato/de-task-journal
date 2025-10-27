@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react';
 import CodeEditor from '@uiw/react-textarea-code-editor';
-import FormField from './FormField';
+import { FormField } from './FormField';
 import { validateForm, hasErrors, getErrorCount } from '../utils/validation';
 
 /**
@@ -9,7 +9,7 @@ import { validateForm, hasErrors, getErrorCount } from '../utils/validation';
  * @param {Function} props.onGenerate - Form submission handler
  * @param {boolean} props.isLoading - Whether generation is in progress
  */
-function InputForm({ onGenerate, isLoading }) {
+export function InputForm({ onGenerate, isLoading}) {
   const [formData, setFormData] = useState({
     context: '',
     code: '',
@@ -231,5 +231,3 @@ function InputForm({ onGenerate, isLoading }) {
     </section>
   );
 }
-
-export default InputForm;

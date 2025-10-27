@@ -45,4 +45,4 @@ async function sendToNotionHandler(req, res) {
 
 router.post('/', sendToNotionHandler);
 
-export default router;
+export { router as notionRouter };

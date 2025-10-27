@@ -1,5 +1,5 @@
 import { cloneElement } from 'react';
-import CharacterCounter from './CharacterCounter';
+import { CharacterCounter } from './CharacterCounter';
 
 /**
  * Reusable form field wrapper with accessibility features
@@ -13,7 +13,7 @@ import CharacterCounter from './CharacterCounter';
  * @param {number} props.characterCount - Current character count (for counter)
  * @param {number} props.maxLength - Maximum length (for counter)
  */
-export default function FormField({
+export function FormField({
   label,
   required = false,
   helperText,

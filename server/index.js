@@ -9,8 +9,8 @@ dotenv.config({ path: '../.env' });
 
 import express from 'express';
 import cors from 'cors';
-import generateRouter from './routes/generate.js';
-import notionRouter from './routes/notion.js';
+import { generateRouter } from './routes/generate.js';
+import { notionRouter } from './routes/notion.js';
 
 const app = express();
 const PORT = process.env.PORT || 3001;

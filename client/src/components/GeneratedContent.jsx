@@ -14,7 +14,7 @@ import remarkGfm from 'remark-gfm';
  * @param {Function} props.onSendSuccess - Toast callback for send success
  * @param {Function} props.onSendError - Toast callback for send error
  */
-function GeneratedContent({
+export function GeneratedContent({
   content,
   onSendToNotion,
   isSending,
@@ -167,5 +167,3 @@ function GeneratedContent({
     </aside>
   );
 }
-
-export default GeneratedContent;
