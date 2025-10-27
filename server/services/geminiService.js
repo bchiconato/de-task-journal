@@ -1,17 +1,21 @@
 /**
- * Google Gemini API Integration for Technical Documentation Generation
- * Uses REST API with native fetch (no SDK required)
+ * @fileoverview Google Gemini API Integration for Technical Documentation Generation
+ * @module services/geminiService
+ * @description Uses REST API with native fetch (no SDK required)
  */
 
 const GEMINI_API_BASE = 'https://generativelanguage.googleapis.com/v1beta/models';
 
 /**
- * Generates technical documentation in Portuguese using Gemini API
+ * @async
+ * @function generateDocumentation
+ * @description Generates technical documentation in Portuguese using Gemini API
  * @param {Object} input - The input data
  * @param {string} input.context - Context of the task (required)
  * @param {string} input.code - Code implementation (optional)
  * @param {string} input.challenges - Challenges/difficulties faced (optional)
  * @returns {Promise<string>} Generated documentation in Markdown
+ * @throws {Error} When API key is missing, API request fails, or response is invalid
  */
 export async function generateDocumentation({ context, code, challenges }) {
   const model = process.env.GEMINI_MODEL || 'gemini-2.0-flash-exp';
@@ -85,8 +89,9 @@ export async function generateDocumentation({ context, code, challenges }) {
 }
 
 /**
- * Builds the system instruction for Gemini
- * Sets the model's role as a senior technical writer for data engineering
+ * @function getSystemInstruction
+ * @description Builds the system instruction for Gemini - sets the model's role as a senior technical writer for data engineering
+ * @returns {string} System instruction text in Brazilian Portuguese
  */
 function getSystemInstruction() {
   return `Você é um redator técnico sênior especializado em engenharia de dados e documentação técnica.
@@ -103,11 +108,12 @@ Diretrizes:
 }
 
 /**
- * Builds the user prompt for documentation generation
+ * @function buildPrompt
+ * @description Builds the user prompt for documentation generation
  * @param {string} context - Task context
  * @param {string} code - Code implementation
  * @param {string} challenges - Challenges faced
- * @returns {string} Complete prompt
+ * @returns {string} Complete prompt in Brazilian Portuguese
  */
 function buildPrompt(context, code, challenges) {
   let prompt = `Crie uma documentação técnica completa e profissional sobre a seguinte tarefa de engenharia de dados:

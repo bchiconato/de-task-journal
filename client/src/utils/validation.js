@@ -1,5 +1,6 @@
 /**
- * Validation utilities for form fields
+ * @fileoverview Validation utilities for form fields
+ * @module utils/validation
  */
 
 /**

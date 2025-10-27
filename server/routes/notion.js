@@ -1,13 +1,23 @@
+/**
+ * @fileoverview Route handler for sending documentation to Notion
+ * @module routes/notion
+ */
+
 import express from 'express';
 import { sendToNotion } from '../services/notionService.js';
 
 const router = express.Router();
 
 /**
- * POST /api/notion
- * Sends content to Notion page
+ * @async
+ * @function sendToNotionHandler
+ * @description Handles POST /api/notion - sends markdown content to configured Notion page
+ * @param {import('express').Request} req - Express request with content in body
+ * @param {import('express').Response} res - Express response
+ * @returns {Promise<void>}
+ * @throws {Error} When content is missing or Notion API request fails
  */
-router.post('/', async (req, res) => {
+async function sendToNotionHandler(req, res) {
   try {
     const { content } = req.body;
 
@@ -31,6 +41,8 @@ router.post('/', async (req, res) => {
       message: error.message,
     });
   }
-});
+}
+
+router.post('/', sendToNotionHandler);
 
 export default router;

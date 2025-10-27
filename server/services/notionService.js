@@ -1,13 +1,20 @@
+/**
+ * @fileoverview Notion API service for sending markdown documentation to Notion with automatic block chunking
+ * @module services/notionService
+ */
+
 import { Client } from '@notionhq/client';
 
 const MAX_BLOCKS_PER_REQUEST = 100;
 
 /**
- * Sends documentation to Notion page
- * Handles chunking for documents with >100 blocks
+ * @async
+ * @function sendToNotion
+ * @description Sends documentation to Notion page with automatic chunking for documents with >100 blocks
  * @param {string} content - Markdown content to send
  * @param {string} pageId - Notion page ID (defaults to env var)
- * @returns {Promise<Object>} Response from Notion API
+ * @returns {Promise<Object>} Response object with success status, block count, and chunk info
+ * @throws {Error} When API key/page ID missing, page not found, unauthorized, or validation fails
  */
 export async function sendToNotion(content, pageId = process.env.NOTION_PAGE_ID) {
   try {
@@ -90,7 +97,8 @@ export async function sendToNotion(content, pageId = process.env.NOTION_PAGE_ID)
 }
 
 /**
- * Splits blocks array into chunks of specified size
+ * @function chunkBlocks
+ * @description Splits blocks array into chunks of specified size
  * @param {Array} blocks - Array of Notion block objects
  * @param {number} maxSize - Maximum blocks per chunk
  * @returns {Array<Array>} Array of block chunks
@@ -104,7 +112,8 @@ function chunkBlocks(blocks, maxSize) {
 }
 
 /**
- * Simple delay helper
+ * @function delay
+ * @description Simple delay helper using Promise-based setTimeout
  * @param {number} ms - Milliseconds to delay
  * @returns {Promise<void>}
  */
@@ -113,7 +122,8 @@ function delay(ms) {
 }
 
 /**
- * Converts markdown content to Notion blocks
+ * @function markdownToNotionBlocks
+ * @description Converts markdown content to Notion blocks (headings, code, lists, paragraphs)
  * @param {string} markdown - Markdown content
  * @returns {Array} Array of Notion block objects
  */
@@ -253,7 +263,8 @@ function markdownToNotionBlocks(markdown) {
 }
 
 /**
- * Truncates text to fit Notion's character limits
+ * @function truncateText
+ * @description Truncates text to fit Notion's character limits (adds ellipsis if truncated)
  * @param {string} text - Text to truncate
  * @param {number} maxLength - Maximum length
  * @returns {string} Truncated text
@@ -266,7 +277,8 @@ function truncateText(text, maxLength) {
 }
 
 /**
- * Maps markdown language identifiers to Notion code block languages
+ * @function mapLanguage
+ * @description Maps markdown language identifiers to Notion code block languages
  * @param {string} lang - Language identifier from markdown
  * @returns {string} Notion-compatible language name
  */

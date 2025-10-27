@@ -1,13 +1,23 @@
+/**
+ * @fileoverview Route handler for documentation generation using Gemini API
+ * @module routes/generate
+ */
+
 import express from 'express';
 import { generateDocumentation } from '../services/geminiService.js';
 
 const router = express.Router();
 
 /**
- * POST /api/generate
- * Generates technical documentation using Google Gemini AI
+ * @async
+ * @function generateDocsHandler
+ * @description Handles POST /api/generate - generates technical documentation using Google Gemini AI
+ * @param {import('express').Request} req - Express request with context, code, and challenges in body
+ * @param {import('express').Response} res - Express response
+ * @returns {Promise<void>}
+ * @throws {Error} When documentation generation fails or context is missing
  */
-router.post('/', async (req, res) => {
+async function generateDocsHandler(req, res) {
   try {
     const { context, code, challenges } = req.body;
 
@@ -34,6 +44,8 @@ router.post('/', async (req, res) => {
       message: error.message,
     });
   }
-});
+}
+
+router.post('/', generateDocsHandler);
 
 export default router;

@@ -1,3 +1,8 @@
+/**
+ * @fileoverview Express server entry point - configures middleware and routes for documentation generation API
+ * @module server
+ */
+
 import dotenv from 'dotenv';
 
 dotenv.config({ path: '../.env' });
