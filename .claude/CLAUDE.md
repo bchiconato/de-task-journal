@@ -298,6 +298,72 @@ This ensures environment variables are loaded before the Notion SDK accesses the
 
 ---
 
+## Development Shortcuts (Makefile)
+
+> **Claude Code**: always prefer using the `Makefile` targets to install, run, and clean the project.
+
+```bash
+# Install everything (backend + frontend)
+make install
+
+# Runs backend and frontend together (hot reload)
+make dev
+
+# Run isolated services
+make backend
+make frontend
+
+# Frontend production build
+make build
+
+# Clean up dependencies and artifacts
+make clean
+```
+
+(The targets above are defined in the `Makefile` with `dev`, `backend`, `frontend`, `install(-backend/-frontend)`, `build`, and `clean`.)
+
+---
+
+## Additional HTTP Endpoints
+
+Besides `/api/generate` and `/api/notion`, the backend exposes a **health check**:
+
+  * `GET /health` → returns `{ status: "ok" }` for readiness check.
+
+Routes mounted in `server/index.js`:
+
+  * `app.use('/api/generate', generateRouter)`
+  * `app.use('/api/notion', notionRouter)`
+
+---
+
+## ESLint (client)
+
+This codebase applies an important rule on the client:
+
+  * `'no-unused-vars': ['error', { varsIgnorePattern: '^[A-Z_]' }]` → allows **UPPER_SNAKE_CASE** constants without flagging an unused variable. Adjust constant names to this pattern when necessary.
+
+---
+
+## Client Base URL
+
+Frontend calls use a local constant:
+
+```js
+// client/src/utils/api.js
+const API_BASE_URL = 'http://localhost:3001/api';
+```
+
+If the backend endpoint changes, update this value on the client.
+
+---
+
+## Python (optional)
+
+The repository contains an independent Python module (`main.py` and `pyproject.toml`). If used, ensure **Python >= 3.12** and install the dependencies (e.g., `pathspec`). There is no direct integration with the Node server at the moment.
+
+---
+
 # Repository‑Wide Guardrails & Code Style (English)
 
 > **Audience:** Claude Code (claude.ai/code). **Obey all rules below when reading, editing, or generating code in this repo.**
