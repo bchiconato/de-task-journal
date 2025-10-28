@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Data Engineering Task Documenter — A full‑stack app that generates Brazilian Portuguese technical documentation for data engineering tasks using Google Gemini AI and sends it to Notion with automatic block chunking.
+Data Engineering Task Documenter — A full‑stack app that generates English technical documentation for data engineering tasks using Google Gemini AI and sends it to Notion with automatic block chunking.
 
 ---
 
@@ -59,10 +59,10 @@ npm install
 
 ### Critical Data Flow
 
-1. **User Input** → `InputForm.jsx` collects context/code/challenges
+1. **User Input** → `InputForm.jsx` collects context/code/challenges (any language)
 2. **Generate Request** → `client/utils/api.js` → `POST /api/generate`
 3. **Gemini Service** → `server/services/geminiService.js` calls Google Gemini REST API
-4. **Response** → Markdown docs in Brazilian Portuguese (8 sections)
+4. **Response** → Markdown docs in English (5 sections)
 5. **Display** → `GeneratedContent.jsx` shows docs with copy/send buttons
 6. **Send to Notion** → `POST /api/notion` → `notionService.js` with chunking
 
@@ -71,8 +71,8 @@ npm install
 **`geminiService.js`**
 
 * Direct REST API calls to Google Gemini (no SDK)
-* Uses system instructions to force Brazilian Portuguese output
-* Constructs prompts with 8‑section structure
+* Uses system instructions to generate English output (accepts input in any language)
+* Constructs prompts with 5‑section structure
 * Model configurable via `GEMINI_MODEL` env var (default: `gemini-2.0-flash-exp`)
 
 **`notionService.js`**
@@ -107,18 +107,15 @@ PORT=3001
 
 ## Generated Documentation Structure
 
-All Gemini responses MUST include these 8 sections in Brazilian Portuguese:
+All Gemini responses MUST include these 5 sections in English:
 
-1. Visão Geral da Tarefa
-2. Contexto e Motivação
-3. Solução Implementada
-4. Dificuldades Encontradas
-5. Armadilhas e Pontos de Atenção
-6. Soluções Aplicadas
-7. Lições Aprendidas
-8. Recomendações Futuras
+1. **Summary** — 1-2 sentences summarizing the task and its purpose
+2. **Problem Solved** — Description of the business or technical problem
+3. **Solution Implemented** — Technical approach and key implementation decisions
+4. **Code Highlights** — Brief explanation of code snippet with inferred language
+5. **Challenges & Learnings** — Main obstacles or insights as bullet points
 
-This structure is enforced via the `buildPrompt()` function in `geminiService.js`.
+This structure is enforced via the `buildPrompt()` function in `geminiService.js`. The system accepts input in any language but always outputs in English.
 
 ---
 
@@ -126,16 +123,25 @@ This structure is enforced via the `buildPrompt()` function in `geminiService.js
 
 ### Inline Formatting Support
 
-The `parseInlineMarkdown()` function converts markdown inline formatting to Notion rich text annotations:
+The `parseInlineMarkdown()` function in `server/services/notionService.js` converts markdown inline formatting to Notion rich text annotations:
 
-| Markdown             | Notion Annotation | Example           |
-| -------------------- | ----------------- | ----------------- |
-| `**text**`           | Bold              | **bold text**     |
-| `*text*` or `_text_` | Italic            | *italic text*     |
-| `` `text` ``         | Code              | `inline code`     |
-| `~~text~~`           | Strikethrough     | ~~strikethrough~~ |
+| Markdown             | Notion Annotation | Example           | Status |
+| -------------------- | ----------------- | ----------------- | ------ |
+| `**text**`           | Bold              | **bold text**     | ✅ Implemented |
+| `__text__`           | Bold              | **bold text**     | ✅ Implemented |
+| `*text*`             | Italic            | *italic text*     | ✅ Implemented |
+| `_text_`             | Italic            | *italic text*     | ✅ Implemented |
+| `` `text` ``         | Code              | `inline code`     | ✅ Implemented |
+| `[text](url)`        | Link              | [link text](url)  | ✅ Implemented |
 
-**Implementation**: Regex‑based parser that finds earliest match, handles nested patterns correctly, and generates Notion rich text objects with proper annotations.
+**Implementation**:
+- Regex‑based parser that finds earliest match among all patterns
+- Splits text into rich_text segments with appropriate annotations
+- Automatically respects 2000-char limit per rich_text object
+- Handles consecutive and multiple formatting types
+- Exported for testing: `export { parseInlineMarkdown }`
+
+**Note**: Strikethrough (`~~text~~`) is supported in preview via ReactMarkdown but not yet implemented in Notion API translation.
 
 ### Block Types Supported
 
@@ -198,10 +204,11 @@ This handles indented code blocks in nested contexts (e.g., within lists or quot
    * Page not shared with integration. User must invite integration in Notion UI.
    * **OR** Environment variables not loaded before client initialization. Ensure `dotenv.config()` is the FIRST import in `server/index.js`.
 2. **100‑block limit**: If adding new block types, always test with >100 block documents to verify chunking works.
-3. **Portuguese output**: If Gemini returns English, check:
+3. **English output**: If Gemini returns output in the wrong language, check:
 
    * `systemInstruction` is being sent in API call
    * Model supports system instructions (`gemini-2.0-flash-exp` does)
+   * Prompt explicitly states "Output MUST be 100% in ENGLISH"
 4. **CORS errors**: Backend must run on port 3001. Frontend hardcodes `http://localhost:3001/api` in `client/utils/api.js`.
 5. **Environment variables loading order**:
 
@@ -231,12 +238,32 @@ No global state management (Redux, Context) — single‑component state is suff
 
 ## Testing Approach
 
-Manual testing required:
+### Automated Tests
 
-1. **Basic generation**: Context only → verify 8 sections in Portuguese
-2. **With code**: Add code snippet → verify formatted in docs
-3. **Notion send**: Click "Send to Notion" → check server logs for chunking
-4. **Large docs**: Long context + code → verify >100 blocks get chunked
+**Unit tests** are implemented using Vitest in `server/services/notionService.test.js`:
+
+Run tests:
+```bash
+cd server
+npm test              # Run all tests once
+npm run test:watch    # Run tests in watch mode
+```
+
+**Test Coverage**:
+- `parseInlineMarkdown()`: 23 tests covering bold, italic, code, links, edge cases
+- `markdownToNotionBlocks()`: 10 integration tests covering complete document structures
+- All 33 tests passing
+
+### Manual Integration Testing
+
+Required for end-to-end validation:
+
+1. **Basic generation**: Context only → verify 5 sections in English
+2. **With code**: Add code snippet → verify formatted in docs with language inference
+3. **Inline formatting**: Use **bold**, *italic*, `code`, [links](url) in input → verify they appear formatted in Notion
+4. **Notion send**: Click "Send to Notion" → check server logs for chunking
+5. **Large docs**: Long context + code → verify >100 blocks get chunked
+6. **Multi-language input**: Test with input in different languages → verify English output
 
 Check server console for:
 
@@ -245,6 +272,13 @@ Generated X Notion blocks
 Sending Y chunks to Notion
 Sending chunk 1/Y (100 blocks)
 ```
+
+**Critical validation**: Open the Notion page and verify:
+- Bold text appears **bold**
+- Italic text appears *italic*
+- Inline code has `code styling`
+- Links are clickable and lead to correct URLs
+- Headings, lists, and code blocks preserve their structure
 
 ---
 
