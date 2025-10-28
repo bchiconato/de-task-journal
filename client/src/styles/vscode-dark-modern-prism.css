@@ -1,0 +1,125 @@
+.code-impl pre,
+.code-impl code {
+  background: #1e1e1e;
+  color: #d4d4d4;
+}
+
+.code-impl textarea::placeholder {
+  color: #a6a6a6;
+  opacity: 1;
+}
+
+.code-impl .token.comment,
+.code-impl .token.prolog,
+.code-impl .token.doctype,
+.code-impl .token.cdata {
+  color: #6a9955;
+}
+
+.code-impl .token.string,
+.code-impl .token.char,
+.code-impl .token.attr-value,
+.code-impl .token.string-property {
+  color: #ce9178;
+}
+
+.code-impl .token.number,
+.code-impl .token.boolean,
+.code-impl .token.unit {
+  color: #b5cea8;
+}
+
+.code-impl .token.keyword,
+.code-impl .token.control,
+.code-impl .token.operator-word {
+  color: #569cd6;
+}
+
+.code-impl .token.keyword.keyword-import,
+.code-impl .token.keyword.keyword-export,
+.code-impl .token.keyword.keyword-from,
+.code-impl .token.keyword.keyword-new,
+.code-impl .token.keyword.keyword-delete,
+.code-impl .token.keyword.keyword-using {
+  color: #c586c0;
+}
+
+.code-impl .token.function,
+.code-impl .token.function-variable {
+  color: #dcdcaa;
+}
+
+.code-impl .token.class-name,
+.code-impl .token.builtin,
+.code-impl .token.type {
+  color: #4ec9b0;
+}
+
+.code-impl .token.variable,
+.code-impl .token.property,
+.code-impl .token.attr-name,
+.code-impl .token.key,
+.code-impl .token.constant {
+  color: #9cdcfe;
+}
+
+.code-impl .token.tag,
+.code-impl .token.tag .token.punctuation {
+  color: #569cd6;
+}
+
+.code-impl .language-css .token.property {
+  color: #9cdcfe;
+}
+
+.code-impl .language-css .token.value,
+.code-impl .language-css .token.constant {
+  color: #ce9178;
+}
+
+.code-impl .token.regex,
+.code-impl .token.regex .token.character-class {
+  color: #d16969;
+}
+
+.code-impl .token.operator,
+.code-impl .token.punctuation {
+  color: #d4d4d4;
+}
+
+.code-impl .rainbow-braces .brace-level-1,
+.code-impl .rainbow-braces .paren-level-1,
+.code-impl .rainbow-braces .bracket-level-1 {
+  color: #d7ba7d;
+}
+.code-impl .rainbow-braces .brace-level-2,
+.code-impl .rainbow-braces .paren-level-2,
+.code-impl .rainbow-braces .bracket-level-2 {
+  color: #c586c0; 
+}
+.code-impl .rainbow-braces .brace-level-3,
+.code-impl .rainbow-braces .paren-level-3,
+.code-impl .rainbow-braces .bracket-level-3 {
+  color: #4fc1ff;
+}
+.code-impl .rainbow-braces .brace-level-4,
+.code-impl .rainbow-braces .paren-level-4,
+.code-impl .rainbow-braces .bracket-level-4 {
+  color: #b5cea8;
+}
+.code-impl .rainbow-braces .brace-level-5,
+.code-impl .rainbow-braces .paren-level-5,
+.code-impl .rainbow-braces .bracket-level-5 {
+  color: #ce9178;
+}
+.code-impl .rainbow-braces .brace-level-6,
+.code-impl .rainbow-braces .paren-level-6,
+.code-impl .rainbow-braces .bracket-level-6 {
+  color: #569cd6;
+}
+
+.code-impl .brace-hover,
+.code-impl .brace-selected {
+  background: #3a3d41;
+  border-radius: 2px;
+}
