@@ -9,12 +9,12 @@ const GEMINI_API_BASE = 'https://generativelanguage.googleapis.com/v1beta/models
 /**
  * @async
  * @function generateDocumentation
- * @description Generates technical documentation in Portuguese using Gemini API
- * @param {Object} input - The input data
+ * @description Generates technical documentation in English using Gemini API with 5-section structure
+ * @param {Object} input - The input data (accepts any language input)
  * @param {string} input.context - Context of the task (required)
  * @param {string} input.code - Code implementation (optional)
  * @param {string} input.challenges - Challenges/difficulties faced (optional)
- * @returns {Promise<string>} Generated documentation in Markdown
+ * @returns {Promise<string>} Generated documentation in English Markdown format
  * @throws {Error} When API key is missing, API request fails, or response is invalid
  */
 export async function generateDocumentation({ context, code, challenges }) {
@@ -90,21 +90,26 @@ export async function generateDocumentation({ context, code, challenges }) {
 
 /**
  * @function getSystemInstruction
- * @description Builds the system instruction for Gemini - sets the model's role as a senior technical writer for data engineering
- * @returns {string} System instruction text in Brazilian Portuguese
+ * @description Builds the system instruction for Gemini - sets the model's role as a Staff-level Data Engineer and Technical Communicator
+ * @returns {string} System instruction text in English
  */
 function getSystemInstruction() {
-  return `Você é um redator técnico sênior especializado em engenharia de dados e documentação técnica.
+  return `You are a Staff-level Data Engineer and expert Technical Communicator. Your job is to analyze raw task notes and transform them into clear, concise, high-quality technical documentation.
 
-Sua função é criar documentação técnica profissional, clara e detalhada no formato de manual de instruções, sempre em Português do Brasil.
+Your mission is to process three user inputs ($TASK_CONTEXT, $CODE_IMPLEMENTATION, $CHALLENGES) provided in ANY language.
 
-Diretrizes:
-- Use linguagem técnica mas acessível
-- Seja específico e detalhado
-- Formate o texto em Markdown com cabeçalhos, listas e blocos de código
-- Mantenha tom profissional e informativo
-- Forneça exemplos práticos quando apropriado
-- Estruture o conteúdo de forma lógica e hierárquica`;
+Follow this 3-step process:
+1. [ANALYZE & TRANSLATE]: Deeply analyze the content of all three inputs. Identify the core problem, technical solution, architectural decisions, and lessons learned. Mentally translate all content and concepts to ENGLISH.
+2. [SYNTHESIZE]: Synthesize the translated information into cohesive, logical technical documentation. DO NOT just list the inputs; instead, structure the information into a narrative that explains what, why, and how.
+3. [FORMAT]: Format the output as a clean, well-structured Markdown document following the required structure.
+
+Guidelines:
+- Accept input in any language but always output in ENGLISH
+- Use technical but accessible language
+- Be specific and detailed
+- Format text in Markdown with headers, lists, and code blocks
+- Maintain a professional and informative tone
+- Structure content logically and hierarchically`;
 }
 
 /**
@@ -113,17 +118,17 @@ Diretrizes:
  * @param {string} context - Task context
  * @param {string} code - Code implementation
  * @param {string} challenges - Challenges faced
- * @returns {string} Complete prompt in Brazilian Portuguese
+ * @returns {string} Complete prompt in English with 5-section structure
  */
 function buildPrompt(context, code, challenges) {
-  let prompt = `Crie uma documentação técnica completa e profissional sobre a seguinte tarefa de engenharia de dados:
+  let prompt = `Process the following inputs and generate technical documentation:
 
-**Contexto da Tarefa:**
+**$TASK_CONTEXT:**
 ${context}
 `;
 
   if (code && code.trim()) {
-    prompt += `\n**Implementação do Código:**
+    prompt += `\n**$CODE_IMPLEMENTATION:**
 \`\`\`
 ${code}
 \`\`\`
@@ -131,45 +136,45 @@ ${code}
   }
 
   if (challenges && challenges.trim()) {
-    prompt += `\n**Desafios/Dificuldades Enfrentadas:**
+    prompt += `\n**$CHALLENGES:**
 ${challenges}
 `;
   }
 
   prompt += `\n
-Gere a documentação seguindo EXATAMENTE esta estrutura:
+Generate documentation following EXACTLY this structure in ENGLISH:
 
-# Documentação Técnica
+# [Concise and Descriptive Task Title]
 
-## 1. Visão Geral da Tarefa
-[Descreva o objetivo principal da tarefa e sua importância no contexto de engenharia de dados]
+## Summary
+Write 1-2 sentences in English summarizing the task and its purpose.
 
-## 2. Contexto e Motivação
-[Explique o contexto do problema, por que esta solução foi necessária e qual problema ela resolve]
+## Problem Solved
+Describe the business or technical problem that this task solved, based on the $TASK_CONTEXT.
 
-## 3. Solução Implementada
-[Descreva em detalhes a solução técnica implementada, incluindo tecnologias, arquitetura e abordagem]
+## Solution Implemented
+Describe the technical approach and key implementation decisions. If the $TASK_CONTEXT mentions why one approach was chosen over another, include that.
 
-## 4. Dificuldades Encontradas
-[Liste e explique as principais dificuldades encontradas durante a implementação]
+## Code Highlights
+Provide a brief explanation of the code snippet, highlighting its main function in the solution.
+\`\`\`
+# Insert the $CODE_IMPLEMENTATION here
+# Try to infer the language (ex: python, sql, javascript) and use it in the code block
+\`\`\`
 
-## 5. Armadilhas e Pontos de Atenção
-[Identifique possíveis armadilhas, edge cases e pontos que merecem atenção especial]
+## Challenges & Learnings
+Based on the $CHALLENGES, list the main obstacles or insights as bullet points.
 
-## 6. Soluções Aplicadas
-[Explique as soluções encontradas para cada dificuldade, incluindo alternativas consideradas]
+- First challenge or lesson learned.
+- Second challenge or lesson learned.
 
-## 7. Lições Aprendidas
-[Resuma os principais aprendizados dessa experiência e insights obtidos]
-
-## 8. Recomendações Futuras
-[Forneça recomendações para trabalhos futuros, melhorias possíveis e próximos passos]
-
-**Importante:**
-- Use Markdown com ## para seções principais
-- Inclua listas com marcadores (-) quando apropriado
-- Seja detalhado e específico em cada seção
-- Mantenha o foco técnico mas com clareza`;
+**Important:**
+- Output MUST be 100% in ENGLISH
+- Use Markdown with ## for main sections
+- Include bulleted lists (-) when appropriate
+- Be detailed and specific in each section
+- Infer and specify the code language in code blocks (e.g., \`\`\`python, \`\`\`sql, \`\`\`javascript)
+- Maintain technical focus with clarity`;
 
   return prompt;
 }

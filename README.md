@@ -4,8 +4,8 @@ A full-stack web application that helps data engineers document their work by au
 
 ## Features
 
-- **Intuitive Input Form**: Capture task context, code implementation, and challenges
-- **AI-Powered Documentation**: Generate comprehensive technical documentation in Brazilian Portuguese using Google Gemini AI (FREE tier available)
+- **Intuitive Input Form**: Capture task context, code implementation, and challenges (accepts input in any language)
+- **AI-Powered Documentation**: Generate comprehensive technical documentation in English using Google Gemini AI (FREE tier available)
 - **Notion Integration**: Automatically send generated documentation to your Notion page with smart chunking (handles documents >100 blocks)
 - **Modern UI**: Clean, responsive design built with React and Tailwind CSS
 - **Error Handling**: Robust error handling with user-friendly messages
@@ -188,16 +188,15 @@ Open your browser and navigate to `http://localhost:5173`
 
 ## Generated Documentation Structure
 
-The AI generates documentation with the following sections:
+The AI generates documentation with the following sections in English:
 
-1. **Visão Geral da Tarefa**: Task overview
-2. **Contexto e Motivação**: Context and motivation
-3. **Solução Implementada**: Implemented solution
-4. **Dificuldades Encontradas**: Difficulties encountered
-5. **Armadilhas e Pontos de Atenção**: Pitfalls and gotchas
-6. **Soluções Aplicadas**: Applied solutions
-7. **Lições Aprendidas**: Lessons learned
-8. **Recomendações Futuras**: Future recommendations
+1. **Summary**: 1-2 sentences summarizing the task and its purpose
+2. **Problem Solved**: Description of the business or technical problem
+3. **Solution Implemented**: Technical approach and key implementation decisions
+4. **Code Highlights**: Brief explanation of code snippet with inferred language (python, sql, javascript, etc.)
+5. **Challenges & Learnings**: Main obstacles or insights as bullet points
+
+The system accepts input in any language but always generates output in English.
 
 ## API Endpoints
 
@@ -267,9 +266,10 @@ Sends content to Notion page (automatically chunks documents >100 blocks)
 - Make sure the backend server is running on port 3001
 - Check that the API_BASE_URL in `client/src/utils/api.js` matches your server URL
 
-### Generated content not in Portuguese
-- Check your `GEMINI_MODEL` is set correctly
-- The system instructions should force Portuguese output
+### Generated content not in English
+- Check your `GEMINI_MODEL` supports system instructions (recommended: `gemini-2.0-flash-exp`)
+- The system instructions should enforce English output
+- Verify the prompt explicitly states "Output MUST be 100% in ENGLISH"
 - Try regenerating or using a different model
 
 ## Development
