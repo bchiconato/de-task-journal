@@ -122,6 +122,116 @@ function delay(ms) {
 }
 
 /**
+ * @function parseInlineMarkdown
+ * @description Parses inline Markdown formatting (bold, italic, code, links) into Notion rich_text objects with proper annotations
+ * @param {string} text - Plain text with inline Markdown syntax
+ * @returns {Array<Object>} Array of Notion rich_text objects with annotations
+ * @example
+ *   parseInlineMarkdown("This is **bold** and *italic*")
+ *   // Returns: [
+ *   //   {type: 'text', text: {content: 'This is '}, annotations: {...}},
+ *   //   {type: 'text', text: {content: 'bold'}, annotations: {bold: true, ...}},
+ *   //   {type: 'text', text: {content: ' and '}, annotations: {...}},
+ *   //   {type: 'text', text: {content: 'italic'}, annotations: {italic: true, ...}}
+ *   // ]
+ */
+function parseInlineMarkdown(text) {
+  if (!text || typeof text !== 'string') {
+    return [{
+      type: 'text',
+      text: { content: '' },
+      annotations: { bold: false, italic: false, strikethrough: false, underline: false, code: false, color: 'default' }
+    }];
+  }
+
+  const richTextArray = [];
+  let remainingText = truncateText(text, 2000);
+
+  const patterns = [
+    { regex: /\[([^\]]+)\]\(([^)]+)\)/g, type: 'link' },
+    { regex: /`([^`]+)`/g, type: 'code' },
+    { regex: /\*\*([^*]+)\*\*/g, type: 'bold' },
+    { regex: /__([^_]+)__/g, type: 'bold' },
+    { regex: /\*([^*]+)\*/g, type: 'italic' },
+    { regex: /_([^_]+)_/g, type: 'italic' },
+  ];
+
+  while (remainingText.length > 0) {
+    let earliestMatch = null;
+    let earliestIndex = remainingText.length;
+    let matchedPattern = null;
+
+    for (const pattern of patterns) {
+      pattern.regex.lastIndex = 0;
+      const match = pattern.regex.exec(remainingText);
+
+      if (match && match.index < earliestIndex) {
+        earliestMatch = match;
+        earliestIndex = match.index;
+        matchedPattern = pattern;
+      }
+    }
+
+    if (!earliestMatch) {
+      if (remainingText.length > 0) {
+        richTextArray.push({
+          type: 'text',
+          text: { content: remainingText },
+          annotations: { bold: false, italic: false, strikethrough: false, underline: false, code: false, color: 'default' }
+        });
+      }
+      break;
+    }
+
+    if (earliestIndex > 0) {
+      richTextArray.push({
+        type: 'text',
+        text: { content: remainingText.substring(0, earliestIndex) },
+        annotations: { bold: false, italic: false, strikethrough: false, underline: false, code: false, color: 'default' }
+      });
+    }
+
+    const annotations = { bold: false, italic: false, strikethrough: false, underline: false, code: false, color: 'default' };
+    let textContent = '';
+    let linkUrl = null;
+
+    if (matchedPattern.type === 'link') {
+      textContent = earliestMatch[1];
+      linkUrl = earliestMatch[2];
+    } else if (matchedPattern.type === 'bold') {
+      annotations.bold = true;
+      textContent = earliestMatch[1];
+    } else if (matchedPattern.type === 'italic') {
+      annotations.italic = true;
+      textContent = earliestMatch[1];
+    } else if (matchedPattern.type === 'code') {
+      annotations.code = true;
+      textContent = earliestMatch[1];
+    }
+
+    const richTextObject = {
+      type: 'text',
+      text: { content: textContent },
+      annotations
+    };
+
+    if (linkUrl) {
+      richTextObject.text.link = { url: linkUrl };
+    }
+
+    richTextArray.push(richTextObject);
+
+    remainingText = remainingText.substring(earliestIndex + earliestMatch[0].length);
+  }
+
+  return richTextArray.length > 0 ? richTextArray : [{
+    type: 'text',
+    text: { content: '' },
+    annotations: { bold: false, italic: false, strikethrough: false, underline: false, code: false, color: 'default' }
+  }];
+}
+
+/**
  * @function markdownToNotionBlocks
  * @description Converts markdown content to Notion blocks (headings, code, lists, paragraphs)
  * @param {string} markdown - Markdown content
@@ -145,7 +255,7 @@ function markdownToNotionBlocks(markdown) {
         object: 'block',
         type: 'heading_1',
         heading_1: {
-          rich_text: [{ type: 'text', text: { content: truncateText(line.substring(2), 2000) } }],
+          rich_text: parseInlineMarkdown(line.substring(2)),
         },
       });
       i++;
@@ -157,7 +267,7 @@ function markdownToNotionBlocks(markdown) {
         object: 'block',
         type: 'heading_2',
         heading_2: {
-          rich_text: [{ type: 'text', text: { content: truncateText(line.substring(3), 2000) } }],
+          rich_text: parseInlineMarkdown(line.substring(3)),
         },
       });
       i++;
@@ -169,7 +279,7 @@ function markdownToNotionBlocks(markdown) {
         object: 'block',
         type: 'heading_3',
         heading_3: {
-          rich_text: [{ type: 'text', text: { content: truncateText(line.substring(4), 2000) } }],
+          rich_text: parseInlineMarkdown(line.substring(4)),
         },
       });
       i++;
@@ -209,12 +319,7 @@ function markdownToNotionBlocks(markdown) {
         object: 'block',
         type: 'bulleted_list_item',
         bulleted_list_item: {
-          rich_text: [
-            {
-              type: 'text',
-              text: { content: truncateText(line.trim().substring(2), 2000) },
-            },
-          ],
+          rich_text: parseInlineMarkdown(line.trim().substring(2)),
         },
       });
       i++;
@@ -226,12 +331,7 @@ function markdownToNotionBlocks(markdown) {
         object: 'block',
         type: 'numbered_list_item',
         numbered_list_item: {
-          rich_text: [
-            {
-              type: 'text',
-              text: { content: truncateText(line.trim().replace(/^\d+\.\s/, ''), 2000) },
-            },
-          ],
+          rich_text: parseInlineMarkdown(line.trim().replace(/^\d+\.\s/, '')),
         },
       });
       i++;
@@ -242,12 +342,7 @@ function markdownToNotionBlocks(markdown) {
       object: 'block',
       type: 'paragraph',
       paragraph: {
-        rich_text: [
-          {
-            type: 'text',
-            text: { content: truncateText(line, 2000) },
-          },
-        ],
+        rich_text: parseInlineMarkdown(line),
       },
     });
     i++;
@@ -284,8 +379,11 @@ function truncateText(text, maxLength) {
  */
 function mapLanguage(lang) {
   const languageMap = {
+    'javascript': 'javascript',
     'js': 'javascript',
+    'typescript': 'typescript',
     'ts': 'typescript',
+    'python': 'python',
     'py': 'python',
     'sql': 'sql',
     'bash': 'bash',
@@ -304,3 +402,5 @@ function mapLanguage(lang) {
 
   return languageMap[lang.toLowerCase()] || 'plain text';
 }
+
+export { parseInlineMarkdown, markdownToNotionBlocks };
