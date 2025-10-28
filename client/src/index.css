@@ -94,13 +94,43 @@ code {
 /* Code editor styling */
 .code-editor-wrapper {
   font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New', monospace;
-  font-size: 0.875rem;
-  line-height: 1.5;
+  font-size: 0.9375rem;
+  line-height: 1.6;
 }
 
-/* Ensure proper line height for readability */
+.code-editor-wrapper textarea {
+  color: #CCCCCC !important;
+  caret-color: #CCCCCC;
+}
+
+.code-editor-wrapper textarea::placeholder {
+  color: #CCCCCC !important;
+  opacity: 1;
+}
+
+/* Make CodeEditor fill the wrapper's min-height */
+.code-editor-wrapper,
+.code-editor-wrapper .w-tc-editor,
+.code-editor-wrapper .w-tc-editor textarea {
+  min-height: inherit;
+  height: 100%;
+}
+
+/* Ensure proper line height and max-width for readability */
 .prose {
-  line-height: 1.75;
+  line-height: 1.6;
+  max-width: 65ch;
+}
+
+.prose p,
+.prose li {
+  line-height: 1.6;
+}
+
+.prose h1,
+.prose h2,
+.prose h3 {
+  line-height: 1.3;
 }
 
 /* Toast animation */
