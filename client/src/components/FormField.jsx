@@ -38,16 +38,16 @@ export function FormField({
     .join(' ');
 
   return (
-    <div className="space-y-1.5">
+    <div className="space-y-2">
       <div className="flex items-baseline justify-between gap-2">
-        <label htmlFor={id} className="block text-sm font-medium text-gray-900">
+        <label htmlFor={id} className="block text-sm font-semibold text-gray-900">
           {label}
           {required ? (
             <span className="ml-1 text-error-600" aria-label="required">
               *
             </span>
           ) : (
-            <span className="ml-2 text-xs font-normal text-gray-500">(Optional)</span>
+            <span className="ml-2 text-xs font-normal text-gray-600">(Optional)</span>
           )}
         </label>
 
@@ -57,7 +57,7 @@ export function FormField({
       </div>
 
       {helperText && !error && (
-        <p id={helperId} className="text-sm text-gray-600">
+        <p id={helperId} className="text-sm text-gray-700">
           {helperText}
         </p>
       )}

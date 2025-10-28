@@ -6,6 +6,10 @@ export default {
   ],
   theme: {
     extend: {
+      maxWidth: {
+        'content-wide': '1480px',
+        'content-ultra': '1720px',
+      },
       spacing: {
         '0.5': '4px',
         '1': '8px',

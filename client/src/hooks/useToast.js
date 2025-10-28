@@ -15,24 +15,34 @@ export function useToast() {
    * @param {number} duration - Auto-dismiss duration (default: 3000ms)
    */
   const showToast = useCallback((message, type = 'info', duration = 3000) => {
-    const id = Date.now() + Math.random();
-    const newToast = {
-      id,
-      message,
-      type,
-      duration,
-      show: true,
-    };
+    setToasts((prev) => {
+      const isDuplicate = prev.some(
+        (toast) => toast.message === message && toast.type === type && toast.show
+      );
 
-    setToasts((prev) => [...prev, newToast]);
+      if (isDuplicate) {
+        return prev;
+      }
 
-    if (duration > 0) {
-      setTimeout(() => {
-        removeToast(id);
-      }, duration + 300);
-    }
+      const id = Date.now() + Math.random();
+      const newToast = {
+        id,
+        message,
+        type,
+        duration,
+        show: true,
+      };
 
-    return id;
+      if (duration > 0) {
+        setTimeout(() => {
+          removeToast(id);
+        }, duration + 300);
+      }
+
+      return [...prev, newToast];
+    });
+
+    return null;
   }, []);
 
   /**

@@ -37,6 +37,10 @@ function App() {
   };
 
   const handleSendToNotion = async (content) => {
+    if (isSending) {
+      return false;
+    }
+
     setIsSending(true);
 
     try {
@@ -68,12 +72,12 @@ function App() {
       <div className="min-h-screen bg-gradient-to-br from-primary-50 to-indigo-100">
         <main
           id="main-content"
-          className="container mx-auto px-4 py-8 max-w-7xl"
+          className="container mx-auto py-8 max-w-content-wide 2xl:max-w-content-ultra px-4 sm:px-4 md:px-6 lg:px-8 xl:px-10 2xl:px-12"
         >
           <div
             className={`
-              grid gap-6
-              ${documentation ? 'lg:grid-cols-[minmax(400px,1fr),1.5fr]' : 'lg:grid-cols-1'}
+              grid gap-8 lg:gap-10
+              ${documentation ? 'lg:grid-cols-[minmax(520px,1.2fr),1fr]' : 'lg:grid-cols-1'}
               transition-all duration-300
             `}
           >
@@ -110,10 +114,6 @@ function App() {
                 content={documentation}
                 onSendToNotion={handleSendToNotion}
                 isSending={isSending}
-                onCopySuccess={() => showSuccess('Documentation copied to clipboard!')}
-                onCopyError={() => showError('Failed to copy to clipboard.')}
-                onSendSuccess={() => showSuccess('Documentation sent to Notion!')}
-                onSendError={() => showError('Failed to send to Notion.')}
               />
             )}
           </div>
