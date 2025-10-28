@@ -2,11 +2,21 @@
   "includeCoAuthoredBy": false,
   "permissions": {
     "allow": [
-      "Bash(git add:*)",
+      "Bash(git diff:*)",
+      "Bash(git status:*)",
+      "Bash(git add -p:*)",
+      "Bash(git add src:*)",
       "Bash(git commit:*)"
     ],
     "ask": [
       "Bash(git push:*)"
+    ],
+    "deny": [
+      "Bash(git commit -a:*)",
+      "Bash(git add -A:*)",
+      "Bash(git add .:*)",
+      "Bash(git push --force:*)",
+      "Bash(git reset --hard:*)"
     ]
   }
 }
