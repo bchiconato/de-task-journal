@@ -156,11 +156,30 @@ Describe the business or technical problem that this task solved, based on the $
 Describe the technical approach and key implementation decisions. If the $TASK_CONTEXT mentions why one approach was chosen over another, include that.
 
 ## Code Highlights
-Provide a brief explanation of the code snippet, highlighting its main function in the solution.
+Instead of providing the entire code implementation, extract 2-3 SHORT, FOCUSED code snippets (5-15 lines each) that highlight:
+- The main function or entry point
+- Critical business logic or transformations
+- Key technical decisions or patterns
+
+For each snippet:
+- Write a brief 1-sentence explanation in BOLD (wrapped in **text**)
+- Include the code block immediately after with inferred language (python, sql, javascript, etc.)
+- Keep snippets concise and meaningful
+
+Example format:
+**Brief explanation of first snippet.**
+
+\`\`\`python
+code here
 \`\`\`
-# Insert the $CODE_IMPLEMENTATION here
-# Try to infer the language (ex: python, sql, javascript) and use it in the code block
+
+**Brief explanation of second snippet.**
+
+\`\`\`sql
+code here
 \`\`\`
+
+DO NOT include the full $CODE_IMPLEMENTATION. Extract only the most important parts that demonstrate the solution approach.
 
 ## Challenges & Learnings
 Based on the $CHALLENGES, list the main obstacles or insights as bullet points.
