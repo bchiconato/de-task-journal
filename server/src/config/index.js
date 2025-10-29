@@ -19,6 +19,7 @@ const Env = z.object({
   GEMINI_MODEL: z.string().default('gemini-2.0-flash-exp'),
   NOTION_API_KEY: z.string().min(1, 'NOTION_API_KEY required'),
   NOTION_PAGE_ID: z.string().optional(),
+  NOTION_PARENT_PAGE_ID: z.string().optional(),
   NODE_ENV: z.string().default('development'),
 });
 
