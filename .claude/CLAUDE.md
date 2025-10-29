@@ -88,7 +88,9 @@ npm install
 
 ### Environment Configuration
 
-**Required Environment Variables** (`.env` at project root):
+#### Server Environment Variables
+
+**Required Environment Variables** (`.env` in server folder):
 
 ```
 GEMINI_API_KEY=        # From https://aistudio.google.com/app/apikey
@@ -96,12 +98,29 @@ GEMINI_MODEL=gemini-2.0-flash-exp
 NOTION_API_KEY=        # From https://notion.so/my-integrations
 NOTION_PAGE_ID=        # Target Notion page UUID
 PORT=3001
+NODE_ENV=development
 ```
 
 **Important**:
 
-* `.env` is loaded by `server/index.js` with path `'../.env'` (relative to server dir)
-* **CRITICAL**: `dotenv.config()` MUST be called BEFORE any other imports in `server/index.js` to ensure environment variables are available when services initialize their clients
+* `.env` is loaded by `server/src/config/index.js` which is imported first in the application
+* Configuration module validates all required variables and exits with clear error messages if validation fails
+* All services use the centralized config module (`import { env } from './src/config/index.js'`)
+
+#### Client Environment Variables
+
+**Required Environment Variables** (`.env` in client folder):
+
+```
+VITE_API_BASE_URL=http://localhost:3001/api
+```
+
+**Important**:
+
+* Client variables MUST be prefixed with `VITE_` to be exposed by Vite
+* These variables are loaded at build time and exposed to the browser
+* Never put secrets in client environment variables - they are publicly visible
+* Client defaults to `http://localhost:3001/api` if `VITE_API_BASE_URL` is not set
 
 ---
 
@@ -212,7 +231,7 @@ This handles indented code blocks in nested contexts (e.g., within lists or quot
 4. **CORS errors**: Backend must run on port 3001. Frontend hardcodes `http://localhost:3001/api` in `client/utils/api.js`.
 5. **Environment variables loading order**:
 
-   * Backend loads `.env` from project root, not from `server/.env`
+   * Backend loads `.env` from server folder (`server/.env`)
    * `dotenv.config()` MUST be called before any other imports, otherwise services will initialize with undefined env vars
    * Notion Client is created lazily inside `sendToNotion()` to ensure env vars are loaded
 6. **Markdown formatting not appearing in Notion**:
