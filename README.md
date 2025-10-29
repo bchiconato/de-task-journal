@@ -297,3 +297,62 @@ npm run build
 
 # The built files will be in client/dist/
 ```
+
+## Testing
+
+The project uses Vitest for both server and client testing with comprehensive test coverage.
+
+### Running Tests
+
+```bash
+# Run all tests (server + client) once
+npm test
+
+# Run all tests in watch mode
+npm run test:watch
+
+# Run tests for a specific file or pattern
+npm test -- InputForm
+
+# Run tests matching a specific name
+npm test -- -t "validates context field"
+
+# Run tests with coverage report
+npm run test:coverage
+```
+
+### Test Structure
+
+**Server Tests** (Node environment):
+- API integration tests with Supertest
+- HTTP retry and timeout tests
+- Snapshot tests for Notion block conversion
+- Unit tests for service functions
+
+**Client Tests** (jsdom environment):
+- Component tests with React Testing Library
+- Hook tests with renderHook
+- User interaction tests with user-event
+- Network mocking with MSW
+
+### Coverage
+
+Tests are configured with the following coverage thresholds:
+- Lines: 80%
+- Branches: 70%
+- Functions: 80%
+- Statements: 80%
+
+Coverage reports are generated in:
+- `server/coverage/` for backend tests
+- `client/coverage/` for frontend tests
+
+### Updating Snapshots
+
+```bash
+# Update all snapshots
+npm test -- -u
+
+# Update snapshots for a specific file
+npm test -- notionService.snapshot -u
+```
