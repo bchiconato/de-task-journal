@@ -3,9 +3,12 @@
  * @module services/notionService
  */
 
-import { Client } from '@notionhq/client';
+import { fetchWithRetry } from '../src/lib/http.js';
+import { env } from '../src/config/index.js';
 
 const MAX_BLOCKS_PER_REQUEST = 100;
+const NOTION_BASE = 'https://api.notion.com/v1';
+const RPS_THROTTLE_MS = 350;
 
 /**
  * @async
@@ -16,84 +19,69 @@ const MAX_BLOCKS_PER_REQUEST = 100;
  * @returns {Promise<Object>} Response object with success status, block count, and chunk info
  * @throws {Error} When API key/page ID missing, page not found, unauthorized, or validation fails
  */
-export async function sendToNotion(content, pageId = process.env.NOTION_PAGE_ID) {
-  try {
-    if (!process.env.NOTION_API_KEY) {
-      throw new Error('NOTION_API_KEY not configured in environment variables');
-    }
-
-    if (!pageId) {
-      throw new Error('NOTION_PAGE_ID not provided');
-    }
-
-    console.log('Initializing Notion client with API key:', process.env.NOTION_API_KEY ? `${process.env.NOTION_API_KEY.substring(0, 10)}...` : 'undefined');
-    const notion = new Client({
-      auth: process.env.NOTION_API_KEY,
-    });
-
-    const blocks = markdownToNotionBlocks(content);
-    console.log(`Generated ${blocks.length} Notion blocks`);
-
-    if (blocks.length <= MAX_BLOCKS_PER_REQUEST) {
-      const response = await notion.blocks.children.append({
-        block_id: pageId,
-        children: blocks,
-      });
-      return {
-        success: true,
-        blocksAdded: blocks.length,
-        chunks: 1,
-      };
-    }
-
-    const chunks = chunkBlocks(blocks, MAX_BLOCKS_PER_REQUEST);
-    console.log(`Sending ${chunks.length} chunks to Notion`);
-
-    const responses = [];
-    for (let i = 0; i < chunks.length; i++) {
-      console.log(`Sending chunk ${i + 1}/${chunks.length} (${chunks[i].length} blocks)`);
-
-      const response = await notion.blocks.children.append({
-        block_id: pageId,
-        children: chunks[i],
-      });
-
-      responses.push(response);
-
-      if (i < chunks.length - 1) {
-        await delay(100);
-      }
-    }
-
-    return {
-      success: true,
-      blocksAdded: blocks.length,
-      chunks: chunks.length,
-      responses,
-    };
-  } catch (error) {
-    console.error('Error sending to Notion:', error);
-
-    if (error.code === 'object_not_found') {
-      throw new Error(
-        'Notion page not found. Make sure the page ID is correct and the integration has access to it.'
-      );
-    }
-
-    if (error.code === 'unauthorized') {
-      throw new Error(
-        'Notion API unauthorized. Check your NOTION_API_KEY and ensure the integration is connected to the page.'
-      );
-    }
-
-    if (error.code === 'validation_error') {
-      throw new Error(
-        `Notion validation error: ${error.message}. Check that block content is properly formatted.`
-      );
-    }
-
-    throw new Error(`Failed to send content to Notion: ${error.message}`);
+export async function sendToNotion(content, pageId = env.NOTION_PAGE_ID) {
+  if (!pageId) {
+    throw new Error('NOTION_PAGE_ID not provided');
   }
+
+  const blocks = markdownToNotionBlocks(content);
+  console.log(`Generated ${blocks.length} Notion blocks`);
+
+  const chunks = chunkBlocks(blocks, MAX_BLOCKS_PER_REQUEST);
+  console.log(`Sending ${chunks.length} chunks to Notion`);
+
+  const responses = [];
+  for (let i = 0; i < chunks.length; i++) {
+    console.log(
+      `Sending chunk ${i + 1}/${chunks.length} (${chunks[i].length} blocks)`
+    );
+
+    const res = await fetchWithRetry(
+      `${NOTION_BASE}/blocks/${pageId}/children`,
+      {
+        method: 'PATCH',
+        headers: {
+          Authorization: `Bearer ${env.NOTION_API_KEY}`,
+          'Notion-Version': '2022-06-28',
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ children: chunks[i] }),
+        timeoutMs: 10000,
+        attempts: 3,
+      }
+    );
+
+    if (res.status === 403) {
+      const err = new Error(
+        'Notion integration lacks insert content capability'
+      );
+      err.code = 'notion_forbidden';
+      err.status = 403;
+      throw err;
+    }
+
+    if (!res.ok) {
+      const txt = await res.text().catch(() => '');
+      const err = new Error(`Notion error ${res.status}: ${txt}`);
+      err.code = 'notion_error';
+      err.status = res.status;
+      throw err;
+    }
+
+    const data = await res.json();
+    responses.push(data);
+
+    if (i < chunks.length - 1) {
+      await delay(RPS_THROTTLE_MS);
+    }
+  }
+
+  return {
+    success: true,
+    blocksAdded: blocks.length,
+    chunks: chunks.length,
+    responses,
+  };
 }
 
 /**
