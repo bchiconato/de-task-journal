@@ -5,6 +5,8 @@
 
 import express from 'express';
 import { generateDocumentation } from '../services/geminiService.js';
+import { validate } from '../src/middleware/validate.js';
+import { GenerateSchema } from '../src/schemas/generate.js';
 
 const router = express.Router();
 
@@ -12,20 +14,15 @@ const router = express.Router();
  * @async
  * @function generateDocsHandler
  * @description Handles POST /api/generate - generates technical documentation using Google Gemini AI
- * @param {import('express').Request} req - Express request with context, code, and challenges in body
+ * @param {import('express').Request} req - Express request with validated context, code, and challenges
  * @param {import('express').Response} res - Express response
+ * @param {import('express').NextFunction} next - Express next function
  * @returns {Promise<void>}
- * @throws {Error} When documentation generation fails or context is missing
+ * @throws {Error} When documentation generation fails
  */
-async function generateDocsHandler(req, res) {
+async function generateDocsHandler(req, res, next) {
   try {
-    const { context, code, challenges } = req.body;
-
-    if (!context || context.trim() === '') {
-      return res.status(400).json({
-        error: 'Context is required',
-      });
-    }
+    const { context, code, challenges } = req.valid;
 
     const documentation = await generateDocumentation({
       context,
@@ -38,14 +35,10 @@ async function generateDocsHandler(req, res) {
       documentation,
     });
   } catch (error) {
-    console.error('Error in /api/generate:', error);
-    res.status(500).json({
-      error: 'Failed to generate documentation',
-      message: error.message,
-    });
+    next(error);
   }
 }
 
-router.post('/', generateDocsHandler);
+router.post('/', validate(GenerateSchema), generateDocsHandler);
 
 export { router as generateRouter };

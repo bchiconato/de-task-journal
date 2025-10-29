@@ -5,6 +5,8 @@
 
 import express from 'express';
 import { sendToNotion } from '../services/notionService.js';
+import { validate } from '../src/middleware/validate.js';
+import { NotionExportSchema } from '../src/schemas/notion.js';
 
 const router = express.Router();
 
@@ -12,20 +14,15 @@ const router = express.Router();
  * @async
  * @function sendToNotionHandler
  * @description Handles POST /api/notion - sends markdown content to configured Notion page
- * @param {import('express').Request} req - Express request with content in body
+ * @param {import('express').Request} req - Express request with validated content
  * @param {import('express').Response} res - Express response
+ * @param {import('express').NextFunction} next - Express next function
  * @returns {Promise<void>}
- * @throws {Error} When content is missing or Notion API request fails
+ * @throws {Error} When Notion API request fails
  */
-async function sendToNotionHandler(req, res) {
+async function sendToNotionHandler(req, res, next) {
   try {
-    const { content } = req.body;
-
-    if (!content || content.trim() === '') {
-      return res.status(400).json({
-        error: 'Content is required',
-      });
-    }
+    const { content } = req.valid;
 
     const response = await sendToNotion(content);
 
@@ -35,14 +32,10 @@ async function sendToNotionHandler(req, res) {
       notionResponse: response,
     });
   } catch (error) {
-    console.error('Error in /api/notion:', error);
-    res.status(500).json({
-      error: 'Failed to send content to Notion',
-      message: error.message,
-    });
+    next(error);
   }
 }
 
-router.post('/', sendToNotionHandler);
+router.post('/', validate(NotionExportSchema), sendToNotionHandler);
 
 export { router as notionRouter };
