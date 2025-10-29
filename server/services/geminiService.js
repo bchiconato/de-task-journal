@@ -1,8 +1,11 @@
 /**
  * @fileoverview Google Gemini API Integration for Technical Documentation Generation
  * @module services/geminiService
- * @description Uses REST API with native fetch (no SDK required)
+ * @description Uses REST API with fetchWithRetry for robustness
  */
+
+import { fetchWithRetry } from '../src/lib/http.js';
+import { env } from '../src/config/index.js';
 
 const GEMINI_API_BASE = 'https://generativelanguage.googleapis.com/v1beta/models';
 
@@ -18,18 +21,14 @@ const GEMINI_API_BASE = 'https://generativelanguage.googleapis.com/v1beta/models
  * @throws {Error} When API key is missing, API request fails, or response is invalid
  */
 export async function generateDocumentation({ context, code, challenges }) {
-  const model = process.env.GEMINI_MODEL || 'gemini-2.0-flash-exp';
-  const apiKey = process.env.GEMINI_API_KEY;
-
-  if (!apiKey) {
-    throw new Error('GEMINI_API_KEY not configured in environment variables');
-  }
+  const model = env.GEMINI_MODEL;
+  const apiKey = env.GEMINI_API_KEY;
 
   const prompt = buildPrompt(context, code, challenges);
   const systemInstruction = getSystemInstruction();
 
   try {
-    const response = await fetch(
+    const response = await fetchWithRetry(
       `${GEMINI_API_BASE}/${model}:generateContent?key=${apiKey}`,
       {
         method: 'POST',
@@ -53,6 +52,8 @@ export async function generateDocumentation({ context, code, challenges }) {
             topK: 40,
           },
         }),
+        timeoutMs: 60000,
+        attempts: 3,
       }
     );
 
