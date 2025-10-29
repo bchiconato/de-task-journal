@@ -286,11 +286,11 @@ function markdownToNotionBlocks(markdown) {
       continue;
     }
 
-    if (line.startsWith('```')) {
+    if (line.trim().startsWith('```')) {
       const codeLines = [];
-      const language = line.substring(3).trim() || 'plain text';
+      const language = line.trim().substring(3).trim() || 'plain text';
       i++;
-      while (i < lines.length && !lines[i].startsWith('```')) {
+      while (i < lines.length && !lines[i].trim().startsWith('```')) {
         codeLines.push(lines[i]);
         i++;
       }
