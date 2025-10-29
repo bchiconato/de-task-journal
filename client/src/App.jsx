@@ -4,6 +4,8 @@ import { GeneratedContent } from './components/GeneratedContent';
 import { LoadingSpinner } from './components/LoadingSpinner';
 import { Toast } from './components/Toast';
 import { useToast } from './hooks/useToast';
+import { useAbortableRequest } from './hooks/useAbortableRequest';
+import { useAnnouncer } from './components/LiveAnnouncer';
 import { generateDocumentation, sendToNotion } from './utils/api';
 
 /**
@@ -18,19 +20,29 @@ function App() {
   const [formCollapsed, setFormCollapsed] = useState(false);
 
   const { toasts, showSuccess, showError, removeToast } = useToast();
+  const abortController = useAbortableRequest();
+  const announcer = useAnnouncer();
 
   const handleGenerate = async (formData) => {
+    const signal = abortController.start();
     setIsGenerating(true);
     setDocumentation('');
 
     try {
-      const result = await generateDocumentation(formData);
+      const result = await generateDocumentation(formData, signal);
       setDocumentation(result);
       setFormCollapsed(true);
       showSuccess('Documentation generated successfully!');
+      announcer.announcePolite('Documentation generated successfully.');
     } catch (err) {
+      if (err.name === 'AbortError') {
+        return;
+      }
       console.error('Error generating documentation:', err);
       showError(err.message || 'Failed to generate documentation. Please try again.');
+      announcer.announceAssertive(
+        err.message || 'Failed to generate documentation. Please try again.'
+      );
     } finally {
       setIsGenerating(false);
     }
@@ -41,15 +53,23 @@ function App() {
       return false;
     }
 
+    const signal = abortController.start();
     setIsSending(true);
 
     try {
-      await sendToNotion(content);
+      await sendToNotion(content, signal);
       showSuccess('Documentation sent to Notion successfully!');
+      announcer.announcePolite('Documentation sent to Notion successfully.');
       return true;
     } catch (err) {
+      if (err.name === 'AbortError') {
+        return false;
+      }
       console.error('Error sending to Notion:', err);
       showError(err.message || 'Failed to send to Notion. Please check your configuration.');
+      announcer.announceAssertive(
+        err.message || 'Failed to send to Notion. Please check your configuration.'
+      );
       return false;
     } finally {
       setIsSending(false);
