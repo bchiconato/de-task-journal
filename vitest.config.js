@@ -1,0 +1,66 @@
+/**
+ * @fileoverview Root Vitest configuration for monorepo with server and client projects
+ */
+import { defineConfig } from 'vitest/config';
+
+export default defineConfig({
+  test: {
+    testTimeout: 15000,
+  },
+  projects: [
+    {
+      test: {
+        name: 'server',
+        environment: 'node',
+        include: ['server/**/*.test.js'],
+        setupFiles: ['server/test/setup.js'],
+        coverage: {
+          provider: 'v8',
+          reportsDirectory: './server/coverage',
+          reporter: ['text', 'html'],
+          include: ['server/src/**/*.js', 'server/services/**/*.js'],
+          exclude: [
+            'server/**/*.test.js',
+            'server/test/**',
+            'server/coverage/**',
+          ],
+          thresholds: {
+            lines: 80,
+            branches: 70,
+            functions: 80,
+            statements: 80,
+          },
+        },
+      },
+    },
+    {
+      test: {
+        name: 'client',
+        environment: 'jsdom',
+        include: ['client/**/*.test.jsx', 'client/**/*.test.js'],
+        setupFiles: ['client/test/setup.js'],
+        coverage: {
+          provider: 'v8',
+          reportsDirectory: './client/coverage',
+          reporter: ['text', 'html'],
+          include: [
+            'client/src/**/*.jsx',
+            'client/src/**/*.js',
+          ],
+          exclude: [
+            'client/**/*.test.jsx',
+            'client/**/*.test.js',
+            'client/test/**',
+            'client/coverage/**',
+          ],
+          thresholds: {
+            lines: 80,
+            branches: 70,
+            functions: 80,
+            statements: 80,
+          },
+        },
+      },
+    },
+  ],
+});
