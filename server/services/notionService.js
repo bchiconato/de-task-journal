@@ -132,8 +132,12 @@ function parseInlineMarkdown(text) {
     }];
   }
 
-  const richTextArray = [];
-  let remainingText = truncateText(text, 2000);
+  const textChunks = splitLongText(text, 2000);
+  const allRichText = [];
+
+  for (const chunk of textChunks) {
+    const richTextArray = [];
+    let remainingText = chunk;
 
   const patterns = [
     { regex: /\[([^\]]+)\]\(([^)]+)\)/g, type: 'link' },
@@ -212,7 +216,10 @@ function parseInlineMarkdown(text) {
     remainingText = remainingText.substring(earliestIndex + earliestMatch[0].length);
   }
 
-  return richTextArray.length > 0 ? richTextArray : [{
+  allRichText.push(...richTextArray);
+  }
+
+  return allRichText.length > 0 ? allRichText : [{
     type: 'text',
     text: { content: '' },
     annotations: { bold: false, italic: false, strikethrough: false, underline: false, code: false, color: 'default' }
@@ -285,17 +292,16 @@ function markdownToNotionBlocks(markdown) {
       i++;
 
       const codeContent = codeLines.join('\n');
+      const contentChunks = splitLongText(codeContent, 2000);
 
       blocks.push({
         object: 'block',
         type: 'code',
         code: {
-          rich_text: [
-            {
-              type: 'text',
-              text: { content: truncateText(codeContent, 2000) },
-            },
-          ],
+          rich_text: contentChunks.map((chunk) => ({
+            type: 'text',
+            text: { content: chunk },
+          })),
           language: mapLanguage(language),
         },
       });
@@ -326,6 +332,28 @@ function markdownToNotionBlocks(markdown) {
       continue;
     }
 
+    if (line.trim().startsWith('> ')) {
+      blocks.push({
+        object: 'block',
+        type: 'quote',
+        quote: {
+          rich_text: parseInlineMarkdown(line.trim().substring(2)),
+        },
+      });
+      i++;
+      continue;
+    }
+
+    if (line.trim() === '---' || line.trim() === '***' || line.trim() === '___') {
+      blocks.push({
+        object: 'block',
+        type: 'divider',
+        divider: {},
+      });
+      i++;
+      continue;
+    }
+
     blocks.push({
       object: 'block',
       type: 'paragraph',
@@ -336,27 +364,132 @@ function markdownToNotionBlocks(markdown) {
     i++;
   }
 
-  blocks.push({
-    object: 'block',
-    type: 'divider',
-    divider: {},
-  });
-
   return blocks;
 }
 
 /**
- * @function truncateText
- * @description Truncates text to fit Notion's character limits (adds ellipsis if truncated)
- * @param {string} text - Text to truncate
- * @param {number} maxLength - Maximum length
- * @returns {string} Truncated text
+ * @function splitLongText
+ * @description Splits text into chunks of max length to fit Notion's 2000 char limit per rich_text object
+ * @param {string} text - Text to split
+ * @param {number} maxLength - Maximum length per chunk (default 2000)
+ * @returns {Array<string>} Array of text chunks, each ≤ maxLength
+ * @example
+ *   splitLongText("a".repeat(5000), 2000) // Returns 3 chunks
  */
-function truncateText(text, maxLength) {
-  if (text.length <= maxLength) {
-    return text;
+function splitLongText(text, maxLength = 2000) {
+  if (!text || text.length <= maxLength) {
+    return [text || ''];
   }
-  return text.substring(0, maxLength - 3) + '...';
+
+  const chunks = [];
+  let remaining = text;
+
+  while (remaining.length > 0) {
+    if (remaining.length <= maxLength) {
+      chunks.push(remaining);
+      break;
+    }
+
+    let splitAt = maxLength;
+    const spaceIndex = remaining.lastIndexOf(' ', maxLength);
+    const newlineIndex = remaining.lastIndexOf('\n', maxLength);
+
+    if (newlineIndex > maxLength * 0.8) {
+      splitAt = newlineIndex;
+    } else if (spaceIndex > maxLength * 0.8) {
+      splitAt = spaceIndex;
+    }
+
+    chunks.push(remaining.substring(0, splitAt));
+    remaining = remaining.substring(splitAt).trimStart();
+  }
+
+  return chunks;
+}
+
+/**
+ * @function validateBlockLimits
+ * @description Validates that blocks array meets Notion API size limits
+ * @param {Array<Object>} blocks - Array of Notion block objects
+ * @returns {{valid: boolean, errors: Array<string>, warnings: Array<string>}}
+ * @example
+ *   const result = validateBlockLimits(blocks);
+ *   if (!result.valid) console.error(result.errors);
+ */
+function validateBlockLimits(blocks) {
+  const errors = [];
+  const warnings = [];
+
+  if (blocks.length > 100) {
+    warnings.push(
+      `Block array has ${blocks.length} items. Maximum per request is 100. Use chunking.`
+    );
+  }
+
+  if (blocks.length > 1000) {
+    errors.push(
+      `Total block elements (${blocks.length}) exceed maximum of 1000 per request.`
+    );
+  }
+
+  let totalElements = 0;
+  blocks.forEach((block, index) => {
+    totalElements++;
+
+    const blockType = block.type;
+    const blockData = block[blockType];
+
+    if (blockData && blockData.rich_text) {
+      totalElements += blockData.rich_text.length;
+
+      if (blockData.rich_text.length > 100) {
+        errors.push(
+          `Block ${index} (${blockType}) has ${blockData.rich_text.length} rich_text items. Maximum is 100.`
+        );
+      }
+
+      blockData.rich_text.forEach((richText, rtIndex) => {
+        if (richText.text && richText.text.content) {
+          const contentLength = richText.text.content.length;
+          if (contentLength > 2000) {
+            errors.push(
+              `Block ${index} (${blockType}) rich_text[${rtIndex}] has ${contentLength} chars. Maximum is 2000.`
+            );
+          }
+        }
+      });
+    }
+
+    if (block.children) {
+      totalElements += block.children.length;
+    }
+  });
+
+  if (totalElements > 1000) {
+    errors.push(
+      `Total block elements (${totalElements}) exceed maximum of 1000 per request.`
+    );
+  }
+
+  const jsonSize = JSON.stringify(blocks).length;
+  const maxPayloadSize = 500 * 1024;
+  if (jsonSize > maxPayloadSize) {
+    errors.push(
+      `Payload size (${(jsonSize / 1024).toFixed(2)}KB) exceeds maximum of 500KB.`
+    );
+  }
+
+  if (jsonSize > maxPayloadSize * 0.9) {
+    warnings.push(
+      `Payload size (${(jsonSize / 1024).toFixed(2)}KB) is close to 500KB limit.`
+    );
+  }
+
+  return {
+    valid: errors.length === 0,
+    errors,
+    warnings,
+  };
 }
 
 /**
@@ -391,4 +524,9 @@ function mapLanguage(lang) {
   return languageMap[lang.toLowerCase()] || 'plain text';
 }
 
-export { parseInlineMarkdown, markdownToNotionBlocks };
+export {
+  parseInlineMarkdown,
+  markdownToNotionBlocks,
+  splitLongText,
+  validateBlockLimits,
+};

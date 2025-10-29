@@ -3,7 +3,12 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { parseInlineMarkdown, markdownToNotionBlocks } from './notionService.js';
+import {
+  parseInlineMarkdown,
+  markdownToNotionBlocks,
+  splitLongText,
+  validateBlockLimits,
+} from './notionService.js';
 
 describe('parseInlineMarkdown', () => {
   it('should return plain text for strings without formatting', () => {
@@ -99,11 +104,14 @@ describe('parseInlineMarkdown', () => {
     expect(result[0].text.content).toBe('');
   });
 
-  it('should truncate text longer than 2000 characters', () => {
+  it('should split text longer than 2000 characters into multiple rich_text objects', () => {
     const longText = 'a'.repeat(2500);
     const result = parseInlineMarkdown(longText);
+    expect(result.length).toBeGreaterThan(1);
     expect(result[0].text.content.length).toBeLessThanOrEqual(2000);
-    expect(result[0].text.content).toContain('...');
+    expect(result[1].text.content.length).toBeGreaterThan(0);
+    const totalLength = result.reduce((sum, rt) => sum + rt.text.content.length, 0);
+    expect(totalLength).toBe(2500);
   });
 
   it('should handle nested bold within a link', () => {
@@ -236,10 +244,11 @@ describe('markdownToNotionBlocks', () => {
     expect(blocks.filter(b => b.type === 'paragraph')).toHaveLength(2);
   });
 
-  it('should add divider at the end', () => {
-    const markdown = '# Title';
+  it('should detect dividers from markdown', () => {
+    const markdown = '# Title\n\n---\n\nContent after divider';
     const blocks = markdownToNotionBlocks(markdown);
-    expect(blocks[blocks.length - 1].type).toBe('divider');
+    const dividers = blocks.filter(b => b.type === 'divider');
+    expect(dividers).toHaveLength(1);
   });
 
   it('should handle complete documentation structure', () => {
@@ -270,7 +279,6 @@ Visit [documentation](https://docs.example.com) for more.`;
     expect(blocks.filter(b => b.type === 'paragraph').length).toBeGreaterThan(0);
     expect(blocks.filter(b => b.type === 'bulleted_list_item')).toHaveLength(2);
     expect(blocks.filter(b => b.type === 'code')).toHaveLength(1);
-    expect(blocks[blocks.length - 1].type).toBe('divider');
   });
 
   it('should handle mixed list types', () => {
@@ -290,5 +298,130 @@ Visit [documentation](https://docs.example.com) for more.`;
     const codeSegment = blocks[0].heading_2.rich_text.find(rt => rt.annotations.code);
     expect(codeSegment).toBeDefined();
     expect(codeSegment.text.content).toBe('parseInlineMarkdown()');
+  });
+
+  it('should convert block quotes', () => {
+    const markdown = '> This is a quote\n> Multi-line quote';
+    const blocks = markdownToNotionBlocks(markdown);
+    expect(blocks.filter(b => b.type === 'quote')).toHaveLength(2);
+    expect(blocks[0].quote.rich_text[0].text.content).toBe('This is a quote');
+  });
+
+  it('should handle block quotes with inline formatting', () => {
+    const markdown = '> This is **bold** in a *quote*';
+    const blocks = markdownToNotionBlocks(markdown);
+    expect(blocks[0].type).toBe('quote');
+    const boldSegment = blocks[0].quote.rich_text.find(rt => rt.annotations.bold);
+    const italicSegment = blocks[0].quote.rich_text.find(rt => rt.annotations.italic);
+    expect(boldSegment).toBeDefined();
+    expect(italicSegment).toBeDefined();
+  });
+
+  it('should detect dividers with different markdown syntaxes', () => {
+    const markdown = '---\n***\n___';
+    const blocks = markdownToNotionBlocks(markdown);
+    expect(blocks.filter(b => b.type === 'divider')).toHaveLength(3);
+  });
+});
+
+describe('splitLongText', () => {
+  it('should not split text under 2000 chars', () => {
+    const text = 'a'.repeat(1500);
+    const chunks = splitLongText(text, 2000);
+    expect(chunks).toHaveLength(1);
+    expect(chunks[0]).toBe(text);
+  });
+
+  it('should split text exactly at 2000 chars', () => {
+    const text = 'a'.repeat(2000);
+    const chunks = splitLongText(text, 2000);
+    expect(chunks).toHaveLength(1);
+  });
+
+  it('should split text over 2000 chars into multiple chunks', () => {
+    const text = 'a'.repeat(5000);
+    const chunks = splitLongText(text, 2000);
+    expect(chunks.length).toBeGreaterThan(2);
+    chunks.forEach(chunk => {
+      expect(chunk.length).toBeLessThanOrEqual(2000);
+    });
+  });
+
+  it('should preserve all content when splitting', () => {
+    const text = 'a'.repeat(7500);
+    const chunks = splitLongText(text, 2000);
+    const totalLength = chunks.reduce((sum, chunk) => sum + chunk.length, 0);
+    expect(totalLength).toBe(7500);
+  });
+
+  it('should split at word boundaries when possible', () => {
+    const text = 'word '.repeat(500);
+    const chunks = splitLongText(text, 2000);
+    chunks.forEach(chunk => {
+      expect(chunk.length).toBeLessThanOrEqual(2000);
+    });
+  });
+});
+
+describe('validateBlockLimits', () => {
+  it('should validate blocks under limits', () => {
+    const blocks = [
+      {
+        type: 'paragraph',
+        paragraph: {
+          rich_text: [
+            { type: 'text', text: { content: 'Hello world' }, annotations: {} }
+          ]
+        }
+      }
+    ];
+    const result = validateBlockLimits(blocks);
+    expect(result.valid).toBe(true);
+    expect(result.errors).toHaveLength(0);
+  });
+
+  it('should warn when blocks exceed 100', () => {
+    const blocks = Array(150).fill({
+      type: 'paragraph',
+      paragraph: {
+        rich_text: [{ type: 'text', text: { content: 'test' }, annotations: {} }]
+      }
+    });
+    const result = validateBlockLimits(blocks);
+    expect(result.warnings.length).toBeGreaterThan(0);
+  });
+
+  it('should error when rich_text content exceeds 2000 chars', () => {
+    const blocks = [
+      {
+        type: 'paragraph',
+        paragraph: {
+          rich_text: [
+            { type: 'text', text: { content: 'a'.repeat(2500) }, annotations: {} }
+          ]
+        }
+      }
+    ];
+    const result = validateBlockLimits(blocks);
+    expect(result.valid).toBe(false);
+    expect(result.errors.length).toBeGreaterThan(0);
+  });
+
+  it('should error when rich_text array exceeds 100 items', () => {
+    const blocks = [
+      {
+        type: 'paragraph',
+        paragraph: {
+          rich_text: Array(150).fill({
+            type: 'text',
+            text: { content: 'test' },
+            annotations: {}
+          })
+        }
+      }
+    ];
+    const result = validateBlockLimits(blocks);
+    expect(result.valid).toBe(false);
+    expect(result.errors.length).toBeGreaterThan(0);
   });
 });
