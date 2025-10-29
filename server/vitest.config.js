@@ -8,6 +8,7 @@ export default defineConfig({
   test: {
     globals: true,
     environment: 'node',
+    setupFiles: ['test/setup.js'],
     env: {
       GEMINI_API_KEY: 'test-gemini-key',
       NOTION_API_KEY: 'test-notion-key',
