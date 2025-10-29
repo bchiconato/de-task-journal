@@ -49,7 +49,7 @@ export function GeneratedContent({
           >
             Generated documentation
           </h2>
-          <div className="flex gap-2 flex-nowrap">
+          <div className="flex gap-2 flex-nowrap" aria-busy={isSending} aria-live="polite">
             <button
               onClick={handleCopy}
               className={`whitespace-nowrap px-4 py-2 rounded-lg font-medium transition-colors ${
@@ -65,6 +65,7 @@ export function GeneratedContent({
             <button
               onClick={handleSendToNotion}
               disabled={isSending}
+              aria-disabled={isSending ? 'true' : undefined}
               className={`whitespace-nowrap px-4 py-2 rounded-lg font-medium text-white transition-colors ${
                 isSending
                   ? 'bg-gray-400 cursor-not-allowed'
@@ -75,6 +76,11 @@ export function GeneratedContent({
             >
               {isSending ? 'Sending...' : 'Send to Notion'}
             </button>
+            {isSending && (
+              <span role="status" className="sr-only">
+                Sending documentation to Notion, please wait...
+              </span>
+            )}
           </div>
         </div>
 
