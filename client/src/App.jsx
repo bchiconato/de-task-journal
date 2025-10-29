@@ -103,12 +103,6 @@ function App() {
               )}
             </div>
 
-            {isGenerating && (
-              <div className="flex items-center justify-center min-h-[400px]">
-                <LoadingSpinner message="Generating your documentation..." />
-              </div>
-            )}
-
             {documentation && !isGenerating && (
               <GeneratedContent
                 content={documentation}
