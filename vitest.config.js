@@ -2,6 +2,7 @@
  * @fileoverview Root Vitest configuration for monorepo with server and client projects
  */
 import { defineConfig } from 'vitest/config';
+import react from '@vitejs/plugin-react';
 
 export default defineConfig({
   test: {
@@ -34,9 +35,11 @@ export default defineConfig({
       },
     },
     {
+      plugins: [react()],
       test: {
         name: 'client',
-        environment: 'jsdom',
+        environment: 'happy-dom',
+        globals: true,
         include: ['client/**/*.test.jsx', 'client/**/*.test.js'],
         setupFiles: ['client/test/setup.js'],
         coverage: {
