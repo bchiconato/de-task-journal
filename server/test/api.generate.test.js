@@ -4,7 +4,7 @@
 
 import { describe, it, expect, vi } from 'vitest';
 import request from 'supertest';
-import { app } from '../src/app.js';
+import app from '../src/app.js';
 
 describe('POST /api/generate', () => {
   it('returns 400 on empty payload', async () => {

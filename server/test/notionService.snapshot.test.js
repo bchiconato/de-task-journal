@@ -3,7 +3,7 @@
  */
 
 import { expect, test } from 'vitest';
-import { markdownToNotionBlocks } from '../services/notionService.js';
+import { markdownToNotionBlocks } from '../src/services/notion/markdown.js';
 
 test('maps markdown headings to Notion heading blocks', () => {
   const md = `# H1 Title

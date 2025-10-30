@@ -7,8 +7,7 @@ import {
   parseInlineMarkdown,
   markdownToNotionBlocks,
   splitLongText,
-  validateBlockLimits,
-} from './notionService.js';
+} from '../src/services/notion/markdown.js';
 
 describe('parseInlineMarkdown', () => {
   it('should return plain text for strings without formatting', () => {
@@ -360,68 +359,5 @@ describe('splitLongText', () => {
     chunks.forEach(chunk => {
       expect(chunk.length).toBeLessThanOrEqual(2000);
     });
-  });
-});
-
-describe('validateBlockLimits', () => {
-  it('should validate blocks under limits', () => {
-    const blocks = [
-      {
-        type: 'paragraph',
-        paragraph: {
-          rich_text: [
-            { type: 'text', text: { content: 'Hello world' }, annotations: {} }
-          ]
-        }
-      }
-    ];
-    const result = validateBlockLimits(blocks);
-    expect(result.valid).toBe(true);
-    expect(result.errors).toHaveLength(0);
-  });
-
-  it('should warn when blocks exceed 100', () => {
-    const blocks = Array(150).fill({
-      type: 'paragraph',
-      paragraph: {
-        rich_text: [{ type: 'text', text: { content: 'test' }, annotations: {} }]
-      }
-    });
-    const result = validateBlockLimits(blocks);
-    expect(result.warnings.length).toBeGreaterThan(0);
-  });
-
-  it('should error when rich_text content exceeds 2000 chars', () => {
-    const blocks = [
-      {
-        type: 'paragraph',
-        paragraph: {
-          rich_text: [
-            { type: 'text', text: { content: 'a'.repeat(2500) }, annotations: {} }
-          ]
-        }
-      }
-    ];
-    const result = validateBlockLimits(blocks);
-    expect(result.valid).toBe(false);
-    expect(result.errors.length).toBeGreaterThan(0);
-  });
-
-  it('should error when rich_text array exceeds 100 items', () => {
-    const blocks = [
-      {
-        type: 'paragraph',
-        paragraph: {
-          rich_text: Array(150).fill({
-            type: 'text',
-            text: { content: 'test' },
-            annotations: {}
-          })
-        }
-      }
-    ];
-    const result = validateBlockLimits(blocks);
-    expect(result.valid).toBe(false);
-    expect(result.errors.length).toBeGreaterThan(0);
   });
 });

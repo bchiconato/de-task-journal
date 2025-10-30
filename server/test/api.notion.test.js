@@ -4,7 +4,7 @@
 
 import { describe, it, expect } from 'vitest';
 import request from 'supertest';
-import { app } from '../src/app.js';
+import app from '../src/app.js';
 
 describe('POST /api/notion', () => {
   it('returns 400 on empty payload', async () => {
