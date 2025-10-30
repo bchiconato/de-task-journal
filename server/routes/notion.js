@@ -4,8 +4,8 @@
  */
 
 import express from 'express';
-import { sendToNotion, markdownToNotionBlocks } from '../services/notionService.js';
-import { createPage, appendBlocksChunked } from '../src/services/notion/client.js';
+import { appendBlocksChunked } from '../src/services/notion/client.js';
+import { markdownToNotionBlocks } from '../src/services/notion/markdown.js';
 import { validate } from '../src/middleware/validate.js';
 import { NotionExportSchema } from '../src/schemas/notion.js';
 import { env } from '../src/config/index.js';
@@ -34,15 +34,24 @@ async function notionHandler(req, res, next) {
     if (!targetPageId) {
       return res.status(400).json({ ok:false, error:'missing_page_id', message:'Defina NOTION_PAGE_ID no .env do server ou envie pageId no body.' });
     }
-    const response = await sendToNotion(content, targetPageId);
-      res.json({
-        success: true,
-        mode: 'append',
-        message: 'Content successfully appended to Notion page',
-        pageId: targetPageId,
-        blocksAdded: response.blocksAdded,
-        chunks: response.chunks,
-      });
+
+    const blocks = markdownToNotionBlocks(content);
+    console.log(`Generated ${blocks.length} Notion blocks`);
+
+    const response = await appendBlocksChunked({
+      token: env.NOTION_API_KEY,
+      blockId: targetPageId,
+      children: blocks,
+    });
+
+    res.json({
+      success: true,
+      mode: 'append',
+      message: 'Content successfully appended to Notion page',
+      pageId: targetPageId,
+      blocksAdded: response.blocksAdded,
+      chunks: response.chunks,
+    });
   } catch (error) {
     next(error);
   }
