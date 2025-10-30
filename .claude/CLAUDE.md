@@ -59,12 +59,29 @@ npm install
 
 ### Critical Data Flow
 
+**Documentation Generation Flow:**
+
 1. **User Input** → `InputForm.jsx` collects context/code/challenges (any language)
-2. **Generate Request** → `client/utils/api.js` → `POST /api/generate`
-3. **Gemini Service** → `server/services/geminiService.js` calls Google Gemini REST API
-4. **Response** → Markdown docs in English (5 sections)
-5. **Display** → `GeneratedContent.jsx` shows docs with copy/send buttons
-6. **Send to Notion** → `POST /api/notion` → `notionService.js` with chunking
+2. **Generate Request** → `client/src/utils/api.js` → `POST /api/generate`
+3. **Request Validation** → `validate(GenerateSchema)` middleware validates request body
+4. **Route Handler** → `server/routes/generate.js` processes validated request
+5. **Gemini Service** → `server/services/geminiService.js` calls Google Gemini REST API
+   * Uses `fetchWithRetry()` from `server/src/lib/http.js` for resilient calls
+6. **Response** → Markdown docs in English (5 sections)
+7. **Display** → `GeneratedContent.jsx` renders markdown with copy/send buttons
+
+**Notion Export Flow:**
+
+8. **Send to Notion** → User clicks "Send to Notion" → `POST /api/notion`
+9. **Request Validation** → `validate(NotionExportSchema)` middleware validates content & pageId
+10. **Route Handler** → `server/routes/notion.js` processes validated request
+11. **Markdown Conversion** → `markdownToNotionBlocks()` from `server/src/services/notion/markdown.js`
+    * Parses inline formatting via `parseInlineMarkdown()`
+    * Converts markdown to Notion block JSON structures
+12. **Block Append** → `appendBlocksChunked()` from `server/src/services/notion/client.js`
+    * Automatically chunks documents into ≤100 blocks per request
+    * Sends chunks sequentially with 350ms throttle between requests
+    * Uses `notionCall()` retry wrapper for 429/5xx errors
 
 ### Key Service Responsibilities
 
@@ -75,16 +92,198 @@ npm install
 * Constructs prompts with 5‑section structure
 * Model configurable via `GEMINI_MODEL` env var (default: `gemini-2.0-flash-exp`)
 
-**`notionService.js`**
+**Notion Service** (`server/src/services/notion/`)
 
-* Converts Markdown → Notion block JSON (NOT raw markdown)
-* **Critical**: Automatically chunks documents into ≤100 blocks per request
-* Sends chunks sequentially with 100ms delays to avoid rate limits
-* Truncates text to 2000 chars per block (Notion limit)
-* Maps code languages (python, sql, js, etc.)
-* **Inline Formatting**: Parses `**bold**`, `*italic*`, `` `code` ``, `~~strikethrough~~` into Notion rich text annotations
-* **Lazy Client**: Creates Notion Client instance at runtime (not module‑level) to ensure env vars are loaded
-* **Code Block Handling**: Detects ``` with whitespace tolerance using `trim()` for robust parsing
+The Notion integration is organized as a **modular service** with 7 specialized files:
+
+* **`markdown.js`** — Core markdown‑to‑Notion conversion
+  * `markdownToNotionBlocks(markdown)` converts markdown to Notion block JSON
+  * `parseInlineMarkdown(text)` parses inline formatting (**bold**, *italic*, `code`, links)
+  * Supports headings, code blocks, lists, paragraphs, quotes, dividers
+  * Detects ``` with whitespace tolerance using `trim()` for robust parsing
+  * Truncates text to 2000 chars per block (Notion limit)
+  * Maps code languages (python, sql, js, etc.)
+
+* **`client.js`** — Notion API operations
+  * `createPage()` creates new Notion pages with initial blocks
+  * `appendBlocksChunked()` appends blocks with automatic chunking (≤100 blocks/request)
+  * `checkPageAccess()` validates page permissions before operations
+
+* **`index.js`** — Core client and retry logic
+  * Exports Notion client instance (module‑level initialization)
+  * `notionCall(fn, attempts)` wraps API calls with retry logic for 429/5xx errors
+  * `chunkBlocks(blocks, size)` utility for splitting block arrays
+
+* **`config.js`** — Centralized constants
+  * `MAX_BLOCKS_PER_REQUEST = 100`, `MAX_TEXT_LENGTH = 2000`, `RPS_THROTTLE_MS = 350`
+  * `defaultHeaders(token)` function for API headers
+
+* **`exportPage.js`** — Page export functionality
+* **`paginate.js`** — Pagination utilities for list operations
+* **`throttle.js`** — Rate limiting utilities (350ms throttle between requests)
+
+### Server Application Structure
+
+The backend follows a clean, layered architecture for maintainability and testability:
+
+**`server/index.js`** — Application entry point
+* Loads environment variables via `import 'dotenv/config'`
+* Imports and starts the Express app from `server/src/app.js`
+* Minimal code: just loads config and starts HTTP server
+
+**`server/src/app.js`** — Express application configuration
+* Exports configured Express app (enables testing without starting server)
+* Applies security middleware (Helmet with CSP disabled for development)
+* Configures rate limiting (100 requests per 15 minutes per IP)
+* Sets up CORS, JSON parsing, and static file serving
+* Mounts all API routes via `server/src/routes.js`
+* Adds terminal error‑handling middleware (`notFound`, `errorHandler`)
+
+**`server/src/routes.js`** — Centralized route aggregator
+* Imports and mounts all API route modules under `/api`
+* Routes: `/api/generate` (generateRouter), `/api/notion` (notionRouter)
+* Clean separation: all route wiring in one place
+
+### Middleware Layer
+
+**`server/src/middleware/errors.js`** — Error handling middleware
+
+* `notFound(req, res, next)` — Catches 404 errors for undefined routes
+* `errorHandler(err, req, res, next)` — Terminal error handler with signature `(err, req, res, next)`
+  * Logs errors to console in development
+  * Returns JSON error responses with appropriate status codes
+  * Sanitizes error messages in production
+  * **Must be registered last** in the middleware chain (after all routes)
+
+**`server/src/middleware/validate.js`** — Request validation middleware
+
+* `validate(schema)` — Higher‑order function that returns validation middleware
+* Accepts Zod schemas for request validation
+* Validates `req.body` against provided schema
+* Returns 400 Bad Request with detailed error messages on validation failure
+* Used in route definitions: `router.post('/path', validate(MySchema), handler)`
+
+### Request Schema Validation
+
+The API uses **Zod** for type‑safe request validation. Schemas define expected request shapes and are enforced via the `validate()` middleware.
+
+**`server/src/schemas/generate.js`** — Generate endpoint schema
+
+* `GenerateSchema` — Validates `POST /api/generate` requests
+* Required fields: `context` (string, 10-5000 chars)
+* Optional fields: `code` (string, max 10000 chars), `challenges` (string, max 2000 chars)
+* Returns detailed validation errors for invalid requests
+
+**`server/src/schemas/notion.js`** — Notion endpoint schema
+
+* `NotionExportSchema` — Validates `POST /api/notion` requests
+* Required fields: `content` (string, 100-50000 chars), `pageId` (string, 32 chars, UUID format)
+* Ensures content and page ID meet Notion API requirements
+
+**Usage in routes**:
+```javascript
+import { validate } from '../src/middleware/validate.js';
+import { GenerateSchema } from '../src/schemas/generate.js';
+
+router.post('/generate', validate(GenerateSchema), generateHandler);
+```
+
+### HTTP Utilities
+
+**`server/src/lib/http.js`** — Resilient HTTP client utilities
+
+* `fetchWithRetry(url, options, config)` — Enhanced fetch with retry logic and timeout
+  * **Timeout**: Default 30s (configurable via `config.timeout`)
+  * **Retries**: Default 3 attempts (configurable via `config.retries`)
+  * **Exponential backoff**: Delay doubles after each retry (1s, 2s, 4s...)
+  * **Status code handling**: Retries on 429 (rate limit) and 5xx (server errors)
+  * **AbortController**: Implements request timeout cancellation
+  * Used by both Gemini and Notion services for reliable external API calls
+
+**Usage**:
+```javascript
+import { fetchWithRetry } from '../lib/http.js';
+
+const response = await fetchWithRetry(url, {
+  method: 'POST',
+  body: JSON.stringify(data),
+}, {
+  timeout: 60000,  // 60s
+  retries: 5
+});
+```
+
+### Client Application Structure
+
+The frontend follows React best practices with reusable components, custom hooks, and centralized state management.
+
+**React Components** (`client/src/components/`)
+
+Core UI components:
+* **`InputForm.jsx`** — Main form for collecting task documentation inputs
+  * Three text areas: context (required), code (optional), challenges (optional)
+  * Character counters for each field
+  * Collapsible on mobile for better UX after generation
+
+* **`GeneratedContent.jsx`** — Displays generated markdown documentation
+  * Renders markdown with syntax highlighting (react-markdown + Prism.js)
+  * Copy to clipboard button
+  * Send to Notion button
+  * Accessible with ARIA labels
+
+* **`CodeImplementationEditor.jsx`** — Code input with syntax highlighting
+  * Uses `@uiw/react-textarea-code-editor`
+  * Supports multiple languages (jsx, python, sql, etc.)
+  * Dark theme matching application style
+
+Support components:
+* **`AppErrorBoundary.jsx`** — React error boundary for graceful error handling
+* **`ErrorMessage.jsx`** — Consistent error message display
+* **`LoadingSpinner.jsx`** — Accessible loading indicator with ARIA live region
+* **`CharacterCounter.jsx`** — Character count display with max limits
+* **`FormField.jsx`** — Reusable form input wrapper with labels
+* **`Toast.jsx`** — Toast notification component (success, error, info)
+* **`LiveAnnouncer.jsx`** — Accessibility live region for screen reader announcements
+
+**State Management** (`client/src/App.jsx`)
+
+Uses React `useState` hooks for application state:
+* `documentation` — Generated markdown string
+* `isGenerating` — Loading state for Gemini API
+* `isSending` — Loading state for Notion API
+* `error` — Error message string
+* Toast notifications managed via `useToast()` hook
+
+No global state management (Redux, Context) — component‑level state is sufficient for this application's scope.
+
+**Custom Hooks** (`client/src/hooks/`)
+
+* **`useToast.js`** — Toast notification management
+  * Returns: `{ toasts, showToast, removeToast }`
+  * `showToast(message, type)` — Shows toast (types: 'success', 'error', 'info')
+  * Auto‑dismisses after 3 seconds
+  * Stacks multiple toasts vertically
+  * Accessible with ARIA live regions
+
+* **`useAbortableRequest.js`** — Request cancellation with AbortController
+  * Returns: `{ abortController, createAbortController, abortRequest }`
+  * Creates new AbortController for each request
+  * Cancels in‑flight requests when component unmounts or user cancels
+  * Used in generate and send operations to prevent memory leaks
+  * Integrates with fetch API's `signal` parameter
+
+**Client Utilities** (`client/src/utils/`)
+
+* **`api.js`** — API client functions
+  * `generateDocumentation(data)` — Calls `POST /api/generate`
+  * `sendToNotion(content, pageId)` — Calls `POST /api/notion`
+  * Configurable API base via `VITE_API_BASE` env var
+  * Returns JSON responses or throws on error
+
+* **`validation.js`** — Client‑side form validation
+  * Validates input lengths before API submission
+  * Provides user‑friendly error messages
+  * Prevents unnecessary API calls with invalid data
 
 ### Environment Configuration
 
@@ -97,14 +296,16 @@ GEMINI_API_KEY=        # From https://aistudio.google.com/app/apikey
 GEMINI_MODEL=gemini-2.0-flash-exp
 NOTION_API_KEY=        # From https://notion.so/my-integrations
 NOTION_PAGE_ID=        # Target Notion page UUID
+NOTION_PARENT_PAGE_ID= # Parent page UUID for creating new pages (optional)
 PORT=3001
 NODE_ENV=development
 ```
 
 **Important**:
 
-* `.env` is loaded by `server/src/config/index.js` which is imported first in the application
-* Configuration module validates all required variables and exits with clear error messages if validation fails
+* `.env` is loaded by `server/src/config/index.js` using `dotenv/config`
+* Configuration module uses **Zod schema validation** to validate all required variables
+* Invalid or missing env vars trigger warnings (not hard exits) for flexibility
 * All services use the centralized config module (`import { env } from './src/config/index.js'`)
 
 #### Client Environment Variables
@@ -112,7 +313,8 @@ NODE_ENV=development
 **Required Environment Variables** (`.env` in client folder):
 
 ```
-VITE_API_BASE_URL=http://localhost:3001/api
+VITE_API_BASE=/api                    # API base path (defaults to '/api' if not set)
+VITE_NOTION_PAGE_ID=                   # Notion page UUID for direct linking (optional)
 ```
 
 **Important**:
@@ -120,7 +322,50 @@ VITE_API_BASE_URL=http://localhost:3001/api
 * Client variables MUST be prefixed with `VITE_` to be exposed by Vite
 * These variables are loaded at build time and exposed to the browser
 * Never put secrets in client environment variables - they are publicly visible
-* Client defaults to `http://localhost:3001/api` if `VITE_API_BASE_URL` is not set
+* `VITE_API_BASE` defaults to `/api` (relative path) if not set
+* In development, proxy or CORS handles routing to backend on port 3001
+
+---
+
+## Key Dependencies
+
+### Server Dependencies
+
+**Production**:
+* **express** (v5.1.0) — Web framework (note: Express 5, not 4)
+* **@notionhq/client** (latest) — Official Notion SDK
+* **dotenv** (latest) — Environment variable management
+* **zod** (v4.1.12) — Schema validation and type safety
+* **helmet** (v8.1.0) — Security middleware (CSP, XSS protection)
+* **express-rate-limit** (v8.1.0) — Rate limiting middleware
+* **cors** (latest) — Cross‑origin resource sharing
+
+**Development**:
+* **vitest** (v2.1.8) — Test runner with Vite integration
+* **msw** (v2.11.6) — Mock Service Worker for API mocking in tests
+* **supertest** (v7.1.4) — HTTP assertion library
+* **@types/supertest** — TypeScript types for Supertest
+
+### Client Dependencies
+
+**Production**:
+* **react** (latest) — UI library
+* **react-dom** (latest) — React DOM renderer
+* **@uiw/react-textarea-code-editor** (v2.1.0) — Code editor component
+* **react-markdown** (v9.0.0) — Markdown renderer
+* **react-syntax-highlighter** (v15.5.0) — Syntax highlighting
+* **remark-gfm** (v4.0.0) — GitHub Flavored Markdown support
+
+**Development**:
+* **vite** (latest) — Build tool and dev server
+* **@vitejs/plugin-react** (latest) — React plugin for Vite
+* **tailwindcss** (latest) — Utility‑first CSS framework
+* **@tailwindcss/typography** (v0.5.19) — Typography plugin
+* **prettier** (latest) — Code formatter
+* **prettier-plugin-tailwindcss** (latest) — Auto‑sorts Tailwind classes
+* **eslint** (latest) — Linter with React and a11y plugins
+
+**Important**: The project uses **Express 5** (v5.1.0), which has breaking changes from Express 4. Ensure middleware and patterns are compatible with Express 5.
 
 ---
 
@@ -142,7 +387,7 @@ This structure is enforced via the `buildPrompt()` function in `geminiService.js
 
 ### Inline Formatting Support
 
-The `parseInlineMarkdown()` function in `server/services/notionService.js` converts markdown inline formatting to Notion rich text annotations:
+The `parseInlineMarkdown()` function in `server/src/services/notion/markdown.js` converts markdown inline formatting to Notion rich text annotations:
 
 | Markdown             | Notion Annotation | Example           | Status |
 | -------------------- | ----------------- | ----------------- | ------ |
@@ -168,8 +413,10 @@ The `parseInlineMarkdown()` function in `server/services/notionService.js` conve
 * Code blocks: ``` with language detection (python, sql, js, etc.)
 * Lists: `- ` or `* ` (bulleted), `1. ` (numbered)
 * Paragraphs: All other text
+* Quotes: `>` prefix for block quotes
+* Dividers: `---` or `***` for horizontal rules
 
-**Critical**: All block types use `parseInlineMarkdown()` for rich text, ensuring consistent formatting across headings, paragraphs, and lists.
+**Critical**: All block types use `parseInlineMarkdown()` for rich text, ensuring consistent formatting across headings, paragraphs, lists, and quotes.
 
 ### Code Block Detection
 
@@ -188,13 +435,14 @@ This handles indented code blocks in nested contexts (e.g., within lists or quot
 
 **Why**: Notion API has a hard limit of 100 blocks per `blocks.children.append` request.
 
-**How**: `notionService.js` implements:
+**How**: Modular Notion service implements:
 
-* `chunkBlocks(blocks, maxSize)` — splits array into chunks of ≤100
-* Sequential sending with `delay(100)` between chunks
+* `chunkBlocks(blocks, maxSize)` in `server/src/services/notion/index.js` — splits array into chunks of ≤100
+* `appendBlocksChunked()` in `server/src/services/notion/client.js` — sends chunks sequentially
+* 350ms throttle between requests (configured in `config.js`)
 * Returns `{ blocksAdded, chunks }` in response
 
-**When to modify**: If adding new Markdown patterns (e.g., tables, callouts), update `markdownToNotionBlocks()` and ensure chunking still works.
+**When to modify**: If adding new Markdown patterns (e.g., tables, callouts), update `markdownToNotionBlocks()` in `server/src/services/notion/markdown.js` and ensure chunking still works.
 
 ---
 
@@ -205,7 +453,7 @@ This handles indented code blocks in nested contexts (e.g., within lists or quot
 * Endpoint: `https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent`
 * Auth: API key in query param (`?key=...`)
 * Free tier: 15 RPM, 1500 RPD, 1M TPM
-* System instructions force Portuguese output
+* System instructions force English output (accepts input in any language)
 
 ### Notion API
 
@@ -221,24 +469,49 @@ This handles indented code blocks in nested contexts (e.g., within lists or quot
 1. **Notion "unauthorized" errors**:
 
    * Page not shared with integration. User must invite integration in Notion UI.
-   * **OR** Environment variables not loaded before client initialization. Ensure `dotenv.config()` is the FIRST import in `server/index.js`.
+   * **OR** Environment variables not loaded before client initialization. Ensure `import 'dotenv/config'` is the **FIRST import** in `server/index.js`.
+   * **OR** `NOTION_API_KEY` is invalid or expired. Generate new key at https://notion.so/my-integrations
+
 2. **100‑block limit**: If adding new block types, always test with >100 block documents to verify chunking works.
+   * Chunking logic is in `server/src/services/notion/client.js` (`appendBlocksChunked()`)
+   * Verify `MAX_BLOCKS_PER_REQUEST = 100` constant in `config.js`
+
 3. **English output**: If Gemini returns output in the wrong language, check:
 
-   * `systemInstruction` is being sent in API call
+   * `systemInstruction` is being sent in API call (see `server/services/geminiService.js`)
    * Model supports system instructions (`gemini-2.0-flash-exp` does)
    * Prompt explicitly states "Output MUST be 100% in ENGLISH"
-4. **CORS errors**: Backend must run on port 3001. Frontend hardcodes `http://localhost:3001/api` in `client/utils/api.js`.
+
+4. **CORS errors**:
+   * Backend must run on port 3001
+   * Frontend uses `VITE_API_BASE` env var (defaults to `/api`)
+   * In development, ensure Vite proxy is configured or CORS is enabled in `server/src/app.js`
+
 5. **Environment variables loading order**:
 
    * Backend loads `.env` from server folder (`server/.env`)
-   * `dotenv.config()` MUST be called before any other imports, otherwise services will initialize with undefined env vars
-   * Notion Client is created lazily inside `sendToNotion()` to ensure env vars are loaded
+   * `import 'dotenv/config'` MUST be the first import in `server/index.js`
+   * `server/src/config/index.js` validates env vars using Zod schemas
+   * Notion client is initialized at module‑level in `server/src/services/notion/index.js` (not lazy)
+
 6. **Markdown formatting not appearing in Notion**:
 
-   * Inline markdown is parsed by `parseInlineMarkdown()`
+   * Inline markdown is parsed by `parseInlineMarkdown()` in `server/src/services/notion/markdown.js`
    * Code blocks use whitespace‑tolerant detection with `trim()`
    * If formatting breaks, ensure all block types call `parseInlineMarkdown()`
+   * Check Notion API limits: 2000 chars per rich_text object
+
+7. **Request validation errors**:
+
+   * All requests are validated via Zod schemas before processing
+   * Check `server/src/schemas/generate.js` and `server/src/schemas/notion.js` for constraints
+   * Client‑side validation in `client/src/utils/validation.js` should match server schemas
+
+8. **Rate limiting**:
+
+   * Gemini API: 15 RPM, 1500 RPD, 1M TPM (tokens per minute)
+   * Notion API: 350ms throttle between requests (configured in `config.js`)
+   * Both use `fetchWithRetry()` with exponential backoff for 429 errors
 
 ---
 
@@ -259,19 +532,58 @@ No global state management (Redux, Context) — single‑component state is suff
 
 ### Automated Tests
 
-**Unit tests** are implemented using Vitest in `server/services/notionService.test.js`:
+The project uses **Vitest** as the test runner with a monorepo configuration. Tests are organized by layer (unit, integration, snapshot).
 
-Run tests:
+**Test Configuration**:
+* **Root** (`vitest.config.js`) — Monorepo configuration defining server and client projects
+* **Server** (`server/vitest.config.js`) — Server‑specific test setup
+* **Client** (`client/vitest.config.js`) — Client‑specific test setup (if applicable)
+
+**Run tests**:
 ```bash
+# From root (runs all tests in monorepo)
+npm test
+npm run test:watch
+npm run test:coverage
+
+# From server directory
 cd server
 npm test              # Run all tests once
 npm run test:watch    # Run tests in watch mode
 ```
 
-**Test Coverage**:
-- `parseInlineMarkdown()`: 23 tests covering bold, italic, code, links, edge cases
-- `markdownToNotionBlocks()`: 10 integration tests covering complete document structures
-- All 33 tests passing
+**Server Test Files** (`server/test/`):
+
+* **`api.generate.test.js`** — Tests for `POST /api/generate` endpoint
+  * Request validation (missing fields, invalid data)
+  * Successful generation response
+  * Error handling and status codes
+
+* **`api.notion.test.js`** — Tests for `POST /api/notion` endpoint
+  * Request validation (content, pageId formats)
+  * Successful export to Notion
+  * Error handling for API failures
+
+* **`http.fetchWithRetry.test.js`** — Tests for HTTP retry utility
+  * Timeout behavior
+  * Retry logic on 429 and 5xx errors
+  * Exponential backoff verification
+  * AbortController integration
+
+* **`notionService.snapshot.test.js`** — Snapshot tests for markdown conversion
+  * `parseInlineMarkdown()`: 23+ tests covering bold, italic, code, links, edge cases
+  * `markdownToNotionBlocks()`: 10+ integration tests for complete document structures
+  * Ensures consistent Notion block output across changes
+
+* **`setup.js`** — Test setup file
+  * Configures MSW (Mock Service Worker) for API mocking
+  * Sets up test environment variables
+  * Global test utilities and helpers
+
+**Testing Libraries**:
+* **Vitest** (v2.1.8) — Fast test runner with Vite integration
+* **MSW** (v2.11.6) — Mock Service Worker for API request mocking
+* **Supertest** (v7.1.4) — HTTP assertion library for Express routes
 
 ### Manual Integration Testing
 
@@ -303,17 +615,55 @@ Sending chunk 1/Y (100 blocks)
 
 ## Key Files to Modify
 
-**Add new AI providers**: Create new service in `server/services/`, update `server/routes/generate.js` import
+### Backend Modifications
 
-**Change documentation structure**: Modify `buildPrompt()` in `geminiService.js`
+**Add new AI providers**:
+* Create new service in `server/services/` (e.g., `claudeService.js`)
+* Update `server/routes/generate.js` to import and use new service
+* Add API key to `.env` and `server/src/config/index.js`
 
-**Add Notion block types**: Update `markdownToNotionBlocks()` in `notionService.js`
+**Change documentation structure**:
+* Modify `buildPrompt()` in `server/services/geminiService.js`
+* Update system instructions for new output format
 
-**Add inline markdown patterns**: Update `parseInlineMarkdown()` function in `notionService.js` — add new regex patterns to the `patterns` array
+**Add Notion block types**:
+* Update `markdownToNotionBlocks()` in `server/src/services/notion/markdown.js`
+* Add new block type handlers (e.g., tables, callouts, toggles)
 
-**Change UI**: React components in `client/src/components/`
+**Add inline markdown patterns**:
+* Update `parseInlineMarkdown()` in `server/src/services/notion/markdown.js`
+* Add new regex patterns to the `patterns` array
+* Handle new annotations (e.g., underline, strikethrough)
 
-**Update API base URL**: `client/src/utils/api.js` line 1
+**Add API endpoints**:
+* Create new route file in `server/routes/` (e.g., `export.js`)
+* Mount route in `server/src/routes.js`
+* Create Zod schema in `server/src/schemas/` for validation
+
+**Add middleware**:
+* Create new middleware in `server/src/middleware/` (e.g., `auth.js`)
+* Apply in `server/src/app.js` or specific routes
+
+### Frontend Modifications
+
+**Add new React components**:
+* Create component in `client/src/components/` (one per file)
+* Follow naming convention: `ComponentName.jsx`
+* Add docstring with `@component` tag
+
+**Add custom hooks**:
+* Create hook in `client/src/hooks/` (e.g., `useFeature.js`)
+* Name with `use` prefix following React conventions
+* Export as named export
+
+**Change UI styling**:
+* Global styles: `client/src/index.css`
+* Component styles: Use Tailwind classes (auto‑sorted by Prettier plugin)
+* Prism theme: `client/src/styles/vscode-dark-modern-prism.css`
+
+**Update API base URL**:
+* Environment variable: `VITE_API_BASE` in `client/.env`
+* Used in `client/src/utils/api.js`
 
 ---
 
@@ -324,30 +674,31 @@ Sending chunk 1/Y (100 blocks)
 `server/index.js` structure:
 
 ```javascript
-import dotenv from 'dotenv';
+import 'dotenv/config';  // Modern shorthand - loads .env automatically
+import app from './src/app.js';
 
-// Load BEFORE other imports
-dotenv.config({ path: '../.env' });
-
-import express from 'express';
-// ... other imports
+const PORT = process.env.PORT || 3001;
+app.listen(PORT, () => {
+  console.log(`Server running on http://localhost:${PORT}`);
+});
 ```
+
+**Critical**: `dotenv/config` must be the **first import** in `server/index.js` to ensure all environment variables are loaded before any other modules initialize.
 
 ### Notion Client Initialization
 
-`notionService.js` creates client lazily:
+The Notion client is created at **module‑level** in `server/src/services/notion/index.js`:
 
 ```javascript
-export async function sendToNotion(content, pageId = process.env.NOTION_PAGE_ID) {
-  // Create client at runtime, not module‑level
-  const notion = new Client({
-    auth: process.env.NOTION_API_KEY,
-  });
-  // ... rest of function
-}
+import { Client } from '@notionhq/client';
+
+// Module-level initialization (not lazy)
+export const notion = new Client({
+  auth: process.env.NOTION_API_KEY,
+});
 ```
 
-This ensures environment variables are loaded before the Notion SDK accesses them.
+This works because `server/src/config/index.js` loads `dotenv/config` before the Notion service is imported.
 
 ---
 
@@ -377,16 +728,26 @@ make clean
 
 ---
 
-## Additional HTTP Endpoints
+## API Routes
 
-Besides `/api/generate` and `/api/notion`, the backend exposes a **health check**:
+All API routes are mounted under the `/api` prefix via `server/src/routes.js`:
 
-  * `GET /health` → returns `{ status: "ok" }` for readiness check.
+**Current endpoints**:
+* `POST /api/generate` — Generate documentation from task context
+* `POST /api/notion` — Export documentation to Notion page
 
-Routes mounted in `server/index.js`:
+**Route mounting**:
+Routes are centralized in `server/src/routes.js` and imported into `server/src/app.js`:
+```javascript
+import routes from './routes.js';
+app.use('/api', routes);
+```
 
-  * `app.use('/api/generate', generateRouter)`
-  * `app.use('/api/notion', notionRouter)`
+Individual route handlers are in `server/routes/`:
+* `server/routes/generate.js` — Generate endpoint logic
+* `server/routes/notion.js` — Notion export endpoint logic
+
+**Note**: Health check endpoint (`GET /health`) is not currently implemented but can be added if needed for container orchestration or monitoring.
 
 ---
 
@@ -400,14 +761,18 @@ This codebase applies an important rule on the client:
 
 ## Client Base URL
 
-Frontend calls use a local constant:
+Frontend API calls use an environment variable for flexibility:
 
 ```js
 // client/src/utils/api.js
-const API_BASE_URL = 'http://localhost:3001/api';
+const API_BASE_URL = import.meta.env.VITE_API_BASE ?? '/api';
 ```
 
-If the backend endpoint changes, update this value on the client.
+**Configuration**:
+* Set `VITE_API_BASE` in `client/.env` to override default
+* Defaults to `/api` (relative path) for production builds
+* In development, Vite proxy or CORS handles routing to backend on port 3001
+* Example: `VITE_API_BASE=http://localhost:3001/api` for direct backend calls
 
 ---
 
