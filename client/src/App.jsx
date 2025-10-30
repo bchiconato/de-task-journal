@@ -1,12 +1,16 @@
-import { useState } from 'react';
+import { useState, lazy, Suspense } from 'react';
 import { InputForm } from './components/InputForm';
-import { GeneratedContent } from './components/GeneratedContent';
-import { LoadingSpinner } from './components/LoadingSpinner';
 import { Toast } from './components/Toast';
 import { useToast } from './hooks/useToast';
 import { useAbortableRequest } from './hooks/useAbortableRequest';
 import { useAnnouncer } from './components/LiveAnnouncer';
 import { generateDocumentation, sendToNotion } from './utils/api';
+
+const GeneratedContent = lazy(() =>
+  import('./components/GeneratedContent').then((module) => ({
+    default: module.GeneratedContent,
+  }))
+);
 
 /**
  * @component App
@@ -124,11 +128,23 @@ function App() {
             </div>
 
             {documentation && !isGenerating && (
-              <GeneratedContent
-                content={documentation}
-                onSendToNotion={handleSendToNotion}
-                isSending={isSending}
-              />
+              <Suspense
+                fallback={
+                  <div
+                    aria-busy="true"
+                    role="status"
+                    className="text-center py-8 text-gray-600"
+                  >
+                    Loading preview…
+                  </div>
+                }
+              >
+                <GeneratedContent
+                  content={documentation}
+                  onSendToNotion={handleSendToNotion}
+                  isSending={isSending}
+                />
+              </Suspense>
             )}
           </div>
 

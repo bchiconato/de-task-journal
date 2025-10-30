@@ -2,7 +2,7 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE ?? '/api';
 const DEFAULT_NOTION_PAGE_ID = import.meta.env.VITE_NOTION_PAGE_ID;
 
 /**
- * Generates documentation using Claude AI
+ * Generates documentation using Google Gemini (mocked locally if no API key)
  * @param {Object} data - The form data
  * @param {AbortSignal} [signal] - Optional AbortSignal for request cancellation
  * @returns {Promise<string>} Generated documentation

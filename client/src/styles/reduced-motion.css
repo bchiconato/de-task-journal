@@ -1,18 +1,15 @@
 /**
- * Accessibility: Honor prefers-reduced-motion user preference
- *
- * Reduces or eliminates animations, transitions, and auto-scrolling
- * for users who have enabled reduced motion in their OS settings.
- * This prevents motion-triggered vestibular disorders and general discomfort.
+ * Accessibility: Respects user preference for reduced motion
+ * Disables animations and transitions when prefers-reduced-motion is set
  */
 
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
   *::after {
-    animation-duration: 0.01ms !important;
+    animation-duration: 0.001ms !important;
     animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
+    transition-duration: 0.001ms !important;
     scroll-behavior: auto !important;
   }
 }

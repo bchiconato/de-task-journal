@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import ReactMarkdown from 'react-markdown';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { tomorrow } from 'react-syntax-highlighter/dist/esm/styles/prism';
@@ -19,6 +19,13 @@ export function GeneratedContent({
   isSending,
 }) {
   const [justCopied, setJustCopied] = useState(false);
+  const headingRef = useRef(null);
+
+  useEffect(() => {
+    if (content && headingRef.current) {
+      headingRef.current.focus();
+    }
+  }, [content]);
 
   const handleCopy = async () => {
     try {
@@ -45,6 +52,8 @@ export function GeneratedContent({
         <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-6 pb-4 border-b border-gray-200">
           <h2
             id="preview-heading"
+            ref={headingRef}
+            tabIndex={-1}
             className="text-2xl font-bold text-gray-900 max-w-[140px]"
           >
             Generated documentation

@@ -21,7 +21,7 @@ import "prismjs/plugins/highlight-keywords/prism-highlight-keywords";
 import "prismjs/plugins/match-braces/prism-match-braces.css";
 
 export const CodeImplementationEditor = forwardRef(function CodeImplementationEditor(
-  { value, onChange, language = "jsx", minHeight = 240, placeholder },
+  { value, onChange, language = "jsx", minHeight = 240, placeholder, ...rest },
   ref
 ) {
   return (
@@ -43,6 +43,7 @@ export const CodeImplementationEditor = forwardRef(function CodeImplementationEd
           fontFamily:
             "ui-monospace, SFMono-Regular, SF Mono, Menlo, Consolas, Liberation Mono, monospace",
         }}
+        {...rest}
       />
     </div>
   );

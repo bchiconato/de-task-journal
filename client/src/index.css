@@ -99,12 +99,12 @@ code {
 }
 
 .code-editor-wrapper textarea {
-  color: #CCCCCC !important;
+  color: #CCCCCC;
   caret-color: #CCCCCC;
 }
 
 .code-editor-wrapper textarea::placeholder {
-  color: #CCCCCC !important;
+  color: #CCCCCC;
   opacity: 1;
 }
 
