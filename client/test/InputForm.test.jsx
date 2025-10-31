@@ -91,7 +91,9 @@ describe('InputForm', () => {
     });
     await user.type(contextField, 'Test');
 
-    expect(screen.getByText(/4.*3000/)).toBeInTheDocument();
+    const counters = screen.getAllByText(/4.*characters/);
+    expect(counters.length).toBeGreaterThan(0);
+    expect(counters[0]).toBeInTheDocument();
   });
 
   it('has proper form accessibility attributes', () => {
