@@ -42,10 +42,7 @@ export function InputForm({ mode, onGenerate, isLoading }) {
   const decisionsRef = useRef(null);
 
   useEffect(() => {
-    const initialData = mode === 'architecture'
-      ? { overview: '', dataflow: '', decisions: '' }
-      : { context: '', code: '', challenges: '' };
-
+    const initialData = getInitialFormData();
     setFormData(initialData);
     setErrors({});
     setTouched({});
@@ -169,6 +166,7 @@ export function InputForm({ mode, onGenerate, isLoading }) {
           error={touched.context && errors.context}
           id="context"
           characterCount={formData.context?.length || 0}
+          maxLength={10000}
         >
           <textarea
             ref={contextRef}
@@ -196,7 +194,8 @@ export function InputForm({ mode, onGenerate, isLoading }) {
           helperText="Include relevant code snippets that demonstrate your implementation"
           error={touched.code && errors.code}
           id="code"
-          characterCount={formData.code.length}
+          characterCount={formData.code?.length || 0}
+          maxLength={10000}
         >
           <div className="code-editor-wrapper min-h-[160px] lg:min-h-[200px] xl:min-h-[240px] max-h-[400px] lg:max-h-[480px] xl:max-h-[560px] overflow-y-auto rounded-xl">
             <CodeImplementationEditor
@@ -229,12 +228,13 @@ export function InputForm({ mode, onGenerate, isLoading }) {
           helperText="Share obstacles you faced, how you overcame them, and lessons learned"
           error={touched.challenges && errors.challenges}
           id="challenges"
-          characterCount={formData.challenges.length}
+          characterCount={formData.challenges?.length || 0}
+          maxLength={10000}
         >
           <textarea
             ref={challengesRef}
             name="challenges"
-            value={formData.challenges}
+            value={formData.challenges || ''}
             onChange={(e) => handleChange('challenges', e.target.value)}
             onBlur={() => handleBlur('challenges')}
             placeholder="Example: Encountered performance issues with large datasets, had to implement batch processing..."
