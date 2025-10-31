@@ -19,6 +19,10 @@ export function validateContext(value) {
     return 'Task context is too short. Please provide at least 10 characters.';
   }
 
+  if (trimmed.length > 10000) {
+    return `Task context is too long. Please keep it under 10,000 characters. (current: ${trimmed.length})`;
+  }
+
   return null;
 }
 
@@ -32,6 +36,10 @@ export function validateCode(value) {
     return null;
   }
 
+  if (value.trim().length > 10000) {
+    return `Code implementation is too long. Please keep it under 10,000 characters. (current: ${value.trim().length})`;
+  }
+
   return null;
 }
 
@@ -40,7 +48,15 @@ export function validateCode(value) {
  * @param {string} _value - Field value (unused, field is always valid)
  * @returns {string|null} Error message or null if valid
  */
-export function validateChallenges(_value) {
+export function validateChallenges(value) {
+  if (!value || value.trim().length === 0) {
+    return null;
+  }
+
+  if (value.trim().length > 10000) {
+    return `Challenges description is too long. Please keep it under 10,000 characters. (current: ${value.trim().length})`;
+  }
+
   return null;
 }
 
