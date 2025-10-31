@@ -16,11 +16,13 @@ export function Toast({ message, type = 'info', duration = 3000, onClose, show =
   const [isExiting, setIsExiting] = useState(false);
 
   useEffect(() => {
-    setIsVisible(show);
-    if (!show) {
+    if (show) {
+      setIsVisible(true);
+      setIsExiting(false);
+    } else if (isVisible) {
       setIsExiting(true);
     }
-  }, [show]);
+  }, [show, isVisible]);
 
   useEffect(() => {
     if (isVisible && duration > 0) {
