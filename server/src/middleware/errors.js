@@ -24,7 +24,7 @@ export function notFound(_req, res) {
  * @returns {void}
  */
 export function errorHandler(err, _req, res, _next) {
-  const status = err.status || 500;
+  const status = err.status || (err.code === 'gemini_error' ? 500 : 400);
   res.status(status).json({
     error: err.code || 'internal_error',
     message: err.message || 'Internal error',
