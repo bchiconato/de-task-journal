@@ -29,10 +29,11 @@ export async function generateDocumentation(data, signal) {
 /**
  * Sends content to Notion
  * @param {string} content - The documentation content
+ * @param {('task'|'architecture')} mode - Documentation mode
  * @param {AbortSignal} [signal] - Optional AbortSignal for request cancellation
  * @returns {Promise<Object>} Response from Notion API
  */
-export async function sendToNotion(content, signal, opts = {}) {
+export async function sendToNotion(content, mode, signal) {
   if (!DEFAULT_NOTION_PAGE_ID) {
     throw new Error('Set VITE_NOTION_PAGE_ID in client/.env');
   }
@@ -41,7 +42,7 @@ export async function sendToNotion(content, signal, opts = {}) {
     headers: {
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({ content, pageId: DEFAULT_NOTION_PAGE_ID }),
+    body: JSON.stringify({ content, mode, pageId: DEFAULT_NOTION_PAGE_ID }),
     signal,
   });
 
