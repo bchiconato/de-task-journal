@@ -1,5 +1,6 @@
-import { useState, lazy, Suspense } from 'react';
+import { useState, useEffect, lazy, Suspense } from 'react';
 import { InputForm } from './components/InputForm';
+import { ModeToggle } from './components/ModeToggle';
 import { Toast } from './components/Toast';
 import { useToast } from './hooks/useToast';
 import { useAbortableRequest } from './hooks/useAbortableRequest';
@@ -18,6 +19,10 @@ const GeneratedContent = lazy(() =>
  * @returns {JSX.Element} Main app component with form, preview, and toast system
  */
 function App() {
+  const [mode, setMode] = useState(() => {
+    const params = new URLSearchParams(window.location.search);
+    return params.get('mode') === 'architecture' ? 'architecture' : 'task';
+  });
   const [documentation, setDocumentation] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
   const [isSending, setIsSending] = useState(false);
@@ -26,6 +31,19 @@ function App() {
   const { toasts, showSuccess, showError, removeToast } = useToast();
   const abortController = useAbortableRequest();
   const announcer = useAnnouncer();
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (mode === 'architecture') {
+      params.set('mode', 'architecture');
+    } else {
+      params.delete('mode');
+    }
+    const newUrl = params.toString()
+      ? `${window.location.pathname}?${params.toString()}`
+      : window.location.pathname;
+    window.history.replaceState({}, '', newUrl);
+  }, [mode]);
 
   const handleGenerate = async (formData) => {
     const signal = abortController.start();
@@ -61,7 +79,7 @@ function App() {
     setIsSending(true);
 
     try {
-      await sendToNotion(content, signal);
+      await sendToNotion(content, mode, signal);
       showSuccess('Documentation sent to Notion successfully!');
       announcer.announcePolite('Documentation sent to Notion successfully.');
       return true;
@@ -78,6 +96,12 @@ function App() {
     } finally {
       setIsSending(false);
     }
+  };
+
+  const handleModeChange = (newMode) => {
+    setMode(newMode);
+    setDocumentation('');
+    setFormCollapsed(false);
   };
 
   const toggleFormCollapsed = () => {
@@ -98,6 +122,11 @@ function App() {
           id="main-content"
           className="container mx-auto py-8 max-w-content-wide 2xl:max-w-content-ultra px-4 sm:px-4 md:px-6 lg:px-8 xl:px-10 2xl:px-12"
         >
+          <ModeToggle
+            mode={mode}
+            onModeChange={handleModeChange}
+          />
+
           <div
             className={`
               grid gap-8 lg:gap-10
@@ -112,6 +141,7 @@ function App() {
               `}
             >
               <InputForm
+                mode={mode}
                 onGenerate={handleGenerate}
                 isLoading={isGenerating}
               />
