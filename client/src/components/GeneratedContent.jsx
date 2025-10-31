@@ -29,9 +29,14 @@ export function GeneratedContent({
 
   const handleCopy = async () => {
     try {
-      await navigator.clipboard.writeText(content);
-      setJustCopied(true);
-      setTimeout(() => setJustCopied(false), 2000);
+      if (navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
+        await navigator.clipboard.writeText(content);
+        setJustCopied(true);
+        const timer = setTimeout(() => setJustCopied(false), 2000);
+        return () => clearTimeout(timer);
+      } else {
+        throw new Error('Clipboard API not available');
+      }
     } catch (err) {
       console.error('Failed to copy:', err);
     }
