@@ -14,7 +14,7 @@ import { z } from 'zod';
  * @property {string} [challenges] - Optional challenges description
  */
 const TaskSchema = z.object({
-  mode: z.literal('task'),
+  mode: z.enum(['task', undefined]).optional().default('task'),
   context: z.string().min(10, 'context must be at least 10 chars'),
   code: z.string().optional(),
   challenges: z.string().optional(),
