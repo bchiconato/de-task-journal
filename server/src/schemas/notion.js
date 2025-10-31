@@ -9,6 +9,7 @@ import { z } from 'zod';
  * @description Schema for Notion export requests supporting both page creation and block appending
  * @typedef {Object} NotionExportRequest
  * @property {string} content - Markdown content to send to Notion
+ * @property {('task'|'architecture')} [mode] - Documentation mode (defaults to 'task')
  * @property {string} [pageId] - Existing page ID to append blocks to (append mode)
  * @property {string} [title] - New page title (create mode, required if no pageId)
  * @property {string} [parentPageId] - Parent page ID for new page creation
@@ -16,6 +17,7 @@ import { z } from 'zod';
 export const NotionExportSchema = z
   .object({
     content: z.string().min(1, 'content must not be empty'),
+    mode: z.enum(['task', 'architecture']).default('task'),
     pageId: z.string().optional(),
     title: z.string().optional(),
     parentPageId: z.string().optional(),
