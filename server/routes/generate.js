@@ -32,24 +32,31 @@ async function generateDocsHandler(req, res, next) {
     if (!env.GEMINI_API_KEY) {
       documentation = generateMockDocumentation(req.valid);
     } else {
-      if (mode === 'architecture') {
-        const { overview, dataflow, decisions } = req.valid;
-        documentation = await generateArchitectureDocumentation({
-          overview,
-          dataflow,
-          decisions,
-        });
-      } else {
-        const { context, code, challenges } = req.valid;
-        documentation = await generateDocumentation({
-          context,
-          code,
-          challenges,
-        });
+      try {
+        if (mode === 'architecture') {
+          const { overview, dataflow, decisions } = req.valid;
+          documentation = await generateArchitectureDocumentation({
+            overview,
+            dataflow,
+            decisions,
+          });
+        } else {
+          const { context, code, challenges } = req.valid;
+          documentation = await generateDocumentation({
+            context,
+            code,
+            challenges,
+          });
+        }
+      } catch (geminiError) {
+        const error = new Error(geminiError.message || 'Failed to generate documentation');
+        error.status = 500;
+        error.code = 'gemini_error';
+        throw error;
       }
     }
 
-    res.json({
+    res.status(200).json({
       success: true,
       documentation,
       mode,
