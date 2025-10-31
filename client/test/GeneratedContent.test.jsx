@@ -73,6 +73,8 @@ describe('GeneratedContent', () => {
   });
 
   it('copies content to clipboard when Copy all is clicked', async () => {
+    vi.useFakeTimers();
+    
     const { getByLabelText } = render(
       <GeneratedContent
         content={mockContent}
@@ -85,9 +87,14 @@ describe('GeneratedContent', () => {
     
     await act(async () => {
       await fireEvent.click(copyButton);
-      expect(mockWriteText).toHaveBeenCalledWith(mockContent);
-      expect(copyButton).toHaveTextContent('✓ Copied!');
+      // Advance any pending timers
+      vi.runAllTimers();
     });
+    
+    expect(mockWriteText).toHaveBeenCalledWith(mockContent);
+    expect(copyButton).toHaveTextContent('✓ Copied!');
+    
+    vi.useRealTimers();
   });
 
   it('resets copy button text after 2 seconds', async () => {
@@ -130,7 +137,7 @@ describe('GeneratedContent', () => {
   });
 
   it('calls onSendToNotion when Send to Notion is clicked', async () => {
-    const onSendToNotion = vi.fn().mockResolvedValue(undefined);
+    const onSendToNotion = vi.fn().mockImplementation(() => Promise.resolve());
     const { getByLabelText } = render(
       <GeneratedContent
         content={mockContent}
@@ -140,11 +147,11 @@ describe('GeneratedContent', () => {
     );
 
     const sendButton = getByLabelText('Send documentation to Notion');
-    fireEvent.click(sendButton);
-
-    await waitFor(() => {
-      expect(onSendToNotion).toHaveBeenCalledWith(mockContent);
+    await act(async () => {
+      await fireEvent.click(sendButton);
     });
+
+    expect(onSendToNotion).toHaveBeenCalledWith(mockContent);
   });
 
   it('disables Send to Notion button when isSending is true', () => {
