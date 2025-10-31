@@ -32,8 +32,6 @@ export function GeneratedContent({
       if (navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
         await navigator.clipboard.writeText(content);
         setJustCopied(true);
-        const timer = setTimeout(() => setJustCopied(false), 2000);
-        return () => clearTimeout(timer);
       } else {
         throw new Error('Clipboard API not available');
       }
@@ -41,6 +39,14 @@ export function GeneratedContent({
       console.error('Failed to copy:', err);
     }
   };
+
+  useEffect(() => {
+    let timer;
+    if (justCopied) {
+      timer = setTimeout(() => setJustCopied(false), 2000);
+    }
+    return () => timer && clearTimeout(timer);
+  }, [justCopied]);
 
   const handleSendToNotion = async () => {
     await onSendToNotion(content);
