@@ -3,20 +3,27 @@
  */
 
 import React from 'react';
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { GeneratedContent } from '../src/components/GeneratedContent.jsx';
 
 describe('GeneratedContent', () => {
   const mockContent = '# Test Title\n\nThis is a test paragraph.';
+  let mockWriteText;
 
   beforeEach(() => {
-    Object.assign(navigator, {
+    mockWriteText = vi.fn(() => Promise.resolve());
+    vi.stubGlobal('navigator', {
+      ...navigator,
       clipboard: {
-        writeText: vi.fn(() => Promise.resolve()),
+        writeText: mockWriteText,
       },
     });
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
   });
 
   it('returns null when no content is provided', () => {
@@ -77,7 +84,7 @@ describe('GeneratedContent', () => {
     );
     await user.click(copyButton);
 
-    expect(navigator.clipboard.writeText).toHaveBeenCalledWith(mockContent);
+    expect(mockWriteText).toHaveBeenCalledWith(mockContent);
     await waitFor(() => {
       expect(copyButton).toHaveTextContent('✓ Copied!');
     });
