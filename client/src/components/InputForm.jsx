@@ -1,5 +1,6 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { FormField } from './FormField';
+import { ArchitectureFields } from './ArchitectureFields';
 import { validateForm, hasErrors, getErrorCount } from '../utils/validation';
 import { CodeImplementationEditor } from './CodeImplementationEditor';
 
@@ -7,16 +8,28 @@ import { CodeImplementationEditor } from './CodeImplementationEditor';
  * @component InputForm
  * @description Documentation input form with accessibility and inline validation
  * @param {Object} props
+ * @param {('task'|'architecture')} props.mode - Documentation mode
  * @param {Function} props.onGenerate - Form submission handler
  * @param {boolean} props.isLoading - Whether generation is in progress
- * @returns {JSX.Element} Form with context, code, and challenges fields
+ * @returns {JSX.Element} Form with mode-specific fields
  */
-export function InputForm({ onGenerate, isLoading}) {
-  const [formData, setFormData] = useState({
-    context: '',
-    code: '',
-    challenges: '',
-  });
+export function InputForm({ mode, onGenerate, isLoading }) {
+  const getInitialFormData = () => {
+    if (mode === 'architecture') {
+      return {
+        overview: '',
+        dataflow: '',
+        decisions: '',
+      };
+    }
+    return {
+      context: '',
+      code: '',
+      challenges: '',
+    };
+  };
+
+  const [formData, setFormData] = useState(getInitialFormData);
 
   const [errors, setErrors] = useState({});
   const [touched, setTouched] = useState({});
@@ -24,6 +37,19 @@ export function InputForm({ onGenerate, isLoading}) {
   const contextRef = useRef(null);
   const codeRef = useRef(null);
   const challengesRef = useRef(null);
+  const overviewRef = useRef(null);
+  const dataflowRef = useRef(null);
+  const decisionsRef = useRef(null);
+
+  useEffect(() => {
+    const initialData = mode === 'architecture'
+      ? { overview: '', dataflow: '', decisions: '' }
+      : { context: '', code: '', challenges: '' };
+
+    setFormData(initialData);
+    setErrors({});
+    setTouched({});
+  }, [mode]);
 
   const handleChange = (name, value) => {
     setFormData((prev) => ({
@@ -45,7 +71,7 @@ export function InputForm({ onGenerate, isLoading}) {
       [name]: true,
     }));
 
-    const fieldErrors = validateForm({ ...formData, [name]: formData[name] });
+    const fieldErrors = validateForm({ ...formData, [name]: formData[name] }, mode);
     if (fieldErrors[name]) {
       setErrors((prev) => ({
         ...prev,
@@ -57,23 +83,41 @@ export function InputForm({ onGenerate, isLoading}) {
   const handleSubmit = (e) => {
     e.preventDefault();
 
-    setTouched({
-      context: true,
-      code: true,
-      challenges: true,
-    });
+    if (mode === 'architecture') {
+      setTouched({
+        overview: true,
+        dataflow: true,
+        decisions: true,
+      });
+    } else {
+      setTouched({
+        context: true,
+        code: true,
+        challenges: true,
+      });
+    }
 
-    const formErrors = validateForm(formData);
+    const formErrors = validateForm(formData, mode);
 
     if (hasErrors(formErrors)) {
       setErrors(formErrors);
 
-      if (formErrors.context && contextRef.current) {
-        contextRef.current.focus();
-      } else if (formErrors.code && codeRef.current) {
-        codeRef.current.focus();
-      } else if (formErrors.challenges && challengesRef.current) {
-        challengesRef.current.focus();
+      if (mode === 'architecture') {
+        if (formErrors.overview && overviewRef.current) {
+          overviewRef.current.focus();
+        } else if (formErrors.dataflow && dataflowRef.current) {
+          dataflowRef.current.focus();
+        } else if (formErrors.decisions && decisionsRef.current) {
+          decisionsRef.current.focus();
+        }
+      } else {
+        if (formErrors.context && contextRef.current) {
+          contextRef.current.focus();
+        } else if (formErrors.code && codeRef.current) {
+          codeRef.current.focus();
+        } else if (formErrors.challenges && challengesRef.current) {
+          challengesRef.current.focus();
+        }
       }
 
       const errorCount = getErrorCount(formErrors);
@@ -82,7 +126,7 @@ export function InputForm({ onGenerate, isLoading}) {
       return;
     }
 
-    onGenerate(formData);
+    onGenerate({ ...formData, mode });
   };
 
   return (
@@ -95,25 +139,41 @@ export function InputForm({ onGenerate, isLoading}) {
       >
         <header className="mb-6">
           <h1 id="form-heading" className="text-3xl font-bold text-gray-900 mb-2">
-            Data Engineering Task Documenter
+            {mode === 'architecture'
+              ? 'Architecture Documenter'
+              : 'Data Engineering Task Documenter'}
           </h1>
           <p className="text-gray-600">
-            Generate professional technical documentation for your data engineering tasks
+            {mode === 'architecture'
+              ? 'Generate comprehensive architecture documentation for your systems'
+              : 'Generate professional technical documentation for your data engineering tasks'}
           </p>
         </header>
 
-        <FormField
+        {mode === 'architecture' ? (
+          <ArchitectureFields
+            formData={formData}
+            errors={errors}
+            touched={touched}
+            onFieldChange={handleChange}
+            onFieldBlur={handleBlur}
+            isLoading={isLoading}
+            refs={{ overviewRef, dataflowRef, decisionsRef }}
+          />
+        ) : (
+          <>
+            <FormField
           label="Task context"
           required={true}
           helperText="Describe what you built, the problem it solves, and any key technical decisions"
           error={touched.context && errors.context}
           id="context"
-          characterCount={formData.context.length}
+          characterCount={formData.context?.length || 0}
         >
           <textarea
             ref={contextRef}
             name="context"
-            value={formData.context}
+            value={formData.context || ''}
             onChange={(e) => handleChange('context', e.target.value)}
             onBlur={() => handleBlur('context')}
             placeholder="Example: Building an ETL pipeline to migrate customer data from MySQL to Snowflake..."
@@ -190,6 +250,8 @@ export function InputForm({ onGenerate, isLoading}) {
             disabled={isLoading}
           />
         </FormField>
+          </>
+        )}
 
         <div aria-busy={isLoading} aria-live="polite">
           <button
