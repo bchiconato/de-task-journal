@@ -4,7 +4,7 @@
 
 import React from 'react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, fireEvent, act } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { GeneratedContent } from '../src/components/GeneratedContent.jsx';
 
@@ -13,13 +13,17 @@ describe('GeneratedContent', () => {
   let mockWriteText;
 
   beforeEach(() => {
-    mockWriteText = vi.fn(() => Promise.resolve());
-    vi.stubGlobal('navigator', {
-      ...navigator,
-      clipboard: {
-        writeText: mockWriteText,
-      },
+    vi.useFakeTimers();
+    mockWriteText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, 'clipboard', {
+      value: { writeText: mockWriteText },
+      writable: true,
+      configurable: true
     });
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
   });
 
   afterEach(() => {
@@ -69,9 +73,7 @@ describe('GeneratedContent', () => {
   });
 
   it('copies content to clipboard when Copy all is clicked', async () => {
-    const user = userEvent.setup();
-
-    render(
+    const { getByLabelText } = render(
       <GeneratedContent
         content={mockContent}
         onSendToNotion={vi.fn()}
@@ -79,22 +81,17 @@ describe('GeneratedContent', () => {
       />
     );
 
-    const copyButton = screen.getByLabelText(
-      'Copy all documentation to clipboard'
-    );
-    await user.click(copyButton);
-
-    expect(mockWriteText).toHaveBeenCalledWith(mockContent);
-    await waitFor(() => {
+    const copyButton = getByLabelText('Copy all documentation to clipboard');
+    
+    await act(async () => {
+      await fireEvent.click(copyButton);
+      expect(mockWriteText).toHaveBeenCalledWith(mockContent);
       expect(copyButton).toHaveTextContent('✓ Copied!');
     });
   });
 
   it('resets copy button text after 2 seconds', async () => {
-    vi.useFakeTimers();
-    const user = userEvent.setup({ delay: null });
-
-    render(
+    const { getByLabelText } = render(
       <GeneratedContent
         content={mockContent}
         onSendToNotion={vi.fn()}
@@ -102,20 +99,19 @@ describe('GeneratedContent', () => {
       />
     );
 
-    const copyButton = screen.getByLabelText(
-      'Copy all documentation to clipboard'
-    );
-    await user.click(copyButton);
-
-    expect(copyButton).toHaveTextContent('✓ Copied!');
-
-    vi.advanceTimersByTime(2000);
-
-    await waitFor(() => {
-      expect(copyButton).toHaveTextContent('Copy all');
+    const copyButton = getByLabelText('Copy all documentation to clipboard');
+    
+    await act(async () => {
+      await fireEvent.click(copyButton);
     });
-
-    vi.useRealTimers();
+    
+    expect(copyButton).toHaveTextContent('✓ Copied!');
+    
+    await act(async () => {
+      vi.advanceTimersByTime(2000);
+    });
+    
+    expect(copyButton).toHaveTextContent('Copy all');
   });
 
   it('renders Send to Notion button', () => {
@@ -134,10 +130,8 @@ describe('GeneratedContent', () => {
   });
 
   it('calls onSendToNotion when Send to Notion is clicked', async () => {
-    const user = userEvent.setup();
-    const onSendToNotion = vi.fn(() => Promise.resolve());
-
-    render(
+    const onSendToNotion = vi.fn().mockResolvedValue(undefined);
+    const { getByLabelText } = render(
       <GeneratedContent
         content={mockContent}
         onSendToNotion={onSendToNotion}
@@ -145,10 +139,12 @@ describe('GeneratedContent', () => {
       />
     );
 
-    const sendButton = screen.getByLabelText('Send documentation to Notion');
-    await user.click(sendButton);
+    const sendButton = getByLabelText('Send documentation to Notion');
+    fireEvent.click(sendButton);
 
-    expect(onSendToNotion).toHaveBeenCalledWith(mockContent);
+    await waitFor(() => {
+      expect(onSendToNotion).toHaveBeenCalledWith(mockContent);
+    });
   });
 
   it('disables Send to Notion button when isSending is true', () => {
@@ -185,7 +181,7 @@ describe('GeneratedContent', () => {
   it('renders markdown with code blocks', () => {
     const contentWithCode = '```javascript\nconsole.log("test");\n```';
 
-    render(
+    const { container } = render(
       <GeneratedContent
         content={contentWithCode}
         onSendToNotion={vi.fn()}
@@ -193,7 +189,9 @@ describe('GeneratedContent', () => {
       />
     );
 
-    expect(screen.getByText('console.log("test");')).toBeInTheDocument();
+    const codeBlock = container.querySelector('code');
+    expect(codeBlock).toBeInTheDocument();
+    expect(codeBlock.textContent).toContain('console.log("test");');
   });
 
   it('has proper accessibility attributes', () => {
@@ -208,6 +206,7 @@ describe('GeneratedContent', () => {
     const article = screen.getByRole('article');
     expect(article).toHaveAttribute('aria-live', 'polite');
 
-    expect(screen.getByLabelText(/preview/i)).toBeInTheDocument();
+    const preview = screen.getByRole('complementary');
+    expect(preview).toHaveAttribute('aria-labelledby', 'preview-heading');
   });
 });
