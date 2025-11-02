@@ -38,7 +38,9 @@ export function ArchitectureFields({
       <section className="rounded-2xl border border-slate-200 bg-white p-6 md:p-8">
         <div className="space-y-6">
           <div>
-            <h3 className="text-base font-semibold text-slate-900">Overview & Components</h3>
+            <h3 className="text-base font-semibold text-slate-900">
+              Overview & Components
+            </h3>
             <p className="text-sm text-slate-500 mt-1 leading-relaxed">
               Describe the system/component purpose and its main building blocks
             </p>
@@ -62,9 +64,13 @@ export function ArchitectureFields({
             />
             <div className="flex items-center justify-between mt-2">
               {touched.overview && errors.overview ? (
-                <p className="text-sm text-red-600 leading-relaxed">{errors.overview}</p>
+                <p className="text-sm text-red-600 leading-relaxed">
+                  {errors.overview}
+                </p>
               ) : (
-                <p className="text-sm text-slate-500 leading-relaxed">Required field</p>
+                <p className="text-sm text-slate-500 leading-relaxed">
+                  Required field
+                </p>
               )}
               <span className="text-xs text-slate-400">
                 {formData.overview?.length || 0} / 10,000
@@ -77,7 +83,9 @@ export function ArchitectureFields({
       <section className="rounded-2xl border border-slate-200 bg-white p-6 md:p-8">
         <div className="space-y-6">
           <div>
-            <h3 className="text-base font-semibold text-slate-900">Data Flow & Technology Stack</h3>
+            <h3 className="text-base font-semibold text-slate-900">
+              Data Flow & Technology Stack
+            </h3>
             <p className="text-sm text-slate-500 mt-1 leading-relaxed">
               How does data move through the system? What technologies are used?
             </p>
@@ -101,9 +109,13 @@ export function ArchitectureFields({
             />
             <div className="flex items-center justify-between mt-2">
               {touched.dataflow && errors.dataflow ? (
-                <p className="text-sm text-red-600 leading-relaxed">{errors.dataflow}</p>
+                <p className="text-sm text-red-600 leading-relaxed">
+                  {errors.dataflow}
+                </p>
               ) : (
-                <p className="text-sm text-slate-500 leading-relaxed">Required field</p>
+                <p className="text-sm text-slate-500 leading-relaxed">
+                  Required field
+                </p>
               )}
               <span className="text-xs text-slate-400">
                 {formData.dataflow?.length || 0} / 10,000
@@ -116,9 +128,12 @@ export function ArchitectureFields({
       <section className="rounded-2xl border border-slate-200 bg-white p-6 md:p-8">
         <div className="space-y-6">
           <div>
-            <h3 className="text-base font-semibold text-slate-900">Key Design Decisions & Trade-offs</h3>
+            <h3 className="text-base font-semibold text-slate-900">
+              Key Design Decisions & Trade-offs
+            </h3>
             <p className="text-sm text-slate-500 mt-1 leading-relaxed">
-              Why did you choose specific technologies or patterns? What are the trade-offs?
+              Why did you choose specific technologies or patterns? What are the
+              trade-offs?
             </p>
           </div>
 
@@ -140,9 +155,13 @@ export function ArchitectureFields({
             />
             <div className="flex items-center justify-between mt-2">
               {touched.decisions && errors.decisions ? (
-                <p className="text-sm text-red-600 leading-relaxed">{errors.decisions}</p>
+                <p className="text-sm text-red-600 leading-relaxed">
+                  {errors.decisions}
+                </p>
               ) : (
-                <p className="text-sm text-slate-500 leading-relaxed">Required field</p>
+                <p className="text-sm text-slate-500 leading-relaxed">
+                  Required field
+                </p>
               )}
               <span className="text-xs text-slate-400">
                 {formData.decisions?.length || 0} / 10,000

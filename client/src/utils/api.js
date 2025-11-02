@@ -48,7 +48,9 @@ export async function getNotionPages(signal) {
   }
 
   if (!response.ok) {
-    throw new Error(data.message || data.error || 'Failed to fetch Notion pages');
+    throw new Error(
+      data.message || data.error || 'Failed to fetch Notion pages',
+    );
   }
 
   return data.pages || [];

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 
 /**
  * @component Toast
@@ -11,7 +11,13 @@ import { useEffect, useState } from 'react';
  * @param {boolean} props.show - Controls visibility
  * @returns {JSX.Element|null} Toast notification or null if not visible
  */
-export function Toast({ message, type = 'info', duration = 3000, onClose, show = true }) {
+export function Toast({
+  message,
+  type = 'info',
+  duration = 3000,
+  onClose,
+  show = true,
+}) {
   const [isVisible, setIsVisible] = useState(show);
   const [isExiting, setIsExiting] = useState(false);
 
@@ -24,6 +30,16 @@ export function Toast({ message, type = 'info', duration = 3000, onClose, show =
     }
   }, [show, isVisible]);
 
+  const handleClose = useCallback(() => {
+    setIsExiting(true);
+    setTimeout(() => {
+      setIsVisible(false);
+      if (onClose) {
+        onClose();
+      }
+    }, 300);
+  }, [onClose]);
+
   useEffect(() => {
     if (isVisible && duration > 0) {
       const timer = setTimeout(() => {
@@ -32,17 +48,7 @@ export function Toast({ message, type = 'info', duration = 3000, onClose, show =
 
       return () => clearTimeout(timer);
     }
-  }, [isVisible, duration]);
-
-  const handleClose = () => {
-    setIsExiting(true);
-    setTimeout(() => {
-      setIsVisible(false);
-      if (onClose) {
-        onClose();
-      }
-    }, 300);
-  };
+  }, [isVisible, duration, handleClose]);
 
   if (!isVisible && !isExiting) return null;
 
@@ -93,7 +99,9 @@ export function Toast({ message, type = 'info', duration = 3000, onClose, show =
           {variant.icon}
         </div>
 
-        <p className={`flex-1 text-sm font-medium ${variant.text} leading-relaxed`}>
+        <p
+          className={`flex-1 text-sm font-medium ${variant.text} leading-relaxed`}
+        >
           {message}
         </p>
 
@@ -107,7 +115,9 @@ export function Toast({ message, type = 'info', duration = 3000, onClose, show =
           `}
           aria-label="Close notification"
         >
-          <span aria-hidden="true" className="text-lg">×</span>
+          <span aria-hidden="true" className="text-lg">
+            ×
+          </span>
         </button>
       </div>
     </div>

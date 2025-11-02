@@ -40,19 +40,28 @@ export function FormField({
   return (
     <div className="space-y-2">
       <div className="flex items-baseline justify-between gap-2">
-        <label htmlFor={id} className="block text-sm font-semibold text-gray-900">
+        <label
+          htmlFor={id}
+          className="block text-sm font-semibold text-gray-900"
+        >
           {label}
           {required ? (
             <span className="ml-1 text-error-600" aria-label="required">
               *
             </span>
           ) : (
-            <span className="ml-2 text-xs font-normal text-gray-600">(Optional)</span>
+            <span className="ml-2 text-xs font-normal text-gray-600">
+              (Optional)
+            </span>
           )}
         </label>
 
         {characterCount !== undefined && (
-          <CharacterCounter current={characterCount} max={maxLength} id={counterId} />
+          <CharacterCounter
+            current={characterCount}
+            max={maxLength}
+            id={counterId}
+          />
         )}
       </div>
 

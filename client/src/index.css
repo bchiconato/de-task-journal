@@ -13,16 +13,27 @@
 
 body {
   margin: 0;
-  font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
-    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+  font-family:
+    'Inter',
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    'Roboto',
+    'Oxygen',
+    'Ubuntu',
+    'Cantarell',
+    'Fira Sans',
+    'Droid Sans',
+    'Helvetica Neue',
     sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
 code {
-  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
-    monospace;
+  font-family:
+    source-code-pro, Menlo, Monaco, Consolas, 'Courier New', monospace;
 }
 
 /* Enhanced focus-visible styles for keyboard navigation */
@@ -93,14 +104,15 @@ code {
 
 /* Code editor styling */
 .code-editor-wrapper {
-  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New', monospace;
+  font-family:
+    source-code-pro, Menlo, Monaco, Consolas, 'Courier New', monospace;
   font-size: 0.9375rem;
   line-height: 1.6;
 }
 
 .code-editor-wrapper textarea {
-  color: #CCCCCC;
-  caret-color: #CCCCCC;
+  color: #cccccc;
+  caret-color: #cccccc;
   white-space: pre-wrap !important;
   word-wrap: break-word !important;
   overflow-wrap: anywhere !important;
@@ -108,7 +120,7 @@ code {
 }
 
 .code-editor-wrapper textarea::placeholder {
-  color: #CCCCCC;
+  color: #cccccc;
   opacity: 1;
 }
 
@@ -205,13 +217,21 @@ code {
 }
 
 @keyframes shake {
-  0%, 100% {
+  0%,
+  100% {
     transform: translateX(0);
   }
-  10%, 30%, 50%, 70%, 90% {
+  10%,
+  30%,
+  50%,
+  70%,
+  90% {
     transform: translateX(-4px);
   }
-  20%, 40%, 60%, 80% {
+  20%,
+  40%,
+  60%,
+  80% {
     transform: translateX(4px);
   }
 }

@@ -9,9 +9,8 @@
  *     <App />
  *   </LiveAnnouncer>
  */
-import { createContext, useContext, useRef } from 'react';
-
-const LiveContext = createContext(null);
+import { useRef } from 'react';
+import { LiveContext } from '../hooks/useAnnouncer';
 
 /**
  * @function LiveAnnouncer
@@ -53,21 +52,4 @@ export function LiveAnnouncer({ children }) {
       />
     </LiveContext.Provider>
   );
-}
-
-/**
- * @function useAnnouncer
- * @description Hook to access live region announcer methods
- * @returns {{announcePolite: (message: string) => void, announceAssertive: (message: string) => void}}
- * @throws {Error} When used outside LiveAnnouncer provider
- * @example
- *   const announcer = useAnnouncer();
- *   announcer.announcePolite('Documentation generated successfully');
- */
-export function useAnnouncer() {
-  const context = useContext(LiveContext);
-  if (!context) {
-    throw new Error('useAnnouncer must be used within <LiveAnnouncer>');
-  }
-  return context;
 }

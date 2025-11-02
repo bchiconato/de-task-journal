@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { FormField } from './FormField';
 import { ArchitectureFields } from './ArchitectureFields';
 import { validateForm, hasErrors, getErrorCount } from '../utils/validation';
@@ -28,7 +28,7 @@ export function InputForm({
   isLoadingPages,
   pagesError,
 }) {
-  const getInitialFormData = () => {
+  const getInitialFormData = useCallback(() => {
     if (mode === 'architecture') {
       return {
         overview: '',
@@ -41,7 +41,7 @@ export function InputForm({
       code: '',
       challenges: '',
     };
-  };
+  }, [mode]);
 
   const [formData, setFormData] = useState(() => {
     try {
@@ -53,7 +53,7 @@ export function InputForm({
         }
       }
     } catch (e) {
-      console.error("Failed to load draft:", e);
+      console.error('Failed to load draft:', e);
       localStorage.removeItem('de-task-journal:formDraft');
     }
     return getInitialFormData();
@@ -74,7 +74,7 @@ export function InputForm({
     setFormData(initialData);
     setErrors({});
     setTouched({});
-  }, [mode]);
+  }, [mode, getInitialFormData]);
 
   /**
    * @description Auto-saves form data to localStorage with debounce
@@ -83,7 +83,10 @@ export function InputForm({
     const timer = setTimeout(() => {
       const hasData = formData.context || formData.overview;
       if (hasData) {
-        localStorage.setItem('de-task-journal:formDraft', JSON.stringify({ ...formData, mode }));
+        localStorage.setItem(
+          'de-task-journal:formDraft',
+          JSON.stringify({ ...formData, mode }),
+        );
       }
     }, 500);
     return () => clearTimeout(timer);
@@ -109,7 +112,10 @@ export function InputForm({
       [name]: true,
     }));
 
-    const fieldErrors = validateForm({ ...formData, [name]: formData[name] }, mode);
+    const fieldErrors = validateForm(
+      { ...formData, [name]: formData[name] },
+      mode,
+    );
     if (fieldErrors[name]) {
       setErrors((prev) => ({
         ...prev,
@@ -178,7 +184,9 @@ export function InputForm({
       <section className="rounded-2xl border border-slate-200 bg-white p-6 md:p-8">
         <div className="space-y-4">
           <div>
-            <h3 className="text-base font-semibold text-slate-900">Notion Target</h3>
+            <h3 className="text-base font-semibold text-slate-900">
+              Notion Target
+            </h3>
             <p className="text-sm text-slate-500 mt-1 leading-relaxed">
               Select the Notion page where documentation will be sent
             </p>
@@ -204,7 +212,9 @@ export function InputForm({
                 <option value="">No pages available</option>
               ) : (
                 <>
-                  {!selectedPageId && <option value="">Select a page...</option>}
+                  {!selectedPageId && (
+                    <option value="">Select a page...</option>
+                  )}
                   {notionPages.map((page) => (
                     <option key={page.id} value={page.id}>
                       {page.title}
@@ -237,9 +247,12 @@ export function InputForm({
           <section className="rounded-2xl border border-slate-200 bg-white p-6 md:p-8">
             <div className="space-y-6">
               <div>
-                <h3 className="text-base font-semibold text-slate-900">Task Context</h3>
+                <h3 className="text-base font-semibold text-slate-900">
+                  Task Context
+                </h3>
                 <p className="text-sm text-slate-500 mt-1 leading-relaxed">
-                  Describe what you built, the problem it solves, and any key technical decisions
+                  Describe what you built, the problem it solves, and any key
+                  technical decisions
                 </p>
               </div>
 
@@ -261,9 +274,13 @@ export function InputForm({
                 />
                 <div className="flex items-center justify-between mt-2">
                   {touched.context && errors.context ? (
-                    <p className="text-sm text-red-600 leading-relaxed">{errors.context}</p>
+                    <p className="text-sm text-red-600 leading-relaxed">
+                      {errors.context}
+                    </p>
                   ) : (
-                    <p className="text-sm text-slate-500 leading-relaxed">Required field</p>
+                    <p className="text-sm text-slate-500 leading-relaxed">
+                      Required field
+                    </p>
                   )}
                   <span className="text-xs text-slate-400">
                     {formData.context?.length || 0} / 10,000
@@ -276,8 +293,12 @@ export function InputForm({
           <section className="rounded-2xl border border-slate-200 bg-white overflow-hidden">
             <div className="flex items-center justify-between px-4 md:px-5 py-3 border-b border-slate-100 bg-slate-50">
               <div>
-                <h3 className="text-base font-semibold text-slate-900">Code Implementation</h3>
-                <p className="text-sm text-slate-500 mt-0.5 leading-relaxed">Optional</p>
+                <h3 className="text-base font-semibold text-slate-900">
+                  Code Implementation
+                </h3>
+                <p className="text-sm text-slate-500 mt-0.5 leading-relaxed">
+                  Optional
+                </p>
               </div>
               <div className="flex items-center gap-2">
                 <button
@@ -293,7 +314,12 @@ export function InputForm({
                   type="button"
                   className="text-xs text-[#003B44] hover:text-[#004850] transition-colors"
                   disabled={isLoading}
-                  onClick={() => handleChange('code', '# Sample Python code\ndef hello_world():\n    print("Hello, World!")\n\nhello_world()')}
+                  onClick={() =>
+                    handleChange(
+                      'code',
+                      '# Sample Python code\ndef hello_world():\n    print("Hello, World!")\n\nhello_world()',
+                    )
+                  }
                 >
                   Paste sample
                 </button>
@@ -314,7 +340,8 @@ export function InputForm({
                 className="h-full"
                 style={{
                   fontSize: '0.875rem',
-                  fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
+                  fontFamily:
+                    'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
                   backgroundColor: '#ffffff',
                   color: '#1e293b',
                   border: 'none',
@@ -325,9 +352,13 @@ export function InputForm({
 
             <div className="px-4 md:px-5 py-3 border-t border-slate-100 bg-slate-50 flex items-center justify-between">
               {touched.code && errors.code ? (
-                <p className="text-sm text-red-600 leading-relaxed">{errors.code}</p>
+                <p className="text-sm text-red-600 leading-relaxed">
+                  {errors.code}
+                </p>
               ) : (
-                <p className="text-sm text-slate-500 leading-relaxed">Include relevant code snippets</p>
+                <p className="text-sm text-slate-500 leading-relaxed">
+                  Include relevant code snippets
+                </p>
               )}
               <span className="text-xs text-slate-400">
                 {formData.code?.length || 0} / 10,000
@@ -338,9 +369,12 @@ export function InputForm({
           <section className="rounded-2xl border border-slate-200 bg-white p-6 md:p-8">
             <div className="space-y-6">
               <div>
-                <h3 className="text-base font-semibold text-slate-900">Challenges & Learnings</h3>
+                <h3 className="text-base font-semibold text-slate-900">
+                  Challenges & Learnings
+                </h3>
                 <p className="text-sm text-slate-500 mt-1 leading-relaxed">
-                  Share obstacles you faced, how you overcame them, and lessons learned
+                  Share obstacles you faced, how you overcame them, and lessons
+                  learned
                 </p>
               </div>
 
@@ -362,9 +396,13 @@ export function InputForm({
                 />
                 <div className="flex items-center justify-between mt-2">
                   {touched.challenges && errors.challenges ? (
-                    <p className="text-sm text-red-600 leading-relaxed">{errors.challenges}</p>
+                    <p className="text-sm text-red-600 leading-relaxed">
+                      {errors.challenges}
+                    </p>
                   ) : (
-                    <p className="text-sm text-slate-500 leading-relaxed">Optional field</p>
+                    <p className="text-sm text-slate-500 leading-relaxed">
+                      Optional field
+                    </p>
                   )}
                   <span className="text-xs text-slate-400">
                     {formData.challenges?.length || 0} / 10,000

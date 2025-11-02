@@ -3,15 +3,19 @@ import { InputForm } from './components/InputForm';
 import { Toast } from './components/Toast';
 import { useToast } from './hooks/useToast';
 import { useAbortableRequest } from './hooks/useAbortableRequest';
-import { useAnnouncer } from './components/LiveAnnouncer';
-import { generateDocumentation, sendToNotion, getNotionPages } from './utils/api';
+import { useAnnouncer } from './hooks/useAnnouncer';
+import {
+  generateDocumentation,
+  sendToNotion,
+  getNotionPages,
+} from './utils/api';
 import { FileText, Clock, HelpCircle } from 'lucide-react';
 import { Guide } from './components/Guide';
 
 const GeneratedContent = lazy(() =>
   import('./components/GeneratedContent').then((module) => ({
     default: module.GeneratedContent,
-  }))
+  })),
 );
 
 /**
@@ -40,7 +44,6 @@ function App() {
   const [documentation, setDocumentation] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
   const [isSending, setIsSending] = useState(false);
-  const [formCollapsed, setFormCollapsed] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
 
   const [notionPages, setNotionPages] = useState([]);
@@ -53,7 +56,7 @@ function App() {
       const savedHistory = localStorage.getItem('de-task-journal:docHistory');
       return savedHistory ? JSON.parse(savedHistory) : [];
     } catch (e) {
-      console.error("Failed to load history:", e);
+      console.error('Failed to load history:', e);
       return [];
     }
   });
@@ -86,7 +89,9 @@ function App() {
         const pages = await getNotionPages();
         setNotionPages(pages);
 
-        const savedPageId = localStorage.getItem('de-task-journal:selected-notion-page');
+        const savedPageId = localStorage.getItem(
+          'de-task-journal:selected-notion-page',
+        );
         if (savedPageId && pages.some((p) => p.id === savedPageId)) {
           setSelectedPageId(savedPageId);
         } else if (pages.length > 0) {
@@ -133,18 +138,21 @@ function App() {
         id: new Date().toISOString(),
         timestamp: new Date().toLocaleString(),
         mode: formData.mode || mode,
-        title: extractTitle(result) || `Task - ${new Date().toLocaleDateString()}`,
+        title:
+          extractTitle(result) || `Task - ${new Date().toLocaleDateString()}`,
         inputs: formData,
-        documentation: result
+        documentation: result,
       };
-      setHistory(prevHistory => {
+      setHistory((prevHistory) => {
         const updatedHistory = [newHistoryItem, ...prevHistory.slice(0, 49)];
-        localStorage.setItem('de-task-journal:docHistory', JSON.stringify(updatedHistory));
+        localStorage.setItem(
+          'de-task-journal:docHistory',
+          JSON.stringify(updatedHistory),
+        );
         return updatedHistory;
       });
 
       setIsEditing(false);
-      setFormCollapsed(true);
       showSuccess('Documentation generated successfully!');
       announcer.announcePolite('Documentation generated successfully.');
     } catch (err) {
@@ -152,9 +160,11 @@ function App() {
         return;
       }
       console.error('Error generating documentation:', err);
-      showError(err.message || 'Failed to generate documentation. Please try again.');
+      showError(
+        err.message || 'Failed to generate documentation. Please try again.',
+      );
       announcer.announceAssertive(
-        err.message || 'Failed to generate documentation. Please try again.'
+        err.message || 'Failed to generate documentation. Please try again.',
       );
     } finally {
       setIsGenerating(false);
@@ -185,9 +195,13 @@ function App() {
         return false;
       }
       console.error('Error sending to Notion:', err);
-      showError(err.message || 'Failed to send to Notion. Please check your configuration.');
+      showError(
+        err.message ||
+          'Failed to send to Notion. Please check your configuration.',
+      );
       announcer.announceAssertive(
-        err.message || 'Failed to send to Notion. Please check your configuration.'
+        err.message ||
+          'Failed to send to Notion. Please check your configuration.',
       );
       return false;
     } finally {
@@ -198,16 +212,11 @@ function App() {
   const handleModeChange = (newMode) => {
     setMode(newMode);
     setDocumentation('');
-    setFormCollapsed(false);
   };
 
   const handlePageChange = (pageId) => {
     setSelectedPageId(pageId);
     localStorage.setItem('de-task-journal:selected-notion-page', pageId);
-  };
-
-  const toggleFormCollapsed = () => {
-    setFormCollapsed(!formCollapsed);
   };
 
   /**
@@ -239,122 +248,136 @@ function App() {
     if (!historyItem) return;
     setMode(historyItem.mode);
     setDocumentation(historyItem.documentation);
-    setFormCollapsed(true);
     showSuccess(`Loaded "${historyItem.title}" from history!`);
     announcer.announcePolite(`Loaded "${historyItem.title}" from history.`);
   };
 
   return (
     <>
-      <a
-        href="#main-content"
-        className="skip-link"
-      >
+      <a href="#main-content" className="skip-link">
         Skip to main content
       </a>
 
       <div className="min-h-screen bg-slate-50">
         <header className="sticky top-0 z-40 bg-[#003740] border-b border-[#004850]">
           <div className="mx-auto max-w-screen-2xl h-14 px-4 flex items-center justify-between gap-4">
-              <div className="flex items-center gap-6">
-                <div className="flex items-center gap-2">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 192 192" fill="none" className="text-white/90">
-                    <g clipPath="url(#A)" fill="currentColor">
-                      <path d="M155.42 95.347c-.216-20.629-4.169-45.572-23.573-56.784-17.789-10.287-51.307-10.048-69.545-.684-17.72 8.963-24.054 30.038-24.934 48.738-.903 20.641.016 45.976 15.32 61.359 10.515 10.448 26.232 13.347 40.522 13.833 10.837.22 22.263-.627 32.53-4.639 24.572-9.541 30.067-38.068 29.681-61.716v-.106h-.001zm-48.816-68.816c19.447 1.865 38.672 12.774 47.287 30.615 8.036 16.871 9.645 37.969 6.813 56.384-4.037 25.967-18.666 44.99-44.882 51.235-16.031 3.632-35.089 3.105-50.189-3.556-23.032-10.168-33.776-32.812-34.434-57.213-.914-19.429.929-40.801 13.565-56.347C59.832 29.056 83.705 24.254 106.5 26.52l.104.011z"/>
-                      <path d="M115.436 135.857h.463l22.773-56.784c2.222-5.465 4.259-8.153 6.298-9.353v-.558h-13.704v.558c2.871 1.571 3.518 5.835 1.574 10.741l-13.98 35.016-18.983-46.502h-.457l-20 46.411-14.352-36.5c-1.664-4.351-1.201-7.594 1.481-9.166v-.558H46.557v.558c2.13 1.11 3.701 3.422 5.647 8.149l23.517 57.988h.459L95.992 88.89l19.444 46.967z"/>
-                    </g>
-                    <defs>
-                      <clipPath id="A">
-                        <path fill="#fff" transform="translate(31 26)" d="M0 0h131v141H0z"/>
-                      </clipPath>
-                    </defs>
-                  </svg>
-                  <h1 className="text-sm font-medium text-white">Task Journal</h1>
-                </div>
-
-                <div
-                  role="tablist"
-                  aria-label="Documentation mode"
-                  className="inline-flex items-center gap-1"
+            <div className="flex items-center gap-6">
+              <div className="flex items-center gap-2">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="48"
+                  height="48"
+                  viewBox="0 0 192 192"
+                  fill="none"
+                  className="text-white/90"
                 >
-                  <button
-                    role="tab"
-                    aria-selected={mode === 'task'}
-                    onClick={() => handleModeChange('task')}
-                    className={`h-9 px-3 text-sm font-medium rounded-md transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#60E7A9]/50 ${
-                      mode === 'task'
-                        ? 'bg-[#011D21] text-white'
-                        : 'text-white/70 hover:text-white hover:bg-[#004850]'
-                    }`}
-                  >
-                    Task
-                  </button>
-                  <button
-                    role="tab"
-                    aria-selected={mode === 'architecture'}
-                    onClick={() => handleModeChange('architecture')}
-                    className={`h-9 px-3 text-sm font-medium rounded-md transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#60E7A9]/50 ${
-                      mode === 'architecture'
-                        ? 'bg-[#011D21] text-white'
-                        : 'text-white/70 hover:text-white hover:bg-[#004850]'
-                    }`}
-                  >
-                    Architecture
-                  </button>
-                </div>
+                  <g clipPath="url(#A)" fill="currentColor">
+                    <path d="M155.42 95.347c-.216-20.629-4.169-45.572-23.573-56.784-17.789-10.287-51.307-10.048-69.545-.684-17.72 8.963-24.054 30.038-24.934 48.738-.903 20.641.016 45.976 15.32 61.359 10.515 10.448 26.232 13.347 40.522 13.833 10.837.22 22.263-.627 32.53-4.639 24.572-9.541 30.067-38.068 29.681-61.716v-.106h-.001zm-48.816-68.816c19.447 1.865 38.672 12.774 47.287 30.615 8.036 16.871 9.645 37.969 6.813 56.384-4.037 25.967-18.666 44.99-44.882 51.235-16.031 3.632-35.089 3.105-50.189-3.556-23.032-10.168-33.776-32.812-34.434-57.213-.914-19.429.929-40.801 13.565-56.347C59.832 29.056 83.705 24.254 106.5 26.52l.104.011z" />
+                    <path d="M115.436 135.857h.463l22.773-56.784c2.222-5.465 4.259-8.153 6.298-9.353v-.558h-13.704v.558c2.871 1.571 3.518 5.835 1.574 10.741l-13.98 35.016-18.983-46.502h-.457l-20 46.411-14.352-36.5c-1.664-4.351-1.201-7.594 1.481-9.166v-.558H46.557v.558c2.13 1.11 3.701 3.422 5.647 8.149l23.517 57.988h.459L95.992 88.89l19.444 46.967z" />
+                  </g>
+                  <defs>
+                    <clipPath id="A">
+                      <path
+                        fill="#fff"
+                        transform="translate(31 26)"
+                        d="M0 0h131v141H0z"
+                      />
+                    </clipPath>
+                  </defs>
+                </svg>
+                <h1 className="text-sm font-medium text-white">Task Journal</h1>
               </div>
 
-              <div className="flex items-center gap-2">
+              <div
+                role="tablist"
+                aria-label="Documentation mode"
+                className="inline-flex items-center gap-1"
+              >
                 <button
-                  onClick={() => setView('guide')}
-                  aria-label="Guide"
-                  className="h-9 w-9 grid place-items-center rounded-md hover:bg-[#004850] text-white/70 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#60E7A9]/50 transition-colors"
+                  role="tab"
+                  aria-selected={mode === 'task'}
+                  onClick={() => handleModeChange('task')}
+                  className={`h-9 px-3 text-sm font-medium rounded-md transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#60E7A9]/50 ${
+                    mode === 'task'
+                      ? 'bg-[#011D21] text-white'
+                      : 'text-white/70 hover:text-white hover:bg-[#004850]'
+                  }`}
                 >
-                  <HelpCircle className="w-4 h-4" strokeWidth={1.5} />
+                  Task
                 </button>
-                <div className="relative">
-                  <button
-                    onClick={() => setIsHistoryOpen(!isHistoryOpen)}
-                    aria-label="History"
-                    aria-haspopup="menu"
-                    aria-expanded={isHistoryOpen}
-                    className="h-9 w-9 grid place-items-center rounded-md hover:bg-[#004850] text-white/70 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#60E7A9]/50 transition-colors"
-                  >
-                    <Clock className="w-4 h-4" strokeWidth={1.5} />
-                  </button>
-
-                  {isHistoryOpen && (
-                    <div
-                      role="menu"
-                      className="absolute right-0 mt-2 min-w-64 max-h-80 rounded-lg border border-[#004850] bg-[#003740] shadow-lg p-1 overflow-auto"
-                    >
-                      {history.length === 0 ? (
-                        <p className="px-4 py-8 text-center text-sm text-white/70">No history yet</p>
-                      ) : (
-                        <>
-                          {history.slice(0, 10).map((item) => (
-                            <button
-                              key={item.id}
-                              role="menuitem"
-                              onClick={() => {
-                                handleLoadFromHistory(item);
-                                setIsHistoryOpen(false);
-                              }}
-                              className="w-full text-left px-3 py-2 rounded-md hover:bg-[#004850] transition-colors group"
-                            >
-                              <p className="font-medium text-sm text-white/90 truncate group-hover:text-white" title={item.title}>
-                                {item.title}
-                              </p>
-                              <p className="text-xs text-white/60 mt-0.5 group-hover:text-white/70">{item.timestamp}</p>
-                            </button>
-                          ))}
-                        </>
-                      )}
-                    </div>
-                  )}
-                </div>
+                <button
+                  role="tab"
+                  aria-selected={mode === 'architecture'}
+                  onClick={() => handleModeChange('architecture')}
+                  className={`h-9 px-3 text-sm font-medium rounded-md transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#60E7A9]/50 ${
+                    mode === 'architecture'
+                      ? 'bg-[#011D21] text-white'
+                      : 'text-white/70 hover:text-white hover:bg-[#004850]'
+                  }`}
+                >
+                  Architecture
+                </button>
               </div>
             </div>
+
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setView('guide')}
+                aria-label="Guide"
+                className="h-9 w-9 grid place-items-center rounded-md hover:bg-[#004850] text-white/70 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#60E7A9]/50 transition-colors"
+              >
+                <HelpCircle className="w-4 h-4" strokeWidth={1.5} />
+              </button>
+              <div className="relative">
+                <button
+                  onClick={() => setIsHistoryOpen(!isHistoryOpen)}
+                  aria-label="History"
+                  aria-haspopup="menu"
+                  aria-expanded={isHistoryOpen}
+                  className="h-9 w-9 grid place-items-center rounded-md hover:bg-[#004850] text-white/70 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#60E7A9]/50 transition-colors"
+                >
+                  <Clock className="w-4 h-4" strokeWidth={1.5} />
+                </button>
+
+                {isHistoryOpen && (
+                  <div
+                    role="menu"
+                    className="absolute right-0 mt-2 min-w-64 max-h-80 rounded-lg border border-[#004850] bg-[#003740] shadow-lg p-1 overflow-auto"
+                  >
+                    {history.length === 0 ? (
+                      <p className="px-4 py-8 text-center text-sm text-white/70">
+                        No history yet
+                      </p>
+                    ) : (
+                      <>
+                        {history.slice(0, 10).map((item) => (
+                          <button
+                            key={item.id}
+                            role="menuitem"
+                            onClick={() => {
+                              handleLoadFromHistory(item);
+                              setIsHistoryOpen(false);
+                            }}
+                            className="w-full text-left px-3 py-2 rounded-md hover:bg-[#004850] transition-colors group"
+                          >
+                            <p
+                              className="font-medium text-sm text-white/90 truncate group-hover:text-white"
+                              title={item.title}
+                            >
+                              {item.title}
+                            </p>
+                            <p className="text-xs text-white/60 mt-0.5 group-hover:text-white/70">
+                              {item.timestamp}
+                            </p>
+                          </button>
+                        ))}
+                      </>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
         </header>
 
         <main
@@ -366,9 +389,14 @@ function App() {
           ) : (
             <>
               <div className="space-y-3 mb-12 text-center">
-                <h2 className="text-3xl font-semibold text-slate-900 leading-tight">Documentation Generator</h2>
+                <h2 className="text-3xl font-semibold text-slate-900 leading-tight">
+                  Documentation Generator
+                </h2>
                 <p className="text-base text-slate-600 leading-relaxed">
-                  Generate technical documentation for your data engineering {mode === 'architecture' ? 'architecture and design decisions' : 'tasks and implementations'}
+                  Generate technical documentation for your data engineering{' '}
+                  {mode === 'architecture'
+                    ? 'architecture and design decisions'
+                    : 'tasks and implementations'}
                 </p>
               </div>
 
@@ -421,7 +449,8 @@ function App() {
                         Ready to generate documentation
                       </p>
                       <p className="text-sm text-slate-500 mt-2 leading-relaxed">
-                        Fill out the form above and click Generate to create your documentation
+                        Fill out the form above and click Generate to create
+                        your documentation
                       </p>
                     </div>
                   )}

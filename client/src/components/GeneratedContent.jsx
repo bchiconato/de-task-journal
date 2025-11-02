@@ -36,7 +36,10 @@ export function GeneratedContent({
 
   const handleCopy = async () => {
     try {
-      if (navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
+      if (
+        navigator.clipboard &&
+        typeof navigator.clipboard.writeText === 'function'
+      ) {
         await navigator.clipboard.writeText(content);
         setJustCopied(true);
       } else {
@@ -69,7 +72,11 @@ export function GeneratedContent({
       aria-labelledby="preview-heading"
     >
       <div
-        className={isEditing ? 'p-6 md:p-8 border-b border-slate-200' : 'pb-6 border-b border-slate-200'}
+        className={
+          isEditing
+            ? 'p-6 md:p-8 border-b border-slate-200'
+            : 'pb-6 border-b border-slate-200'
+        }
       >
         <h2
           id="preview-heading"
@@ -79,7 +86,11 @@ export function GeneratedContent({
         >
           Generated Documentation
         </h2>
-        <div className="flex gap-2 flex-wrap" aria-busy={isSending} aria-live="polite">
+        <div
+          className="flex gap-2 flex-wrap"
+          aria-busy={isSending}
+          aria-live="polite"
+        >
           <button
             onClick={handleCopy}
             className={`whitespace-nowrap px-4 py-2 rounded-lg text-sm font-medium transition-colors focus-visible:ring-2 focus-visible:ring-[#003B44] focus-visible:ring-offset-2 focus-visible:outline-none ${
@@ -99,7 +110,11 @@ export function GeneratedContent({
                 ? 'text-indigo-700 bg-indigo-50 hover:bg-indigo-100'
                 : 'text-slate-700 bg-slate-100 hover:bg-slate-200'
             }`}
-            aria-label={isEditing ? 'Save edits and return to preview' : 'Edit documentation'}
+            aria-label={
+              isEditing
+                ? 'Save edits and return to preview'
+                : 'Edit documentation'
+            }
             aria-live="polite"
           >
             {isEditing ? '✓ Save' : 'Edit'}
@@ -146,7 +161,7 @@ export function GeneratedContent({
           <ReactMarkdown
             remarkPlugins={[remarkGfm]}
             components={{
-              code({ node, inline, className, children, ...props }) {
+              code({ inline, className, children, ...props }) {
                 const match = /language-(\w+)/.exec(className || '');
                 const language = match ? match[1] : '';
 
@@ -202,10 +217,17 @@ export function GeneratedContent({
                 <ol className="list-decimal pl-6 space-y-2 my-4">{children}</ol>
               ),
               li: ({ children }) => (
-                <li className="text-slate-800" style={{ lineHeight: '1.6' }}>{children}</li>
+                <li className="text-slate-800" style={{ lineHeight: '1.6' }}>
+                  {children}
+                </li>
               ),
               p: ({ children }) => (
-                <p className="my-4 text-slate-800" style={{ lineHeight: '1.6' }}>{children}</p>
+                <p
+                  className="my-4 text-slate-800"
+                  style={{ lineHeight: '1.6' }}
+                >
+                  {children}
+                </p>
               ),
             }}
           >
