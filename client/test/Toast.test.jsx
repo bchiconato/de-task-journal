@@ -18,7 +18,7 @@ describe('Toast', () => {
 
   it('renders different toast types with correct styling', () => {
     const { rerender } = render(
-      <Toast message="Success message" type="success" show={true} />
+      <Toast message="Success message" type="success" show={true} />,
     );
     expect(screen.getByText('✓')).toBeInTheDocument();
 
@@ -40,7 +40,7 @@ describe('Toast', () => {
         show={true}
         onClose={onClose}
         duration={0}
-      />
+      />,
     );
 
     const closeButton = screen.getByLabelText('Close notification');
@@ -62,7 +62,7 @@ describe('Toast', () => {
         show={true}
         onClose={onClose}
         duration={1000}
-      />
+      />,
     );
 
     expect(screen.getByText('Auto-dismiss test')).toBeInTheDocument();
@@ -91,9 +91,7 @@ describe('Toast', () => {
   });
 
   it('renders with default type when invalid type is provided', () => {
-    render(
-      <Toast message="Default type test" type="invalid" show={true} />
-    );
+    render(<Toast message="Default type test" type="invalid" show={true} />);
 
     expect(screen.getByText('ℹ')).toBeInTheDocument();
   });
@@ -109,7 +107,7 @@ describe('Toast', () => {
         show={true}
         onClose={onClose}
         duration={0}
-      />
+      />,
     );
 
     vi.advanceTimersByTime(5000);

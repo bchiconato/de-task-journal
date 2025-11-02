@@ -13,10 +13,10 @@ describe('InputForm', () => {
     render(<InputForm onGenerate={vi.fn()} isLoading={false} />);
 
     expect(
-      screen.getByText('Data Engineering Task Documenter')
+      screen.getByText('Data Engineering Task Documenter'),
     ).toBeInTheDocument();
     expect(
-      screen.getByLabelText(/task context/i, { exact: false })
+      screen.getByLabelText(/task context/i, { exact: false }),
     ).toBeInTheDocument();
   });
 
@@ -33,7 +33,7 @@ describe('InputForm', () => {
     await user.tab();
 
     expect(
-      await screen.findByText(/context.*10.*characters/i)
+      await screen.findByText(/context.*10.*characters/i),
     ).toBeInTheDocument();
   });
 
@@ -48,7 +48,7 @@ describe('InputForm', () => {
     });
     await user.type(
       contextField,
-      'This is a valid context with more than 10 characters'
+      'This is a valid context with more than 10 characters',
     );
 
     const generateButton = screen.getByRole('button', { name: /generate/i });
@@ -57,7 +57,7 @@ describe('InputForm', () => {
     expect(onGenerate).toHaveBeenCalledWith(
       expect.objectContaining({
         context: 'This is a valid context with more than 10 characters',
-      })
+      }),
     );
   });
 

@@ -4,7 +4,7 @@
  */
 
 import React from 'react';
-import { describe, test, expect, vi } from 'vitest';
+import { test, expect, vi } from 'vitest';
 import { render } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import { axe, toHaveNoViolations } from 'jest-axe';
@@ -43,7 +43,7 @@ function hello() {
       content={mockContent}
       onSendToNotion={mockSendToNotion}
       isSending={false}
-    />
+    />,
   );
 
   const results = await axe(container);
@@ -64,7 +64,7 @@ test('GeneratedContent maintains accessibility during send operation', async () 
       content={mockContent}
       onSendToNotion={mockSendToNotion}
       isSending={true}
-    />
+    />,
   );
 
   const results = await axe(container);

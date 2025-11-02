@@ -4,8 +4,7 @@
 
 import React from 'react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, waitFor, fireEvent, act } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
+import { render, screen, fireEvent, act } from '@testing-library/react';
 import { GeneratedContent } from '../src/components/GeneratedContent.jsx';
 
 describe('GeneratedContent', () => {
@@ -18,7 +17,7 @@ describe('GeneratedContent', () => {
     Object.defineProperty(navigator, 'clipboard', {
       value: { writeText: mockWriteText },
       writable: true,
-      configurable: true
+      configurable: true,
     });
   });
 
@@ -36,7 +35,7 @@ describe('GeneratedContent', () => {
         content=""
         onSendToNotion={vi.fn()}
         isSending={false}
-      />
+      />,
     );
 
     expect(container.firstChild).toBeNull();
@@ -48,7 +47,7 @@ describe('GeneratedContent', () => {
         content={mockContent}
         onSendToNotion={vi.fn()}
         isSending={false}
-      />
+      />,
     );
 
     expect(screen.getByText('Generated documentation')).toBeInTheDocument();
@@ -62,11 +61,11 @@ describe('GeneratedContent', () => {
         content={mockContent}
         onSendToNotion={vi.fn()}
         isSending={false}
-      />
+      />,
     );
 
     const copyButton = screen.getByLabelText(
-      'Copy all documentation to clipboard'
+      'Copy all documentation to clipboard',
     );
     expect(copyButton).toBeInTheDocument();
     expect(copyButton).toHaveTextContent('Copy all');
@@ -74,26 +73,26 @@ describe('GeneratedContent', () => {
 
   it('copies content to clipboard when Copy all is clicked', async () => {
     vi.useFakeTimers();
-    
+
     const { getByLabelText } = render(
       <GeneratedContent
         content={mockContent}
         onSendToNotion={vi.fn()}
         isSending={false}
-      />
+      />,
     );
 
     const copyButton = getByLabelText('Copy all documentation to clipboard');
-    
+
     await act(async () => {
       await fireEvent.click(copyButton);
       // Advance any pending timers
       vi.runAllTimers();
     });
-    
+
     expect(mockWriteText).toHaveBeenCalledWith(mockContent);
     expect(copyButton).toHaveTextContent('✓ Copied!');
-    
+
     vi.useRealTimers();
   });
 
@@ -103,21 +102,21 @@ describe('GeneratedContent', () => {
         content={mockContent}
         onSendToNotion={vi.fn()}
         isSending={false}
-      />
+      />,
     );
 
     const copyButton = getByLabelText('Copy all documentation to clipboard');
-    
+
     await act(async () => {
       await fireEvent.click(copyButton);
     });
-    
+
     expect(copyButton).toHaveTextContent('✓ Copied!');
-    
+
     await act(async () => {
       vi.advanceTimersByTime(2000);
     });
-    
+
     expect(copyButton).toHaveTextContent('Copy all');
   });
 
@@ -127,7 +126,7 @@ describe('GeneratedContent', () => {
         content={mockContent}
         onSendToNotion={vi.fn()}
         isSending={false}
-      />
+      />,
     );
 
     const sendButton = screen.getByLabelText('Send documentation to Notion');
@@ -143,7 +142,7 @@ describe('GeneratedContent', () => {
         content={mockContent}
         onSendToNotion={onSendToNotion}
         isSending={false}
-      />
+      />,
     );
 
     const sendButton = getByLabelText('Send documentation to Notion');
@@ -160,7 +159,7 @@ describe('GeneratedContent', () => {
         content={mockContent}
         onSendToNotion={vi.fn()}
         isSending={true}
-      />
+      />,
     );
 
     const sendButton = screen.getByLabelText('Send documentation to Notion');
@@ -175,11 +174,11 @@ describe('GeneratedContent', () => {
         content={mockContent}
         onSendToNotion={vi.fn()}
         isSending={true}
-      />
+      />,
     );
 
     const statusMessage = screen.getByText(
-      'Sending documentation to Notion, please wait...'
+      'Sending documentation to Notion, please wait...',
     );
     expect(statusMessage).toBeInTheDocument();
     expect(statusMessage).toHaveClass('sr-only');
@@ -193,7 +192,7 @@ describe('GeneratedContent', () => {
         content={contentWithCode}
         onSendToNotion={vi.fn()}
         isSending={false}
-      />
+      />,
     );
 
     const codeBlock = container.querySelector('code');
@@ -207,7 +206,7 @@ describe('GeneratedContent', () => {
         content={mockContent}
         onSendToNotion={vi.fn()}
         isSending={false}
-      />
+      />,
     );
 
     const article = screen.getByRole('article');

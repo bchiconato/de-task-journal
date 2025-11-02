@@ -20,5 +20,5 @@ export const server = setupServer(
       blocksAdded: 10,
       chunks: 1,
     });
-  })
+  }),
 );
