@@ -48,22 +48,22 @@ export function Toast({ message, type = 'info', duration = 3000, onClose, show =
 
   const variants = {
     success: {
-      bg: 'bg-success-50 border-success-700',
-      text: 'text-success-900',
+      bg: 'bg-emerald-50 border-emerald-600',
+      text: 'text-emerald-900',
       icon: '✓',
-      iconBg: 'bg-success-700',
+      iconBg: 'bg-emerald-600',
     },
     error: {
-      bg: 'bg-error-50 border-error-600',
-      text: 'text-error-900',
+      bg: 'bg-red-50 border-red-600',
+      text: 'text-red-900',
       icon: '✕',
-      iconBg: 'bg-error-600',
+      iconBg: 'bg-red-600',
     },
     info: {
-      bg: 'bg-primary-50 border-primary-600',
-      text: 'text-primary-900',
+      bg: 'bg-indigo-50 border-indigo-600',
+      text: 'text-indigo-900',
       icon: 'ℹ',
-      iconBg: 'bg-primary-600',
+      iconBg: 'bg-indigo-600',
     },
   };
 
@@ -79,21 +79,21 @@ export function Toast({ message, type = 'info', duration = 3000, onClose, show =
       <div
         className={`
           flex items-center gap-3
-          ${variant.bg} border-2 rounded-lg shadow-lg
+          ${variant.bg} border rounded-xl shadow-lg
           px-4 py-3 min-w-[300px] max-w-md
         `}
       >
         <div
           className={`
             flex-shrink-0 w-6 h-6 rounded-full ${variant.iconBg}
-            flex items-center justify-center text-white text-sm font-bold
+            flex items-center justify-center text-white text-xs font-bold
           `}
           aria-hidden="true"
         >
           {variant.icon}
         </div>
 
-        <p className={`flex-1 text-sm font-medium ${variant.text}`}>
+        <p className={`flex-1 text-sm font-medium ${variant.text} leading-relaxed`}>
           {message}
         </p>
 
@@ -102,12 +102,12 @@ export function Toast({ message, type = 'info', duration = 3000, onClose, show =
           className={`
             flex-shrink-0 w-6 h-6 rounded
             ${variant.text} opacity-70 hover:opacity-100
-            focus:opacity-100 focus:outline-none
+            focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-1
             transition-opacity
           `}
           aria-label="Close notification"
         >
-          <span aria-hidden="true">×</span>
+          <span aria-hidden="true" className="text-lg">×</span>
         </button>
       </div>
     </div>

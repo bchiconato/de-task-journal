@@ -13,7 +13,7 @@
 
 body {
   margin: 0;
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+  font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
     'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
     sans-serif;
   -webkit-font-smoothing: antialiased;
@@ -101,6 +101,10 @@ code {
 .code-editor-wrapper textarea {
   color: #CCCCCC;
   caret-color: #CCCCCC;
+  white-space: pre-wrap !important;
+  word-wrap: break-word !important;
+  overflow-wrap: anywhere !important;
+  word-break: break-word !important;
 }
 
 .code-editor-wrapper textarea::placeholder {
@@ -114,6 +118,37 @@ code {
 .code-editor-wrapper .w-tc-editor textarea {
   min-height: inherit;
   height: 100%;
+}
+
+/* Force text wrapping in the editor container */
+.code-editor-wrapper .w-tc-editor,
+.code-editor-wrapper .w-tc-editor-var,
+.code-editor-wrapper .w-tc-editor-text {
+  max-width: 100% !important;
+  overflow-x: hidden !important;
+  white-space: pre-wrap !important;
+  word-wrap: break-word !important;
+}
+
+/* Force text wrapping in pre elements (used by syntax highlighter) */
+.code-editor-wrapper pre,
+.code-editor-wrapper .w-tc-editor pre,
+.code-editor-wrapper .w-tc-editor-var pre,
+.code-editor-wrapper code {
+  white-space: pre-wrap !important;
+  word-wrap: break-word !important;
+  overflow-wrap: anywhere !important;
+  word-break: break-word !important;
+  max-width: 100% !important;
+  overflow-x: hidden !important;
+}
+
+/* Prevent horizontal scrolling caused by long words */
+.code-editor-wrapper *,
+.code-editor-wrapper *::before,
+.code-editor-wrapper *::after {
+  max-width: 100% !important;
+  box-sizing: border-box !important;
 }
 
 /* Ensure proper line height and max-width for readability */

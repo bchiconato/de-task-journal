@@ -1,5 +1,4 @@
 const API_BASE_URL = import.meta.env.VITE_API_BASE ?? '/api';
-const DEFAULT_NOTION_PAGE_ID = import.meta.env.VITE_NOTION_PAGE_ID;
 
 /**
  * Generates documentation using Google Gemini (mocked locally if no API key)
@@ -27,30 +26,63 @@ export async function generateDocumentation(data, signal) {
 }
 
 /**
+ * Fetches list of Notion pages shared with the integration
+ * @param {AbortSignal} [signal] - Optional AbortSignal for request cancellation
+ * @returns {Promise<Array<{id: string, title: string}>>} Array of pages with id and title
+ */
+export async function getNotionPages(signal) {
+  const response = await fetch(`${API_BASE_URL}/notion/pages`, {
+    method: 'GET',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    signal,
+  });
+
+  const text = await response.text().catch(() => '');
+  let data;
+  try {
+    data = JSON.parse(text || '{}');
+  } catch {
+    data = {};
+  }
+
+  if (!response.ok) {
+    throw new Error(data.message || data.error || 'Failed to fetch Notion pages');
+  }
+
+  return data.pages || [];
+}
+
+/**
  * Sends content to Notion
  * @param {string} content - The documentation content
  * @param {('task'|'architecture')} mode - Documentation mode
+ * @param {string} pageId - Notion page ID to send content to
  * @param {AbortSignal} [signal] - Optional AbortSignal for request cancellation
  * @returns {Promise<Object>} Response from Notion API
  */
-export async function sendToNotion(content, mode, signal) {
-  if (!DEFAULT_NOTION_PAGE_ID) {
-    throw new Error('Set VITE_NOTION_PAGE_ID in client/.env');
-  }
+export async function sendToNotion(content, mode, pageId, signal) {
   const response = await fetch(`${API_BASE_URL}/notion`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({ content, mode, pageId: DEFAULT_NOTION_PAGE_ID }),
+    body: JSON.stringify({ content, mode, pageId }),
     signal,
   });
 
   const text = await response.text().catch(() => '');
-  let data; try { data = JSON.parse(text || '{}'); } catch { data = {}; }
+  let data;
+  try {
+    data = JSON.parse(text || '{}');
+  } catch {
+    data = {};
+  }
+
   if (!response.ok) {
     throw new Error(data.message || data.error || 'Failed to send to Notion');
   }
-  
+
   return data;
 }

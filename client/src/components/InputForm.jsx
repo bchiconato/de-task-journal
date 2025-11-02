@@ -11,9 +11,23 @@ import { CodeImplementationEditor } from './CodeImplementationEditor';
  * @param {('task'|'architecture')} props.mode - Documentation mode
  * @param {Function} props.onGenerate - Form submission handler
  * @param {boolean} props.isLoading - Whether generation is in progress
+ * @param {Array<{id: string, title: string}>} props.notionPages - Available Notion pages
+ * @param {string} props.selectedPageId - Currently selected page ID
+ * @param {Function} props.onPageChange - Page selection change handler
+ * @param {boolean} props.isLoadingPages - Whether pages are being loaded
+ * @param {string|null} props.pagesError - Error message from page loading
  * @returns {JSX.Element} Form with mode-specific fields
  */
-export function InputForm({ mode, onGenerate, isLoading }) {
+export function InputForm({
+  mode,
+  onGenerate,
+  isLoading,
+  notionPages,
+  selectedPageId,
+  onPageChange,
+  isLoadingPages,
+  pagesError,
+}) {
   const getInitialFormData = () => {
     if (mode === 'architecture') {
       return {
@@ -29,7 +43,21 @@ export function InputForm({ mode, onGenerate, isLoading }) {
     };
   };
 
-  const [formData, setFormData] = useState(getInitialFormData);
+  const [formData, setFormData] = useState(() => {
+    try {
+      const savedDraft = localStorage.getItem('de-task-journal:formDraft');
+      if (savedDraft) {
+        const draftData = JSON.parse(savedDraft);
+        if (draftData.mode === mode) {
+          return draftData;
+        }
+      }
+    } catch (e) {
+      console.error("Failed to load draft:", e);
+      localStorage.removeItem('de-task-journal:formDraft');
+    }
+    return getInitialFormData();
+  });
 
   const [errors, setErrors] = useState({});
   const [touched, setTouched] = useState({});
@@ -47,6 +75,19 @@ export function InputForm({ mode, onGenerate, isLoading }) {
     setErrors({});
     setTouched({});
   }, [mode]);
+
+  /**
+   * @description Auto-saves form data to localStorage with debounce
+   */
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      const hasData = formData.context || formData.overview;
+      if (hasData) {
+        localStorage.setItem('de-task-journal:formDraft', JSON.stringify({ ...formData, mode }));
+      }
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [formData, mode]);
 
   const handleChange = (name, value) => {
     setFormData((prev) => ({
@@ -123,189 +164,258 @@ export function InputForm({ mode, onGenerate, isLoading }) {
       return;
     }
 
+    localStorage.removeItem('de-task-journal:formDraft');
     onGenerate({ ...formData, mode });
   };
 
   return (
-    <section aria-labelledby="form-heading">
-      <form
-        onSubmit={handleSubmit}
-        className="bg-white rounded-lg shadow-md p-6 space-y-6"
-        noValidate
-        aria-label="Documentation generation form"
-      >
-        <header className="mb-6">
-          <h1 id="form-heading" className="text-3xl font-bold text-gray-900 mb-2">
-            {mode === 'architecture'
-              ? 'Architecture Documenter'
-              : 'Data Engineering Task Documenter'}
-          </h1>
-          <p className="text-gray-600">
-            {mode === 'architecture'
-              ? 'Generate comprehensive architecture documentation for your systems'
-              : 'Generate professional technical documentation for your data engineering tasks'}
-          </p>
-        </header>
-
-        {mode === 'architecture' ? (
-          <ArchitectureFields
-            formData={formData}
-            errors={errors}
-            touched={touched}
-            onFieldChange={handleChange}
-            onFieldBlur={handleBlur}
-            isLoading={isLoading}
-            refs={{ overviewRef, dataflowRef, decisionsRef }}
-          />
-        ) : (
-          <>
-            <FormField
-          label="Task context"
-          required={true}
-          helperText="Describe what you built, the problem it solves, and any key technical decisions"
-          error={touched.context && errors.context}
-          id="context"
-          characterCount={formData.context?.length || 0}
-          maxLength={10000}
-        >
-          <textarea
-            ref={contextRef}
-            name="context"
-            value={formData.context || ''}
-            onChange={(e) => handleChange('context', e.target.value)}
-            onBlur={() => handleBlur('context')}
-            placeholder="Example: Building an ETL pipeline to migrate customer data from MySQL to Snowflake..."
-            className={`
-              w-full px-4 py-3 border rounded-lg
-              focus:outline-none focus:ring-3 focus:ring-primary-500 focus:border-primary-500
-              min-h-[160px] lg:min-h-[200px] xl:min-h-[240px]
-              max-h-[400px] lg:max-h-[480px] xl:max-h-[560px]
-              resize-y overflow-y-auto
-              disabled:bg-gray-50 disabled:cursor-not-allowed
-              ${touched.context && errors.context ? 'border-error-600' : 'border-gray-300'}
-            `}
-            disabled={isLoading}
-          />
-        </FormField>
-
-        <FormField
-          label="Code implementation"
-          required={false}
-          helperText="Include relevant code snippets that demonstrate your implementation"
-          error={touched.code && errors.code}
-          id="code"
-          characterCount={formData.code?.length || 0}
-          maxLength={10000}
-        >
-          <div className="code-editor-wrapper min-h-[160px] lg:min-h-[200px] xl:min-h-[240px] max-h-[400px] lg:max-h-[480px] xl:max-h-[560px] overflow-y-auto rounded-xl">
-            <CodeImplementationEditor
-              ref={codeRef}
-              value={formData.code}
-              onChange={(v) => handleChange('code', v)}
-              language="python"
-              placeholder="# Paste your code here...
-# Supports Python, SQL, JavaScript, and more"
-              onBlur={() => handleBlur('code')}
-              padding={16}
-              disabled={isLoading}
-              className="h-full"
-              style={{
-                fontSize: '0.9375rem',
-                fontFamily: 'source-code-pro, Menlo, Monaco, Consolas, \"Courier New\", monospace',
-                backgroundColor: '#f9fafb',
-                color: '#1f2937',
-                border: `2px solid ${touched.code && errors.code ? '#dc2626' : '#d1d5db'}`,
-                borderRadius: '0.5rem',
-                lineHeight: '1.6',
-              }}
-            />
+    <form
+      onSubmit={handleSubmit}
+      className="space-y-8"
+      noValidate
+      aria-label="Documentation generation form"
+    >
+      <section className="rounded-2xl border border-slate-200 bg-white p-6 md:p-8">
+        <div className="space-y-4">
+          <div>
+            <h3 className="text-base font-semibold text-slate-900">Notion Target</h3>
+            <p className="text-sm text-slate-500 mt-1 leading-relaxed">
+              Select the Notion page where documentation will be sent
+            </p>
           </div>
-        </FormField>
 
-        <FormField
-          label="Challenges and difficulties"
-          required={false}
-          helperText="Share obstacles you faced, how you overcame them, and lessons learned"
-          error={touched.challenges && errors.challenges}
-          id="challenges"
-          characterCount={formData.challenges?.length || 0}
-          maxLength={10000}
-        >
-          <textarea
-            ref={challengesRef}
-            name="challenges"
-            value={formData.challenges || ''}
-            onChange={(e) => handleChange('challenges', e.target.value)}
-            onBlur={() => handleBlur('challenges')}
-            placeholder="Example: Encountered performance issues with large datasets, had to implement batch processing..."
-            className={`
-              w-full px-4 py-3 border rounded-lg
-              focus:outline-none focus:ring-3 focus:ring-primary-500 focus:border-primary-500
-              min-h-[140px] lg:min-h-[180px] xl:min-h-[220px]
-              max-h-[360px] lg:max-h-[440px] xl:max-h-[520px]
-              resize-y overflow-y-auto
-              disabled:bg-gray-50 disabled:cursor-not-allowed
-              ${touched.challenges && errors.challenges ? 'border-error-600' : 'border-gray-300'}
-            `}
-            disabled={isLoading}
-          />
-        </FormField>
-          </>
-        )}
-
-        <div aria-busy={isLoading} aria-live="polite">
-          <button
-            type="submit"
-            disabled={isLoading}
-            aria-disabled={isLoading ? 'true' : undefined}
-            className={`
-              w-full py-3 px-6 rounded-lg font-semibold text-white
-              transition-all duration-150
-              focus:outline-none focus:ring-3 focus:ring-offset-2 focus:ring-primary-500
-              ${
-                isLoading
-                  ? 'bg-gray-400 cursor-not-allowed'
-                  : 'bg-primary-600 hover:bg-primary-700 active:bg-primary-800'
-              }
-            `}
-            aria-busy={isLoading}
-          >
-            {isLoading ? (
-              <span className="flex items-center justify-center gap-2">
-                Generating documentation...
-                <svg
-                  className="animate-spin h-5 w-5 text-white"
-                  xmlns="http://www.w3.org/2000/svg"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  aria-hidden="true"
-                >
-                  <circle
-                    className="opacity-25"
-                    cx="12"
-                    cy="12"
-                    r="10"
-                    stroke="currentColor"
-                    strokeWidth="4"
-                  />
-                  <path
-                    className="opacity-75"
-                    fill="currentColor"
-                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                  />
-                </svg>
-              </span>
-            ) : (
-              'Generate documentation'
+          <div>
+            <label htmlFor="notion-page" className="sr-only">
+              Notion page
+            </label>
+            <select
+              id="notion-page"
+              name="notionPage"
+              value={selectedPageId}
+              onChange={(e) => onPageChange(e.target.value)}
+              disabled={isLoadingPages || isLoading}
+              className="w-full px-4 py-2.5 rounded-lg border border-slate-200 bg-white text-sm text-slate-900 hover:bg-slate-50 focus-visible:ring-2 focus-visible:ring-[#003B44] focus-visible:ring-offset-1 focus-visible:outline-none disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              {isLoadingPages ? (
+                <option value="">Loading pages...</option>
+              ) : pagesError ? (
+                <option value="">Failed to load pages</option>
+              ) : notionPages.length === 0 ? (
+                <option value="">No pages available</option>
+              ) : (
+                <>
+                  {!selectedPageId && <option value="">Select a page...</option>}
+                  {notionPages.map((page) => (
+                    <option key={page.id} value={page.id}>
+                      {page.title}
+                    </option>
+                  ))}
+                </>
+              )}
+            </select>
+            {pagesError && (
+              <p className="text-sm text-red-600 mt-1.5 leading-relaxed">
+                {pagesError}
+              </p>
             )}
-          </button>
-          {isLoading && (
-            <span role="status" className="sr-only">
-              Generating documentation, please wait...
-            </span>
-          )}
+          </div>
         </div>
-      </form>
-    </section>
+      </section>
+
+      {mode === 'architecture' ? (
+        <ArchitectureFields
+          formData={formData}
+          errors={errors}
+          touched={touched}
+          onFieldChange={handleChange}
+          onFieldBlur={handleBlur}
+          isLoading={isLoading}
+          refs={{ overviewRef, dataflowRef, decisionsRef }}
+        />
+      ) : (
+        <>
+          <section className="rounded-2xl border border-slate-200 bg-white p-6 md:p-8">
+            <div className="space-y-6">
+              <div>
+                <h3 className="text-base font-semibold text-slate-900">Task Context</h3>
+                <p className="text-sm text-slate-500 mt-1 leading-relaxed">
+                  Describe what you built, the problem it solves, and any key technical decisions
+                </p>
+              </div>
+
+              <div>
+                <label htmlFor="context" className="sr-only">
+                  Task context
+                </label>
+                <textarea
+                  ref={contextRef}
+                  id="context"
+                  name="context"
+                  value={formData.context || ''}
+                  onChange={(e) => handleChange('context', e.target.value)}
+                  onBlur={() => handleBlur('context')}
+                  placeholder="Example: Building an ETL pipeline to migrate customer data from MySQL to Snowflake..."
+                  rows={8}
+                  disabled={isLoading}
+                  className="w-full px-4 py-3 rounded-lg border border-slate-200 bg-white text-sm text-slate-900 leading-relaxed placeholder:text-slate-400 hover:bg-slate-50 focus-visible:ring-2 focus-visible:ring-[#003B44] focus-visible:ring-offset-1 focus-visible:outline-none disabled:opacity-50 resize-none transition-colors"
+                />
+                <div className="flex items-center justify-between mt-2">
+                  {touched.context && errors.context ? (
+                    <p className="text-sm text-red-600 leading-relaxed">{errors.context}</p>
+                  ) : (
+                    <p className="text-sm text-slate-500 leading-relaxed">Required field</p>
+                  )}
+                  <span className="text-xs text-slate-400">
+                    {formData.context?.length || 0} / 10,000
+                  </span>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section className="rounded-2xl border border-slate-200 bg-white overflow-hidden">
+            <div className="flex items-center justify-between px-4 md:px-5 py-3 border-b border-slate-100 bg-slate-50">
+              <div>
+                <h3 className="text-base font-semibold text-slate-900">Code Implementation</h3>
+                <p className="text-sm text-slate-500 mt-0.5 leading-relaxed">Optional</p>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => handleChange('code', '')}
+                  className="text-xs text-slate-600 hover:text-slate-900 transition-colors"
+                  disabled={isLoading || !formData.code}
+                >
+                  Clear
+                </button>
+                <span className="text-slate-300">|</span>
+                <button
+                  type="button"
+                  className="text-xs text-[#003B44] hover:text-[#004850] transition-colors"
+                  disabled={isLoading}
+                  onClick={() => handleChange('code', '# Sample Python code\ndef hello_world():\n    print("Hello, World!")\n\nhello_world()')}
+                >
+                  Paste sample
+                </button>
+              </div>
+            </div>
+
+            <div className="h-72">
+              <CodeImplementationEditor
+                ref={codeRef}
+                value={formData.code}
+                onChange={(v) => handleChange('code', v)}
+                language="python"
+                placeholder="# Paste your code here...
+# Supports Python, SQL, JavaScript, and more"
+                onBlur={() => handleBlur('code')}
+                padding={16}
+                disabled={isLoading}
+                className="h-full"
+                style={{
+                  fontSize: '0.875rem',
+                  fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
+                  backgroundColor: '#ffffff',
+                  color: '#1e293b',
+                  border: 'none',
+                  lineHeight: '1.6',
+                }}
+              />
+            </div>
+
+            <div className="px-4 md:px-5 py-3 border-t border-slate-100 bg-slate-50 flex items-center justify-between">
+              {touched.code && errors.code ? (
+                <p className="text-sm text-red-600 leading-relaxed">{errors.code}</p>
+              ) : (
+                <p className="text-sm text-slate-500 leading-relaxed">Include relevant code snippets</p>
+              )}
+              <span className="text-xs text-slate-400">
+                {formData.code?.length || 0} / 10,000
+              </span>
+            </div>
+          </section>
+
+          <section className="rounded-2xl border border-slate-200 bg-white p-6 md:p-8">
+            <div className="space-y-6">
+              <div>
+                <h3 className="text-base font-semibold text-slate-900">Challenges & Learnings</h3>
+                <p className="text-sm text-slate-500 mt-1 leading-relaxed">
+                  Share obstacles you faced, how you overcame them, and lessons learned
+                </p>
+              </div>
+
+              <div>
+                <label htmlFor="challenges" className="sr-only">
+                  Challenges and difficulties
+                </label>
+                <textarea
+                  ref={challengesRef}
+                  id="challenges"
+                  name="challenges"
+                  value={formData.challenges || ''}
+                  onChange={(e) => handleChange('challenges', e.target.value)}
+                  onBlur={() => handleBlur('challenges')}
+                  placeholder="Example: Encountered performance issues with large datasets, had to implement batch processing..."
+                  rows={6}
+                  disabled={isLoading}
+                  className="w-full px-4 py-3 rounded-lg border border-slate-200 bg-white text-sm text-slate-900 leading-relaxed placeholder:text-slate-400 hover:bg-slate-50 focus-visible:ring-2 focus-visible:ring-[#003B44] focus-visible:ring-offset-1 focus-visible:outline-none disabled:opacity-50 resize-none transition-colors"
+                />
+                <div className="flex items-center justify-between mt-2">
+                  {touched.challenges && errors.challenges ? (
+                    <p className="text-sm text-red-600 leading-relaxed">{errors.challenges}</p>
+                  ) : (
+                    <p className="text-sm text-slate-500 leading-relaxed">Optional field</p>
+                  )}
+                  <span className="text-xs text-slate-400">
+                    {formData.challenges?.length || 0} / 10,000
+                  </span>
+                </div>
+              </div>
+            </div>
+          </section>
+        </>
+      )}
+
+      <div className="flex gap-3">
+        <button
+          type="submit"
+          disabled={isLoading}
+          className="flex-1 px-6 py-2.5 rounded-lg bg-[#003B44] text-white text-sm font-medium hover:bg-[#004850] focus-visible:ring-2 focus-visible:ring-[#003B44]/50 focus-visible:ring-offset-2 focus-visible:outline-none disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+        >
+          {isLoading ? (
+            <span className="flex items-center justify-center gap-2">
+              <svg
+                className="animate-spin h-4 w-4"
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+              >
+                <circle
+                  className="opacity-25"
+                  cx="12"
+                  cy="12"
+                  r="10"
+                  stroke="currentColor"
+                  strokeWidth="4"
+                />
+                <path
+                  className="opacity-75"
+                  fill="currentColor"
+                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                />
+              </svg>
+              Generating...
+            </span>
+          ) : (
+            'Generate Documentation'
+          )}
+        </button>
+      </div>
+      {isLoading && (
+        <span role="status" className="sr-only">
+          Generating documentation, please wait...
+        </span>
+      )}
+    </form>
   );
 }

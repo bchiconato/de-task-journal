@@ -1,7 +1,61 @@
+.code-impl-wrap{
+  background:#0F1115;
+  border-radius:12px;
+  width:100%;
+  box-sizing:border-box
+}
+
+.code-impl{
+  width:100%
+}
+
 .code-impl pre,
-.code-impl code {
-  background: #1e1e1e;
-  color: #d4d4d4;
+.code-impl code,
+.code-impl textarea{
+  background:#0F1115;
+  color:#F3F6FC;
+  line-height:1.7
+}
+
+.code-impl,
+.code-impl pre,
+.code-impl textarea {
+  width: 100%;
+  display: block;
+  box-sizing: border-box;
+}
+
+.code-impl textarea{
+  color:#F3F6FC;
+  caret-color:#FFFFFF
+}
+
+.code-impl .token.title,
+.code-impl .token.heading{
+  color:#FFFFFF;
+  font-weight:700
+}
+
+.code-impl .token.punctuation{
+  color:#C1C7CF
+}
+
+.code-impl .token.bold,
+.code-impl .token.important,
+.code-impl strong{
+  color:#FFFFFF;
+  font-weight:700
+}
+
+.code-impl .token.italic,
+.code-impl em{
+  color:#ECECEC;
+  font-style:italic
+}
+
+.code-impl textarea::placeholder{
+  color:#AAB2BF;
+  opacity:1
 }
 
 .code-impl textarea::placeholder {
