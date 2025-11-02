@@ -3,29 +3,36 @@ import ReactMarkdown from 'react-markdown';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { tomorrow } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import remarkGfm from 'remark-gfm';
+import { CodeImplementationEditor } from './CodeImplementationEditor';
 
 /**
  * @component GeneratedContent
- * @description Generated documentation preview with markdown rendering and action buttons
+ * @description Generated documentation preview with markdown rendering, editing capabilities, and action buttons
  * @param {Object} props
  * @param {string} props.content - Markdown content to render
  * @param {Function} props.onSendToNotion - Send to Notion handler
  * @param {boolean} props.isSending - Whether send is in progress
- * @returns {JSX.Element|null} Rendered markdown preview or null if no content
+ * @param {boolean} props.isEditing - Whether edit mode is active
+ * @param {Function} props.onToggleEditing - Toggle edit mode handler
+ * @param {Function} props.onDocumentationChange - Update documentation handler
+ * @returns {JSX.Element|null} Rendered markdown preview or editor, or null if no content
  */
 export function GeneratedContent({
   content,
   onSendToNotion,
   isSending,
+  isEditing,
+  onToggleEditing,
+  onDocumentationChange,
 }) {
   const [justCopied, setJustCopied] = useState(false);
   const headingRef = useRef(null);
 
   useEffect(() => {
-    if (content && headingRef.current) {
+    if (content && headingRef.current && !isEditing) {
       headingRef.current.focus();
     }
-  }, [content]);
+  }, [content, isEditing]);
 
   const handleCopy = async () => {
     try {
@@ -55,57 +62,83 @@ export function GeneratedContent({
   if (!content) return null;
 
   return (
-    <aside
-      className="lg:sticky lg:top-4 lg:max-h-[calc(100vh-2rem)] lg:overflow-y-auto custom-scrollbar"
+    <section
+      className={`rounded-2xl border border-slate-200 bg-white ${
+        isEditing ? '' : 'p-6 md:p-8'
+      }`}
       aria-labelledby="preview-heading"
     >
-      <div className="bg-white rounded-lg shadow-lg p-6">
-        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-6 pb-4 border-b border-gray-200">
-          <h2
-            id="preview-heading"
-            ref={headingRef}
-            tabIndex={-1}
-            className="text-2xl font-bold text-gray-900 max-w-[140px]"
+      <div
+        className={isEditing ? 'p-6 md:p-8 border-b border-slate-200' : 'pb-6 border-b border-slate-200'}
+      >
+        <h2
+          id="preview-heading"
+          ref={headingRef}
+          tabIndex={-1}
+          className="text-lg font-semibold text-slate-900 mb-4"
+        >
+          Generated Documentation
+        </h2>
+        <div className="flex gap-2 flex-wrap" aria-busy={isSending} aria-live="polite">
+          <button
+            onClick={handleCopy}
+            className={`whitespace-nowrap px-4 py-2 rounded-lg text-sm font-medium transition-colors focus-visible:ring-2 focus-visible:ring-[#003B44] focus-visible:ring-offset-2 focus-visible:outline-none ${
+              justCopied
+                ? 'text-indigo-700 bg-indigo-50'
+                : 'text-slate-700 bg-slate-100 hover:bg-slate-200'
+            }`}
+            aria-label="Copy all documentation to clipboard"
+            aria-live="polite"
           >
-            Generated documentation
-          </h2>
-          <div className="flex gap-2 flex-nowrap" aria-busy={isSending} aria-live="polite">
-            <button
-              onClick={handleCopy}
-              className={`whitespace-nowrap px-4 py-2 rounded-lg font-medium transition-colors ${
-                justCopied
-                  ? 'text-success-700 bg-success-100'
-                  : 'text-gray-700 bg-gray-100 hover:bg-gray-200 focus:bg-gray-200'
-              }`}
-              aria-label="Copy all documentation to clipboard"
-              aria-live="polite"
-            >
-              {justCopied ? '✓ Copied!' : 'Copy all'}
-            </button>
-            <button
-              onClick={handleSendToNotion}
-              disabled={isSending}
-              aria-disabled={isSending ? 'true' : undefined}
-              className={`whitespace-nowrap px-4 py-2 rounded-lg font-medium text-white transition-colors ${
-                isSending
-                  ? 'bg-gray-400 cursor-not-allowed'
-                  : 'bg-purple-600 hover:bg-purple-700 focus:bg-purple-700'
-              }`}
-              aria-label="Send documentation to Notion"
-              aria-busy={isSending}
-            >
-              {isSending ? 'Sending...' : 'Send to Notion'}
-            </button>
-            {isSending && (
-              <span role="status" className="sr-only">
-                Sending documentation to Notion, please wait...
-              </span>
-            )}
-          </div>
+            {justCopied ? '✓ Copied!' : 'Copy all'}
+          </button>
+          <button
+            onClick={onToggleEditing}
+            className={`whitespace-nowrap px-4 py-2 rounded-lg text-sm font-medium transition-colors focus-visible:ring-2 focus-visible:ring-[#003B44] focus-visible:ring-offset-2 focus-visible:outline-none ${
+              isEditing
+                ? 'text-indigo-700 bg-indigo-50 hover:bg-indigo-100'
+                : 'text-slate-700 bg-slate-100 hover:bg-slate-200'
+            }`}
+            aria-label={isEditing ? 'Save edits and return to preview' : 'Edit documentation'}
+            aria-live="polite"
+          >
+            {isEditing ? '✓ Save' : 'Edit'}
+          </button>
+          <button
+            onClick={handleSendToNotion}
+            disabled={isSending}
+            aria-disabled={isSending ? 'true' : undefined}
+            className={`whitespace-nowrap px-4 py-2 rounded-lg text-sm font-medium transition-colors focus-visible:ring-2 focus-visible:ring-[#003B44]/50 focus-visible:ring-offset-2 focus-visible:outline-none ${
+              isSending
+                ? 'bg-slate-400 cursor-not-allowed text-white'
+                : 'bg-[#003B44] hover:bg-[#004850] text-white'
+            }`}
+            aria-label="Send documentation to Notion"
+            aria-busy={isSending}
+          >
+            {isSending ? 'Sending...' : 'Send to Notion'}
+          </button>
+          {isSending && (
+            <span role="status" className="sr-only">
+              Sending documentation to Notion, please wait...
+            </span>
+          )}
         </div>
+      </div>
 
+      {isEditing ? (
+        <div className="overflow-hidden rounded-b-2xl">
+          <CodeImplementationEditor
+            value={content}
+            onChange={(v) => onDocumentationChange(v)}
+            language="markdown"
+            padding={32}
+            minHeight={500}
+          />
+        </div>
+      ) : (
         <div
-          className="prose prose-sm sm:prose lg:prose-lg max-w-[65ch] mx-auto space-y-6"
+          className="prose prose-sm sm:prose lg:prose-lg max-w-[65ch] mx-auto space-y-6 pt-6"
           role="article"
           aria-live="polite"
           style={{ lineHeight: '1.6' }}
@@ -138,24 +171,24 @@ export function GeneratedContent({
                 );
               },
               h1: ({ children }) => (
-                <h2 className="text-3xl font-bold mt-10 mb-4 text-gray-900 leading-tight">
+                <h2 className="text-3xl font-bold mt-10 mb-4 text-slate-900 leading-tight">
                   {children}
                 </h2>
               ),
               h2: ({ children }) => (
-                <h3 className="text-2xl font-semibold mt-8 mb-3 text-gray-900 leading-snug">
+                <h3 className="text-2xl font-semibold mt-8 mb-3 text-slate-900 leading-snug">
                   {children}
                 </h3>
               ),
               h3: ({ children }) => (
-                <h4 className="text-xl font-semibold mt-6 mb-2 text-gray-900 leading-snug">
+                <h4 className="text-xl font-semibold mt-6 mb-2 text-slate-900 leading-snug">
                   {children}
                 </h4>
               ),
               a: ({ href, children }) => (
                 <a
                   href={href}
-                  className="text-primary-600 underline hover:text-primary-700"
+                  className="text-indigo-600 underline hover:text-indigo-700"
                   target="_blank"
                   rel="noopener noreferrer"
                 >
@@ -169,17 +202,17 @@ export function GeneratedContent({
                 <ol className="list-decimal pl-6 space-y-2 my-4">{children}</ol>
               ),
               li: ({ children }) => (
-                <li className="text-gray-800" style={{ lineHeight: '1.6' }}>{children}</li>
+                <li className="text-slate-800" style={{ lineHeight: '1.6' }}>{children}</li>
               ),
               p: ({ children }) => (
-                <p className="my-4 text-gray-800" style={{ lineHeight: '1.6' }}>{children}</p>
+                <p className="my-4 text-slate-800" style={{ lineHeight: '1.6' }}>{children}</p>
               ),
             }}
           >
             {content}
           </ReactMarkdown>
         </div>
-      </div>
-    </aside>
+      )}
+    </section>
   );
 }
