@@ -1,9 +1,8 @@
 /**
- * @fileoverview Editor de código com paleta VS Code Dark Modern para a seção "Code implementation".
+ * High-contrast dark theme code editor.
+ * Dark background with bright text, stronger contrast for headings and bold.
  * @component CodeImplementationEditor
- * @example
- *   <CodeImplementationEditor value={code} onChange={setCode} />
- * @param {{ value: string, onChange: (v:string)=>void, language?: string, minHeight?: number, placeholder?: string }} props
+ * @param {{ value: string, onChange: (v:string)=>void, language?: string, minHeight?: number, placeholder?: string, padding?: number }} props
  * @returns {JSX.Element}
  */
 import React, { forwardRef } from "react";
@@ -21,11 +20,11 @@ import "prismjs/plugins/highlight-keywords/prism-highlight-keywords";
 import "prismjs/plugins/match-braces/prism-match-braces.css";
 
 export const CodeImplementationEditor = forwardRef(function CodeImplementationEditor(
-  { value, onChange, language = "jsx", minHeight = 240, placeholder, ...rest },
+  { value, onChange, language = "markdown", minHeight = 300, placeholder = "Write here...", padding = 24, ...rest },
   ref
 ) {
   return (
-    <div className="w-tc-editor-var">
+    <div className="w-tc-editor-var w-full code-impl-wrap">
       <CodeEditor
         ref={ref}
         value={value}
@@ -33,15 +32,16 @@ export const CodeImplementationEditor = forwardRef(function CodeImplementationEd
         placeholder={placeholder}
         data-color-mode="dark"
         className="code-impl match-braces rainbow-braces"
-        padding={16}
+        padding={padding}
         minHeight={minHeight}
         onChange={(e) => onChange(e.target.value)}
         style={{
-          backgroundColor: "#1F1F1F",
-          color: "#CCCCCC",
-          fontSize: 14,
+          backgroundColor: "#0F1115",
+          color: "#F3F6FC",
+          fontSize: 16,
           fontFamily:
             "ui-monospace, SFMono-Regular, SF Mono, Menlo, Consolas, Liberation Mono, monospace",
+          width: "100%",
         }}
         {...rest}
       />
