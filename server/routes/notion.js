@@ -5,12 +5,41 @@
 
 import express from 'express';
 import { appendBlocksChunked } from '../src/services/notion/client.js';
+import { listSharedPages } from '../src/services/notion/index.js';
 import { markdownToNotionBlocks } from '../src/services/notion/markdown.js';
 import { validate } from '../src/middleware/validate.js';
 import { NotionExportSchema } from '../src/schemas/notion.js';
 import { env } from '../src/config/index.js';
 
 const router = express.Router();
+
+/**
+ * @async
+ * @function listPagesHandler
+ * @description Handles GET /api/notion/pages - returns list of pages shared with integration
+ * @param {import('express').Request} req - Express request
+ * @param {import('express').Response} res - Express response
+ * @param {import('express').NextFunction} next - Express next function
+ * @returns {Promise<void>}
+ * @throws {Error} When Notion API request fails
+ * @example
+ *   GET /api/notion/pages
+ *   Response: { success: true, pages: [{ id: "abc-123", title: "My Page" }] }
+ */
+async function listPagesHandler(req, res, next) {
+  try {
+    const pages = await listSharedPages({
+      token: env.NOTION_API_KEY,
+    });
+
+    res.json({
+      success: true,
+      pages,
+    });
+  } catch (error) {
+    next(error);
+  }
+}
 
 /**
  * @async
@@ -83,6 +112,7 @@ function extractTitleFromMarkdown(markdown) {
   return 'Architecture Documentation';
 }
 
+router.get('/pages', listPagesHandler);
 router.post('/', validate(NotionExportSchema), notionHandler);
 
 export { router as notionRouter };
