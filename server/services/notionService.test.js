@@ -61,7 +61,9 @@ describe('parseInlineMarkdown', () => {
   });
 
   it('should parse links', () => {
-    const result = parseInlineMarkdown('Visit [Google](https://google.com) for search');
+    const result = parseInlineMarkdown(
+      'Visit [Google](https://google.com) for search',
+    );
     expect(result).toHaveLength(3);
     expect(result[0].text.content).toBe('Visit ');
     expect(result[1].text.content).toBe('Google');
@@ -70,17 +72,19 @@ describe('parseInlineMarkdown', () => {
   });
 
   it('should parse multiple formatting types in one string', () => {
-    const result = parseInlineMarkdown('Text with **bold** and *italic* and `code`');
+    const result = parseInlineMarkdown(
+      'Text with **bold** and *italic* and `code`',
+    );
     expect(result.length).toBeGreaterThanOrEqual(6);
     expect(result[0].text.content).toBe('Text with ');
     expect(result[1].text.content).toBe('bold');
     expect(result[1].annotations.bold).toBe(true);
 
-    const italicSegment = result.find(r => r.annotations.italic);
+    const italicSegment = result.find((r) => r.annotations.italic);
     expect(italicSegment).toBeDefined();
     expect(italicSegment.text.content).toBe('italic');
 
-    const codeSegment = result.find(r => r.annotations.code);
+    const codeSegment = result.find((r) => r.annotations.code);
     expect(codeSegment).toBeDefined();
     expect(codeSegment.text.content).toBe('code');
   });
@@ -109,7 +113,10 @@ describe('parseInlineMarkdown', () => {
     expect(result.length).toBeGreaterThan(1);
     expect(result[0].text.content.length).toBeLessThanOrEqual(2000);
     expect(result[1].text.content.length).toBeGreaterThan(0);
-    const totalLength = result.reduce((sum, rt) => sum + rt.text.content.length, 0);
+    const totalLength = result.reduce(
+      (sum, rt) => sum + rt.text.content.length,
+      0,
+    );
     expect(totalLength).toBe(2500);
   });
 
@@ -137,10 +144,14 @@ describe('parseInlineMarkdown', () => {
   });
 
   it('should handle links with special characters in URL', () => {
-    const result = parseInlineMarkdown('[API Docs](https://api.example.com/v1/users?id=123&type=admin)');
+    const result = parseInlineMarkdown(
+      '[API Docs](https://api.example.com/v1/users?id=123&type=admin)',
+    );
     expect(result).toHaveLength(1);
     expect(result[0].text.content).toBe('API Docs');
-    expect(result[0].text.link.url).toBe('https://api.example.com/v1/users?id=123&type=admin');
+    expect(result[0].text.link.url).toBe(
+      'https://api.example.com/v1/users?id=123&type=admin',
+    );
   });
 });
 
@@ -179,7 +190,9 @@ describe('markdownToNotionBlocks', () => {
     const blocks = markdownToNotionBlocks(markdown);
     expect(blocks[0].type).toBe('code');
     expect(blocks[0].code.language).toBe('javascript');
-    expect(blocks[0].code.rich_text[0].text.content).toBe('console.log("Hello");');
+    expect(blocks[0].code.rich_text[0].text.content).toBe(
+      'console.log("Hello");',
+    );
   });
 
   it('should convert code blocks without language', () => {
@@ -193,9 +206,13 @@ describe('markdownToNotionBlocks', () => {
     const markdown = '- Item 1\n- Item 2';
     const blocks = markdownToNotionBlocks(markdown);
     expect(blocks[0].type).toBe('bulleted_list_item');
-    expect(blocks[0].bulleted_list_item.rich_text[0].text.content).toBe('Item 1');
+    expect(blocks[0].bulleted_list_item.rich_text[0].text.content).toBe(
+      'Item 1',
+    );
     expect(blocks[1].type).toBe('bulleted_list_item');
-    expect(blocks[1].bulleted_list_item.rich_text[0].text.content).toBe('Item 2');
+    expect(blocks[1].bulleted_list_item.rich_text[0].text.content).toBe(
+      'Item 2',
+    );
   });
 
   it('should convert bulleted list items with * marker', () => {
@@ -216,18 +233,26 @@ describe('markdownToNotionBlocks', () => {
     const markdown = '1. First\n2. Second\n3. Third';
     const blocks = markdownToNotionBlocks(markdown);
     expect(blocks[0].type).toBe('numbered_list_item');
-    expect(blocks[0].numbered_list_item.rich_text[0].text.content).toBe('First');
+    expect(blocks[0].numbered_list_item.rich_text[0].text.content).toBe(
+      'First',
+    );
     expect(blocks[1].type).toBe('numbered_list_item');
-    expect(blocks[1].numbered_list_item.rich_text[0].text.content).toBe('Second');
+    expect(blocks[1].numbered_list_item.rich_text[0].text.content).toBe(
+      'Second',
+    );
     expect(blocks[2].type).toBe('numbered_list_item');
-    expect(blocks[2].numbered_list_item.rich_text[0].text.content).toBe('Third');
+    expect(blocks[2].numbered_list_item.rich_text[0].text.content).toBe(
+      'Third',
+    );
   });
 
   it('should convert paragraphs', () => {
     const markdown = 'This is a paragraph with some text.';
     const blocks = markdownToNotionBlocks(markdown);
     expect(blocks[0].type).toBe('paragraph');
-    expect(blocks[0].paragraph.rich_text[0].text.content).toBe('This is a paragraph with some text.');
+    expect(blocks[0].paragraph.rich_text[0].text.content).toBe(
+      'This is a paragraph with some text.',
+    );
   });
 
   it('should convert paragraphs with inline formatting', () => {
@@ -240,13 +265,13 @@ describe('markdownToNotionBlocks', () => {
   it('should skip empty lines', () => {
     const markdown = 'Line 1\n\n\nLine 2';
     const blocks = markdownToNotionBlocks(markdown);
-    expect(blocks.filter(b => b.type === 'paragraph')).toHaveLength(2);
+    expect(blocks.filter((b) => b.type === 'paragraph')).toHaveLength(2);
   });
 
   it('should detect dividers from markdown', () => {
     const markdown = '# Title\n\n---\n\nContent after divider';
     const blocks = markdownToNotionBlocks(markdown);
-    const dividers = blocks.filter(b => b.type === 'divider');
+    const dividers = blocks.filter((b) => b.type === 'divider');
     expect(dividers).toHaveLength(1);
   });
 
@@ -273,11 +298,15 @@ Visit [documentation](https://docs.example.com) for more.`;
 
     const blocks = markdownToNotionBlocks(markdown);
 
-    expect(blocks.filter(b => b.type === 'heading_1')).toHaveLength(1);
-    expect(blocks.filter(b => b.type === 'heading_2')).toHaveLength(3);
-    expect(blocks.filter(b => b.type === 'paragraph').length).toBeGreaterThan(0);
-    expect(blocks.filter(b => b.type === 'bulleted_list_item')).toHaveLength(2);
-    expect(blocks.filter(b => b.type === 'code')).toHaveLength(1);
+    expect(blocks.filter((b) => b.type === 'heading_1')).toHaveLength(1);
+    expect(blocks.filter((b) => b.type === 'heading_2')).toHaveLength(3);
+    expect(blocks.filter((b) => b.type === 'paragraph').length).toBeGreaterThan(
+      0,
+    );
+    expect(blocks.filter((b) => b.type === 'bulleted_list_item')).toHaveLength(
+      2,
+    );
+    expect(blocks.filter((b) => b.type === 'code')).toHaveLength(1);
   });
 
   it('should handle mixed list types', () => {
@@ -286,15 +315,21 @@ Visit [documentation](https://docs.example.com) for more.`;
 1. Number 1
 2. Number 2`;
     const blocks = markdownToNotionBlocks(markdown);
-    expect(blocks.filter(b => b.type === 'bulleted_list_item')).toHaveLength(2);
-    expect(blocks.filter(b => b.type === 'numbered_list_item')).toHaveLength(2);
+    expect(blocks.filter((b) => b.type === 'bulleted_list_item')).toHaveLength(
+      2,
+    );
+    expect(blocks.filter((b) => b.type === 'numbered_list_item')).toHaveLength(
+      2,
+    );
   });
 
   it('should preserve inline code in headings', () => {
     const markdown = '## Using `parseInlineMarkdown()` Function';
     const blocks = markdownToNotionBlocks(markdown);
     expect(blocks[0].type).toBe('heading_2');
-    const codeSegment = blocks[0].heading_2.rich_text.find(rt => rt.annotations.code);
+    const codeSegment = blocks[0].heading_2.rich_text.find(
+      (rt) => rt.annotations.code,
+    );
     expect(codeSegment).toBeDefined();
     expect(codeSegment.text.content).toBe('parseInlineMarkdown()');
   });
@@ -302,7 +337,7 @@ Visit [documentation](https://docs.example.com) for more.`;
   it('should convert block quotes', () => {
     const markdown = '> This is a quote\n> Multi-line quote';
     const blocks = markdownToNotionBlocks(markdown);
-    expect(blocks.filter(b => b.type === 'quote')).toHaveLength(2);
+    expect(blocks.filter((b) => b.type === 'quote')).toHaveLength(2);
     expect(blocks[0].quote.rich_text[0].text.content).toBe('This is a quote');
   });
 
@@ -310,8 +345,12 @@ Visit [documentation](https://docs.example.com) for more.`;
     const markdown = '> This is **bold** in a *quote*';
     const blocks = markdownToNotionBlocks(markdown);
     expect(blocks[0].type).toBe('quote');
-    const boldSegment = blocks[0].quote.rich_text.find(rt => rt.annotations.bold);
-    const italicSegment = blocks[0].quote.rich_text.find(rt => rt.annotations.italic);
+    const boldSegment = blocks[0].quote.rich_text.find(
+      (rt) => rt.annotations.bold,
+    );
+    const italicSegment = blocks[0].quote.rich_text.find(
+      (rt) => rt.annotations.italic,
+    );
     expect(boldSegment).toBeDefined();
     expect(italicSegment).toBeDefined();
   });
@@ -319,7 +358,7 @@ Visit [documentation](https://docs.example.com) for more.`;
   it('should detect dividers with different markdown syntaxes', () => {
     const markdown = '---\n***\n___';
     const blocks = markdownToNotionBlocks(markdown);
-    expect(blocks.filter(b => b.type === 'divider')).toHaveLength(3);
+    expect(blocks.filter((b) => b.type === 'divider')).toHaveLength(3);
   });
 });
 
@@ -341,7 +380,7 @@ describe('splitLongText', () => {
     const text = 'a'.repeat(5000);
     const chunks = splitLongText(text, 2000);
     expect(chunks.length).toBeGreaterThan(2);
-    chunks.forEach(chunk => {
+    chunks.forEach((chunk) => {
       expect(chunk.length).toBeLessThanOrEqual(2000);
     });
   });
@@ -356,7 +395,7 @@ describe('splitLongText', () => {
   it('should split at word boundaries when possible', () => {
     const text = 'word '.repeat(500);
     const chunks = splitLongText(text, 2000);
-    chunks.forEach(chunk => {
+    chunks.forEach((chunk) => {
       expect(chunk.length).toBeLessThanOrEqual(2000);
     });
   });

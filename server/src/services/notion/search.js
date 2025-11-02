@@ -67,7 +67,7 @@ export async function listSharedPages({ token }) {
 
       if (res.status === 403) {
         throw new Error(
-          `Notion permission error: ${errorMessage}. Ensure your integration has search capability.`
+          `Notion permission error: ${errorMessage}. Ensure your integration has search capability.`,
         );
       }
 
@@ -110,7 +110,11 @@ function extractPageTitle(page) {
       return 'Untitled';
     }
 
-    if (titleProp.title && Array.isArray(titleProp.title) && titleProp.title[0]) {
+    if (
+      titleProp.title &&
+      Array.isArray(titleProp.title) &&
+      titleProp.title[0]
+    ) {
       return titleProp.title[0].plain_text || 'Untitled';
     }
 

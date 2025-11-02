@@ -61,7 +61,12 @@ async function notionHandler(req, res, next) {
     const targetPageId = pageId || env.NOTION_PAGE_ID;
 
     if (!targetPageId) {
-      return res.status(400).json({ ok:false, error:'missing_page_id', message:'Defina NOTION_PAGE_ID no .env do server ou envie pageId no body.' });
+      return res.status(400).json({
+        ok: false,
+        error: 'missing_page_id',
+        message:
+          'Defina NOTION_PAGE_ID no .env do server ou envie pageId no body.',
+      });
     }
 
     let finalContent = content;

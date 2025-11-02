@@ -21,42 +21,6 @@ export const NOTION = {
 export const MAX_BLOCKS_PER_REQUEST = 100;
 
 /**
- * @constant {number} MAX_TEXT_LENGTH
- * @description Maximum characters allowed per rich_text content field
- */
-export const MAX_TEXT_LENGTH = 2000;
-
-/**
- * @constant {number} MAX_ARRAY_ITEMS
- * @description Maximum items allowed in rich_text or block arrays
- */
-export const MAX_ARRAY_ITEMS = 100;
-
-/**
- * @constant {number} MAX_BLOCK_ELEMENTS
- * @description Maximum total block elements per request
- */
-export const MAX_BLOCK_ELEMENTS = 1000;
-
-/**
- * @constant {number} MAX_PAYLOAD_BYTES
- * @description Approximate maximum payload size in bytes (500KB)
- */
-export const MAX_PAYLOAD_BYTES = 500 * 1024;
-
-/**
- * @constant {number} MAX_NESTING_LEVELS
- * @description Maximum nesting levels allowed per request
- */
-export const MAX_NESTING_LEVELS = 2;
-
-/**
- * @constant {number} RPS_THROTTLE_MS
- * @description Throttle delay in milliseconds to maintain ~3 req/s average
- */
-export const RPS_THROTTLE_MS = 350;
-
-/**
  * @function defaultHeaders
  * @description Generates default headers for Notion API requests
  * @param {string} token - Notion API authentication token

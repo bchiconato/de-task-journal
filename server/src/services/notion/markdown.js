@@ -11,13 +11,35 @@
  * @example
  *   parseInlineMarkdown("This is **bold** and *italic*")
  */
-export function parseInlineMarkdown(text) {
+/**
+ * @fileoverview Markdown to Notion block conversion utilities
+ * @module services/notion/markdown
+ */
+
+/**
+ * @function parseInlineMarkdown
+ * @description Parses inline Markdown formatting (bold, italic, code, links) into Notion rich_text objects with proper annotations
+ * @param {string} text - Plain text with inline Markdown syntax
+ * @returns {Array<Object>} Array of Notion rich_text objects with annotations
+ * @example
+ *   parseInlineMarkdown("This is **bold** and *italic*")
+ */
+function parseInlineMarkdown(text) {
   if (!text || typeof text !== 'string') {
-    return [{
-      type: 'text',
-      text: { content: '' },
-      annotations: { bold: false, italic: false, strikethrough: false, underline: false, code: false, color: 'default' }
-    }];
+    return [
+      {
+        type: 'text',
+        text: { content: '' },
+        annotations: {
+          bold: false,
+          italic: false,
+          strikethrough: false,
+          underline: false,
+          code: false,
+          color: 'default',
+        },
+      },
+    ];
   }
 
   const textChunks = splitLongText(text, 2000);
@@ -27,91 +49,125 @@ export function parseInlineMarkdown(text) {
     const richTextArray = [];
     let remainingText = chunk;
 
-  const patterns = [
-    { regex: /\[([^\]]+)\]\(([^)]+)\)/g, type: 'link' },
-    { regex: /`([^`]+)`/g, type: 'code' },
-    { regex: /\*\*([^*]+)\*\*/g, type: 'bold' },
-    { regex: /__([^_]+)__/g, type: 'bold' },
-    { regex: /\*([^*]+)\*/g, type: 'italic' },
-    { regex: /_([^_]+)_/g, type: 'italic' },
-  ];
+    const patterns = [
+      { regex: /\[([^\]]+)\]\(([^)]+)\)/g, type: 'link' },
+      { regex: /`([^`]+)`/g, type: 'code' },
+      { regex: /\*\*([^*]+)\*\*/g, type: 'bold' },
+      { regex: /__([^_]+)__/g, type: 'bold' },
+      { regex: /\*([^*]+)\*/g, type: 'italic' },
+      { regex: /_([^_]+)_/g, type: 'italic' },
+    ];
 
-  while (remainingText.length > 0) {
-    let earliestMatch = null;
-    let earliestIndex = remainingText.length;
-    let matchedPattern = null;
+    while (remainingText.length > 0) {
+      let earliestMatch = null;
+      let earliestIndex = remainingText.length;
+      let matchedPattern = null;
 
-    for (const pattern of patterns) {
-      pattern.regex.lastIndex = 0;
-      const match = pattern.regex.exec(remainingText);
+      for (const pattern of patterns) {
+        pattern.regex.lastIndex = 0;
+        const match = pattern.regex.exec(remainingText);
 
-      if (match && match.index < earliestIndex) {
-        earliestMatch = match;
-        earliestIndex = match.index;
-        matchedPattern = pattern;
+        if (match && match.index < earliestIndex) {
+          earliestMatch = match;
+          earliestIndex = match.index;
+          matchedPattern = pattern;
+        }
       }
-    }
 
-    if (!earliestMatch) {
-      if (remainingText.length > 0) {
+      if (!earliestMatch) {
+        if (remainingText.length > 0) {
+          richTextArray.push({
+            type: 'text',
+            text: { content: remainingText },
+            annotations: {
+              bold: false,
+              italic: false,
+              strikethrough: false,
+              underline: false,
+              code: false,
+              color: 'default',
+            },
+          });
+        }
+        break;
+      }
+
+      if (earliestIndex > 0) {
         richTextArray.push({
           type: 'text',
-          text: { content: remainingText },
-          annotations: { bold: false, italic: false, strikethrough: false, underline: false, code: false, color: 'default' }
+          text: { content: remainingText.substring(0, earliestIndex) },
+          annotations: {
+            bold: false,
+            italic: false,
+            strikethrough: false,
+            underline: false,
+            code: false,
+            color: 'default',
+          },
         });
       }
-      break;
-    }
 
-    if (earliestIndex > 0) {
-      richTextArray.push({
+      const annotations = {
+        bold: false,
+        italic: false,
+        strikethrough: false,
+        underline: false,
+        code: false,
+        color: 'default',
+      };
+      let textContent = '';
+      let linkUrl = null;
+
+      if (matchedPattern.type === 'link') {
+        textContent = earliestMatch[1];
+        linkUrl = earliestMatch[2];
+      } else if (matchedPattern.type === 'bold') {
+        annotations.bold = true;
+        textContent = earliestMatch[1];
+      } else if (matchedPattern.type === 'italic') {
+        annotations.italic = true;
+        textContent = earliestMatch[1];
+      } else if (matchedPattern.type === 'code') {
+        annotations.code = true;
+        textContent = earliestMatch[1];
+      }
+
+      const richTextObject = {
         type: 'text',
-        text: { content: remainingText.substring(0, earliestIndex) },
-        annotations: { bold: false, italic: false, strikethrough: false, underline: false, code: false, color: 'default' }
-      });
+        text: { content: textContent },
+        annotations,
+      };
+
+      if (linkUrl) {
+        richTextObject.text.link = { url: linkUrl };
+      }
+
+      richTextArray.push(richTextObject);
+
+      remainingText = remainingText.substring(
+        earliestIndex + earliestMatch[0].length,
+      );
     }
 
-    const annotations = { bold: false, italic: false, strikethrough: false, underline: false, code: false, color: 'default' };
-    let textContent = '';
-    let linkUrl = null;
-
-    if (matchedPattern.type === 'link') {
-      textContent = earliestMatch[1];
-      linkUrl = earliestMatch[2];
-    } else if (matchedPattern.type === 'bold') {
-      annotations.bold = true;
-      textContent = earliestMatch[1];
-    } else if (matchedPattern.type === 'italic') {
-      annotations.italic = true;
-      textContent = earliestMatch[1];
-    } else if (matchedPattern.type === 'code') {
-      annotations.code = true;
-      textContent = earliestMatch[1];
-    }
-
-    const richTextObject = {
-      type: 'text',
-      text: { content: textContent },
-      annotations
-    };
-
-    if (linkUrl) {
-      richTextObject.text.link = { url: linkUrl };
-    }
-
-    richTextArray.push(richTextObject);
-
-    remainingText = remainingText.substring(earliestIndex + earliestMatch[0].length);
+    allRichText.push(...richTextArray);
   }
 
-  allRichText.push(...richTextArray);
-  }
-
-  return allRichText.length > 0 ? allRichText : [{
-    type: 'text',
-    text: { content: '' },
-    annotations: { bold: false, italic: false, strikethrough: false, underline: false, code: false, color: 'default' }
-  }];
+  return allRichText.length > 0
+    ? allRichText
+    : [
+        {
+          type: 'text',
+          text: { content: '' },
+          annotations: {
+            bold: false,
+            italic: false,
+            strikethrough: false,
+            underline: false,
+            code: false,
+            color: 'default',
+          },
+        },
+      ];
 }
 
 /**
@@ -232,7 +288,11 @@ export function markdownToNotionBlocks(markdown) {
       continue;
     }
 
-    if (line.trim() === '---' || line.trim() === '***' || line.trim() === '___') {
+    if (
+      line.trim() === '---' ||
+      line.trim() === '***' ||
+      line.trim() === '___'
+    ) {
       blocks.push({
         object: 'block',
         type: 'divider',
@@ -264,7 +324,7 @@ export function markdownToNotionBlocks(markdown) {
  * @example
  *   splitLongText("a".repeat(5000), 2000)
  */
-export function splitLongText(text, maxLength = 2000) {
+function splitLongText(text, maxLength = 2000) {
   if (!text || text.length <= maxLength) {
     return [text || ''];
   }
@@ -303,25 +363,25 @@ export function splitLongText(text, maxLength = 2000) {
  */
 function mapLanguage(lang) {
   const languageMap = {
-    'javascript': 'javascript',
-    'js': 'javascript',
-    'typescript': 'typescript',
-    'ts': 'typescript',
-    'python': 'python',
-    'py': 'python',
-    'sql': 'sql',
-    'bash': 'bash',
-    'shell': 'shell',
-    'json': 'json',
-    'yaml': 'yaml',
-    'yml': 'yaml',
-    'java': 'java',
-    'cpp': 'c++',
-    'c': 'c',
-    'go': 'go',
-    'rust': 'rust',
-    'ruby': 'ruby',
-    'php': 'php',
+    javascript: 'javascript',
+    js: 'javascript',
+    typescript: 'typescript',
+    ts: 'typescript',
+    python: 'python',
+    py: 'python',
+    sql: 'sql',
+    bash: 'bash',
+    shell: 'shell',
+    json: 'json',
+    yaml: 'yaml',
+    yml: 'yaml',
+    java: 'java',
+    cpp: 'c++',
+    c: 'c',
+    go: 'go',
+    rust: 'rust',
+    ruby: 'ruby',
+    php: 'php',
   };
 
   return languageMap[lang.toLowerCase()] || 'plain text';

@@ -7,7 +7,8 @@
 import { fetchWithRetry } from '../src/lib/http.js';
 import { env } from '../src/config/index.js';
 
-const GEMINI_API_BASE = 'https://generativelanguage.googleapis.com/v1beta/models';
+const GEMINI_API_BASE =
+  'https://generativelanguage.googleapis.com/v1beta/models';
 
 /**
  * @async
@@ -54,7 +55,7 @@ export async function generateDocumentation({ context, code, challenges }) {
         }),
         timeoutMs: 60000,
         attempts: 3,
-      }
+      },
     );
 
     if (!response.ok) {
@@ -63,7 +64,7 @@ export async function generateDocumentation({ context, code, challenges }) {
       throw new Error(
         `Gemini API failed: ${response.status} - ${
           errorData.error?.message || 'Unknown error'
-        }`
+        }`,
       );
     }
 
@@ -210,7 +211,11 @@ Based on the $CHALLENGES, list the main obstacles or insights as bullet points.
  * @returns {Promise<string>} Generated architecture documentation in English Markdown format
  * @throws {Error} When API key is missing, API request fails, or response is invalid
  */
-export async function generateArchitectureDocumentation({ overview, dataflow, decisions }) {
+export async function generateArchitectureDocumentation({
+  overview,
+  dataflow,
+  decisions,
+}) {
   const model = env.GEMINI_MODEL;
   const apiKey = env.GEMINI_API_KEY;
 
@@ -244,7 +249,7 @@ export async function generateArchitectureDocumentation({ overview, dataflow, de
         }),
         timeoutMs: 60000,
         attempts: 3,
-      }
+      },
     );
 
     if (!response.ok) {
@@ -253,7 +258,7 @@ export async function generateArchitectureDocumentation({ overview, dataflow, de
       throw new Error(
         `Gemini API failed: ${response.status} - ${
           errorData.error?.message || 'Unknown error'
-        }`
+        }`,
       );
     }
 
@@ -275,7 +280,9 @@ export async function generateArchitectureDocumentation({ overview, dataflow, de
     return generatedText;
   } catch (error) {
     console.error('Error calling Gemini API for architecture:', error);
-    throw new Error(`Failed to generate architecture documentation: ${error.message}`);
+    throw new Error(
+      `Failed to generate architecture documentation: ${error.message}`,
+    );
   }
 }
 

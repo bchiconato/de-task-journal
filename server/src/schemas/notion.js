@@ -32,5 +32,5 @@ export const NotionExportSchema = z
     {
       message:
         'Either pageId (to append) or title (to create new page) must be provided',
-    }
+    },
   );

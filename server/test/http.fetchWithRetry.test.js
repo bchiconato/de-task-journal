@@ -18,7 +18,7 @@ describe('fetchWithRetry', () => {
 
   it('returns immediately on successful 200 response', async () => {
     global.fetch = vi.fn(() =>
-      Promise.resolve(mkRes({ status: 200, body: 'OK' }))
+      Promise.resolve(mkRes({ status: 200, body: 'OK' })),
     );
 
     const res = await fetchWithRetry('http://test.example', {
@@ -40,7 +40,7 @@ describe('fetchWithRetry', () => {
           mkRes({
             status: 429,
             headers: new Headers({ 'retry-after': '0' }),
-          })
+          }),
         );
       })
       .mockImplementationOnce(() => {
@@ -61,10 +61,10 @@ describe('fetchWithRetry', () => {
     global.fetch = vi
       .fn()
       .mockImplementationOnce(() =>
-        Promise.resolve(mkRes({ status: 500, body: 'Error' }))
+        Promise.resolve(mkRes({ status: 500, body: 'Error' })),
       )
       .mockImplementationOnce(() =>
-        Promise.resolve(mkRes({ status: 200, body: 'OK' }))
+        Promise.resolve(mkRes({ status: 200, body: 'OK' })),
       );
 
     const res = await fetchWithRetry('http://test.example', {
@@ -79,7 +79,7 @@ describe('fetchWithRetry', () => {
 
   it('throws upstream_unavailable after all retries exhausted', async () => {
     global.fetch = vi.fn(() =>
-      Promise.resolve(mkRes({ status: 503, body: 'Service Unavailable' }))
+      Promise.resolve(mkRes({ status: 503, body: 'Service Unavailable' })),
     );
 
     await expect(
@@ -87,7 +87,7 @@ describe('fetchWithRetry', () => {
         attempts: 2,
         timeoutMs: 2000,
         baseDelayMs: 10,
-      })
+      }),
     ).rejects.toMatchObject({
       code: 'upstream_unavailable',
       status: 502,
@@ -96,25 +96,21 @@ describe('fetchWithRetry', () => {
     expect(global.fetch).toHaveBeenCalledTimes(2);
   });
 
-  it.skip(
-    'handles timeout errors and retries before failing',
-    async () => {
-      global.fetch = vi.fn(() => new Promise(() => {}));
+  it.skip('handles timeout errors and retries before failing', async () => {
+    global.fetch = vi.fn(() => new Promise(() => {}));
 
-      await expect(
-        fetchWithRetry('http://test.example', {
-          attempts: 2,
-          timeoutMs: 50,
-          baseDelayMs: 10,
-        })
-      ).rejects.toMatchObject({
-        code: 'upstream_unavailable',
-      });
+    await expect(
+      fetchWithRetry('http://test.example', {
+        attempts: 2,
+        timeoutMs: 50,
+        baseDelayMs: 10,
+      }),
+    ).rejects.toMatchObject({
+      code: 'upstream_unavailable',
+    });
 
-      expect(global.fetch).toHaveBeenCalledTimes(2);
-    },
-    20000
-  );
+    expect(global.fetch).toHaveBeenCalledTimes(2);
+  }, 20000);
 
   it('uses exponential backoff with jitter when no Retry-After header', async () => {
     const calls = [];
@@ -150,10 +146,10 @@ describe('fetchWithRetry', () => {
     global.fetch = vi
       .fn()
       .mockImplementationOnce(() =>
-        Promise.resolve(mkRes({ status: 400, body: 'Bad Request' }))
+        Promise.resolve(mkRes({ status: 400, body: 'Bad Request' })),
       )
       .mockImplementationOnce(() =>
-        Promise.resolve(mkRes({ status: 200, body: 'OK' }))
+        Promise.resolve(mkRes({ status: 200, body: 'OK' })),
       );
 
     const res = await fetchWithRetry('http://test.example', {
@@ -169,7 +165,7 @@ describe('fetchWithRetry', () => {
 
   it('does not retry on 2xx success responses', async () => {
     global.fetch = vi.fn(() =>
-      Promise.resolve(mkRes({ status: 201, body: 'Created' }))
+      Promise.resolve(mkRes({ status: 201, body: 'Created' })),
     );
 
     const res = await fetchWithRetry('http://test.example', {
@@ -183,7 +179,7 @@ describe('fetchWithRetry', () => {
 
   it('does not retry on 4xx client errors (except 429)', async () => {
     global.fetch = vi.fn(() =>
-      Promise.resolve(mkRes({ status: 404, body: 'Not Found' }))
+      Promise.resolve(mkRes({ status: 404, body: 'Not Found' })),
     );
 
     const res = await fetchWithRetry('http://test.example', {

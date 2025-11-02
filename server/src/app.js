@@ -23,14 +23,18 @@ const allowedOrigins = (process.env.ALLOWED_ORIGINS || '')
 app.use(
   cors({
     origin: (origin, callback) => {
-      if (!origin || allowedOrigins.length === 0 || allowedOrigins.includes(origin)) {
+      if (
+        !origin ||
+        allowedOrigins.length === 0 ||
+        allowedOrigins.includes(origin)
+      ) {
         callback(null, true);
       } else {
         callback(new Error('Not allowed by CORS'));
       }
     },
     credentials: true,
-  })
+  }),
 );
 
 app.use(
@@ -39,7 +43,7 @@ app.use(
     limit: 200,
     standardHeaders: 'draft-8',
     legacyHeaders: false,
-  })
+  }),
 );
 
 app.use('/api', routes);

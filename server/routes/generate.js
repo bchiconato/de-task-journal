@@ -49,7 +49,9 @@ async function generateDocsHandler(req, res, next) {
           });
         }
       } catch (geminiError) {
-        const error = new Error(geminiError.message || 'Failed to generate documentation');
+        const error = new Error(
+          geminiError.message || 'Failed to generate documentation',
+        );
         error.status = 500;
         error.code = 'gemini_error';
         throw error;

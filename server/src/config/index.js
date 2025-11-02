@@ -34,14 +34,18 @@ export const env = (() => {
   const parsed = Env.safeParse(process.env);
   if (!parsed.success) {
     console.error(parsed.error.format());
-    console.warn('⚠️  Environment validation failed. Continuing with partial config for local development.');
+    console.warn(
+      '⚠️  Environment validation failed. Continuing with partial config for local development.',
+    );
     return process.env;
   }
 
   const data = parsed.data;
 
   if (!data.GEMINI_API_KEY) {
-    console.warn('⚠️  GEMINI_API_KEY not set. Generate endpoint will return mock data.');
+    console.warn(
+      '⚠️  GEMINI_API_KEY not set. Generate endpoint will return mock data.',
+    );
   }
 
   if (!data.NOTION_API_KEY) {

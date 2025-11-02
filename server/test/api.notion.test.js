@@ -32,23 +32,19 @@ describe('POST /api/notion', () => {
   });
 
   it('accepts valid payload with pageId', async () => {
-    const response = await request(app)
-      .post('/api/notion')
-      .send({
-        content: '# Test\n\nSome content',
-        pageId: 'test-page-id',
-      });
+    const response = await request(app).post('/api/notion').send({
+      content: '# Test\n\nSome content',
+      pageId: 'test-page-id',
+    });
 
     expect([200, 500]).toContain(response.status);
   });
 
   it('accepts valid payload with title', async () => {
-    const response = await request(app)
-      .post('/api/notion')
-      .send({
-        content: '# New Page\n\nContent for new page',
-        title: 'Test Page',
-      });
+    const response = await request(app).post('/api/notion').send({
+      content: '# New Page\n\nContent for new page',
+      title: 'Test Page',
+    });
 
     expect([200, 500]).toContain(response.status);
   });

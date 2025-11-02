@@ -45,15 +45,13 @@ describe('POST /api/generate', () => {
           ],
         }),
         headers: new Headers(),
-      })
+      }),
     );
 
-    const response = await request(app)
-      .post('/api/generate')
-      .send({
-        context: 'This is a valid context with enough characters.',
-        code: 'console.log("hello")',
-      });
+    const response = await request(app).post('/api/generate').send({
+      context: 'This is a valid context with enough characters.',
+      code: 'console.log("hello")',
+    });
 
     expect(response.status).toBe(200);
     expect(response.body).toHaveProperty('documentation');
@@ -67,14 +65,12 @@ describe('POST /api/generate', () => {
         status: 429,
         statusText: 'Too Many Requests',
         headers: new Headers(),
-      })
+      }),
     );
 
-    const response = await request(app)
-      .post('/api/generate')
-      .send({
-        context: 'Valid context for testing error handling.',
-      });
+    const response = await request(app).post('/api/generate').send({
+      context: 'Valid context for testing error handling.',
+    });
 
     expect(response.status).toBe(500);
   });
