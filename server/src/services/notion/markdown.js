@@ -24,7 +24,7 @@
  * @example
  *   parseInlineMarkdown("This is **bold** and *italic*")
  */
-function parseInlineMarkdown(text) {
+export function parseInlineMarkdown(text) {
   if (!text || typeof text !== 'string') {
     return [
       {
@@ -324,7 +324,7 @@ export function markdownToNotionBlocks(markdown) {
  * @example
  *   splitLongText("a".repeat(5000), 2000)
  */
-function splitLongText(text, maxLength = 2000) {
+export function splitLongText(text, maxLength = 2000) {
   if (!text || text.length <= maxLength) {
     return [text || ''];
   }
