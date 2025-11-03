@@ -1,10 +1,16 @@
+/**
+ * @fileoverview Client-side HTTP helpers for communicating with the documentation backend
+ */
 const API_BASE_URL = import.meta.env.VITE_API_BASE ?? '/api';
 
 /**
- * Generates documentation using Google Gemini (mocked locally if no API key)
- * @param {Object} data - The form data
+ * @async
+ * @function generateDocumentation
+ * @description Requests documentation generation from the backend (uses mock output when server lacks API key)
+ * @param {Record<string, unknown>} data - Form data payload containing mode and inputs
  * @param {AbortSignal} [signal] - Optional AbortSignal for request cancellation
- * @returns {Promise<string>} Generated documentation
+ * @returns {Promise<string>} Generated markdown string
+ * @throws {Error} When the request fails or the response is not ok
  */
 export async function generateDocumentation(data, signal) {
   const response = await fetch(`${API_BASE_URL}/generate`, {
@@ -26,9 +32,12 @@ export async function generateDocumentation(data, signal) {
 }
 
 /**
- * Fetches list of Notion pages shared with the integration
+ * @async
+ * @function getNotionPages
+ * @description Retrieves all Notion pages shared with the integration token
  * @param {AbortSignal} [signal] - Optional AbortSignal for request cancellation
  * @returns {Promise<Array<{id: string, title: string}>>} Array of pages with id and title
+ * @throws {Error} When the request fails or response is malformed
  */
 export async function getNotionPages(signal) {
   const response = await fetch(`${API_BASE_URL}/notion/pages`, {
@@ -57,12 +66,15 @@ export async function getNotionPages(signal) {
 }
 
 /**
- * Sends content to Notion
- * @param {string} content - The documentation content
- * @param {('task'|'architecture')} mode - Documentation mode
- * @param {string} pageId - Notion page ID to send content to
+ * @async
+ * @function sendToNotion
+ * @description Sends generated documentation to a Notion page via backend proxy
+ * @param {string} content - Markdown documentation content
+ * @param {'task'|'architecture'} mode - Selected documentation mode
+ * @param {string} pageId - Target Notion page ID
  * @param {AbortSignal} [signal] - Optional AbortSignal for request cancellation
- * @returns {Promise<Object>} Response from Notion API
+ * @returns {Promise<Record<string, unknown>>} JSON response from backend
+ * @throws {Error} When the request fails or response is not ok
  */
 export async function sendToNotion(content, mode, pageId, signal) {
   const response = await fetch(`${API_BASE_URL}/notion`, {

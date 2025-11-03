@@ -1,3 +1,6 @@
+/**
+ * @fileoverview In-app guide outlining documentation workflow and troubleshooting tips
+ */
 import { FileText, Edit, Send, Clock, AlertTriangle } from 'lucide-react';
 
 const FeatureCard = ({ icon, title, children }) => (
@@ -14,6 +17,14 @@ const FeatureCard = ({ icon, title, children }) => (
   </div>
 );
 
+/**
+ * @component Guide
+ * @description Contextual walkthrough describing application features and onboarding steps
+ * @example
+ *   <Guide onBack={() => setView('main')} />
+ * @param {{onBack: () => void}} props
+ * @returns {JSX.Element}
+ */
 export function Guide({ onBack }) {
   return (
     <div className="max-w-4xl mx-auto bg-white p-8 rounded-2xl shadow-lg border border-slate-200">
