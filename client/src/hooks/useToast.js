@@ -3,7 +3,7 @@ import { useState, useCallback } from 'react';
 /**
  * @function useToast
  * @description Custom hook for managing toast notifications with show/hide/remove functions
- * @returns {{toasts: Array, showSuccess: Function, showError: Function, removeToast: Function}} Toast state and control functions
+ * @returns {{toasts: Array, showToast: Function, showSuccess: Function, showError: Function, showInfo: Function, removeToast: Function, clearAllToasts: Function}} Toast state and control functions
  */
 export function useToast() {
   const [toasts, setToasts] = useState([]);
@@ -22,6 +22,9 @@ export function useToast() {
 
   const showToast = useCallback(
     (message, type = 'info', duration = 3000) => {
+      const id = Date.now() + Math.random();
+      let added = false;
+
       setToasts((prev) => {
         const isDuplicate = prev.some(
           (toast) =>
@@ -32,25 +35,30 @@ export function useToast() {
           return prev;
         }
 
-        const id = Date.now() + Math.random();
-        const newToast = {
-          id,
-          message,
-          type,
-          duration,
-          show: true,
-        };
-
-        if (duration > 0) {
-          setTimeout(() => {
-            removeToast(id);
-          }, duration + 300);
-        }
-
-        return [...prev, newToast];
+        added = true;
+        return [
+          ...prev,
+          {
+            id,
+            message,
+            type,
+            duration,
+            show: true,
+          },
+        ];
       });
 
-      return null;
+      if (!added) {
+        return null;
+      }
+
+      if (duration > 0) {
+        setTimeout(() => {
+          removeToast(id);
+        }, duration + 300);
+      }
+
+      return id;
     },
     [removeToast],
   );
@@ -65,10 +73,22 @@ export function useToast() {
     [showToast],
   );
 
+  const showInfo = useCallback(
+    (message, duration) => showToast(message, 'info', duration),
+    [showToast],
+  );
+
+  const clearAllToasts = useCallback(() => {
+    setToasts([]);
+  }, []);
+
   return {
     toasts,
+    showToast,
     showSuccess,
     showError,
+    showInfo,
     removeToast,
+    clearAllToasts,
   };
 }

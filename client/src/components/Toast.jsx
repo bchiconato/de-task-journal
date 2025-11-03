@@ -1,3 +1,6 @@
+/**
+ * @fileoverview Animated toast notification component with accessible semantics
+ */
 import { useEffect, useState, useCallback } from 'react';
 
 /**
