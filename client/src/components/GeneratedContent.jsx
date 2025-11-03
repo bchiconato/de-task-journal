@@ -1,3 +1,6 @@
+/**
+ * @fileoverview Markdown preview and editing surface for generated documentation
+ */
 import { useState, useRef, useEffect } from 'react';
 import ReactMarkdown from 'react-markdown';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
@@ -70,6 +73,7 @@ export function GeneratedContent({
         isEditing ? '' : 'p-6 md:p-8'
       }`}
       aria-labelledby="preview-heading"
+      role="complementary"
     >
       <div
         className={
@@ -84,7 +88,7 @@ export function GeneratedContent({
           tabIndex={-1}
           className="text-lg font-semibold text-slate-900 mb-4"
         >
-          Generated Documentation
+          Generated documentation
         </h2>
         <div
           className="flex gap-2 flex-wrap"
