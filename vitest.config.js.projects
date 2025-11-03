@@ -7,6 +7,7 @@ import react from '@vitejs/plugin-react';
 export default defineConfig({
   test: {
     testTimeout: 15000,
+    threads: false,
   },
   projects: [
     {
@@ -16,6 +17,7 @@ export default defineConfig({
         environment: 'node',
         include: ['server/**/*.test.js'],
         setupFiles: ['server/test/setup.js'],
+        threads: false,
         coverage: {
           provider: 'v8',
           reportsDirectory: './server/coverage',
@@ -44,6 +46,7 @@ export default defineConfig({
         globals: true,
         include: ['client/**/*.test.jsx', 'client/**/*.test.js'],
         setupFiles: ['client/test/setup.js'],
+        threads: false,
         coverage: {
           provider: 'v8',
           reportsDirectory: './client/coverage',

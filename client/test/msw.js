@@ -21,4 +21,8 @@ export const server = setupServer(
       chunks: 1,
     });
   }),
+
+  http.get('https://example.com/api', () => {
+    return HttpResponse.json({ ok: true });
+  }),
 );

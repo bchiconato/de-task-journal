@@ -1,4 +1,4 @@
-.PHONY: help all install lint lint-fix format check build dev
+.PHONY: help all install lint lint-fix format check build dev test
 
 help: ## Displays this help message.
 	@echo "Usage: make [target]"
@@ -56,3 +56,7 @@ dev: ## Starts the development servers for both client and server.
 		echo "Starting client in development mode..." && \
 		cd ./client && npm run dev
 	@echo "✔ Development servers are running."
+
+test: ## Runs the entire Vitest suite across client and server.
+	@echo "Running full test suite..."
+	@npm test -- --run
