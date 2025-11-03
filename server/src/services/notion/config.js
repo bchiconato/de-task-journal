@@ -21,6 +21,12 @@ export const NOTION = {
 export const MAX_BLOCKS_PER_REQUEST = 100;
 
 /**
+ * @constant {number} RPS_THROTTLE_MS
+ * @description Delay in milliseconds between sequential Notion API requests to respect rate limits
+ */
+export const RPS_THROTTLE_MS = 100;
+
+/**
  * @function defaultHeaders
  * @description Generates default headers for Notion API requests
  * @param {string} token - Notion API authentication token

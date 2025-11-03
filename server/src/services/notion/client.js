@@ -3,8 +3,16 @@
  * @module services/notion/client
  */
 
-import { defaultHeaders, NOTION, MAX_BLOCKS_PER_REQUEST } from './config.js';
+import {
+  defaultHeaders,
+  NOTION,
+  MAX_BLOCKS_PER_REQUEST,
+  RPS_THROTTLE_MS,
+} from './config.js';
 import { fetchWithRetry } from '../../lib/http.js';
+import { performance } from 'node:perf_hooks';
+
+const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 /**
  * @function withUrl
@@ -34,7 +42,15 @@ function withUrl(path) {
  *     blockId: 'page-id-123',
  *     children: [...250 blocks...]
  *   });
- *   // { blocksAdded: 250, chunks: 3, responses: [...] }
+ *   // {
+ *   //   blocksAdded: 250,
+ *   //   chunkCount: 3,
+ *   //   chunks: [
+ *   //     { index: 1, size: 100, durationMs: 134, startedAt: '2024-01-01T12:00:00.000Z' },
+ *   //     ...
+ *   //   ],
+ *   //   responses: [...]
+ *   // }
  */
 export async function appendBlocksChunked({ token, blockId, children }) {
   if (!token) {
@@ -46,7 +62,7 @@ export async function appendBlocksChunked({ token, blockId, children }) {
   }
 
   if (!children || children.length === 0) {
-    return { blocksAdded: 0, chunks: 0, responses: [] };
+    return { blocksAdded: 0, chunks: [], chunkCount: 0, responses: [] };
   }
 
   const chunks = [];
@@ -55,8 +71,11 @@ export async function appendBlocksChunked({ token, blockId, children }) {
   }
 
   const responses = [];
+  const chunkSummaries = [];
   for (let i = 0; i < chunks.length; i++) {
     const chunk = chunks[i];
+    const chunkStartedAt = new Date().toISOString();
+    const startTime = performance.now();
 
     const res = await fetchWithRetry(withUrl(`/blocks/${blockId}/children`), {
       method: 'PATCH',
@@ -93,11 +112,29 @@ export async function appendBlocksChunked({ token, blockId, children }) {
 
     const responseData = await res.json();
     responses.push(responseData);
+
+    const durationMs = Math.round(performance.now() - startTime);
+    const summary = {
+      index: i + 1,
+      size: chunk.length,
+      durationMs,
+      startedAt: chunkStartedAt,
+    };
+    chunkSummaries.push(summary);
+
+    console.info(
+      `Notion append chunk ${summary.index}/${chunks.length} | ${summary.size} blocks | ${summary.durationMs}ms`,
+    );
+
+    if (i < chunks.length - 1) {
+      await wait(RPS_THROTTLE_MS);
+    }
   }
 
   return {
     blocksAdded: children.length,
-    chunks: chunks.length,
+    chunks: chunkSummaries,
+    chunkCount: chunks.length,
     responses,
   };
 }
