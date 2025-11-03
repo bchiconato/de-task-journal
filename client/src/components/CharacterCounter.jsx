@@ -1,3 +1,6 @@
+/**
+ * @fileoverview Reusable counter for displaying character usage with accessible messaging
+ */
 import { useMemo } from 'react';
 
 /**

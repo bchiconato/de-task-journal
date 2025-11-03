@@ -1,3 +1,6 @@
+/**
+ * @fileoverview Accessible wrapper for form controls with helper text, errors, and optional counters
+ */
 import { cloneElement } from 'react';
 import { CharacterCounter } from './CharacterCounter';
 

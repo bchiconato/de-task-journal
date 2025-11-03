@@ -1,8 +1,11 @@
+/**
+ * @fileoverview Interactive form for collecting task or architecture documentation inputs with validation and persistence
+ */
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { FormField } from './FormField';
 import { ArchitectureFields } from './ArchitectureFields';
 import { validateForm, hasErrors, getErrorCount } from '../utils/validation';
 import { CodeImplementationEditor } from './CodeImplementationEditor';
+import { CharacterCounter } from './CharacterCounter';
 
 /**
  * @component InputForm
@@ -19,14 +22,14 @@ import { CodeImplementationEditor } from './CodeImplementationEditor';
  * @returns {JSX.Element} Form with mode-specific fields
  */
 export function InputForm({
-  mode,
+  mode = 'task',
   onGenerate,
-  isLoading,
-  notionPages,
-  selectedPageId,
-  onPageChange,
-  isLoadingPages,
-  pagesError,
+  isLoading = false,
+  notionPages = [],
+  selectedPageId = '',
+  onPageChange = () => {},
+  isLoadingPages = false,
+  pagesError = null,
 }) {
   const getInitialFormData = useCallback(() => {
     if (mode === 'architecture') {
@@ -181,6 +184,16 @@ export function InputForm({
       noValidate
       aria-label="Documentation generation form"
     >
+      <header className="space-y-2">
+        <h2 className="text-2xl font-semibold text-slate-900">
+          Data Engineering Task Documenter
+        </h2>
+        <p className="text-sm text-slate-600 leading-relaxed">
+          Capture task context, implementation details, and send polished docs
+          to Notion in one pass.
+        </p>
+      </header>
+
       <section className="rounded-2xl border border-slate-200 bg-white p-6 md:p-8">
         <div className="space-y-4">
           <div>
@@ -282,9 +295,11 @@ export function InputForm({
                       Required field
                     </p>
                   )}
-                  <span className="text-xs text-slate-400">
-                    {formData.context?.length || 0} / 10,000
-                  </span>
+                  <CharacterCounter
+                    current={formData.context?.length || 0}
+                    max={10000}
+                    id="context-counter"
+                  />
                 </div>
               </div>
             </div>
@@ -360,9 +375,11 @@ export function InputForm({
                   Include relevant code snippets
                 </p>
               )}
-              <span className="text-xs text-slate-400">
-                {formData.code?.length || 0} / 10,000
-              </span>
+              <CharacterCounter
+                current={formData.code?.length || 0}
+                max={10000}
+                id="code-counter"
+              />
             </div>
           </section>
 
@@ -404,9 +421,11 @@ export function InputForm({
                       Optional field
                     </p>
                   )}
-                  <span className="text-xs text-slate-400">
-                    {formData.challenges?.length || 0} / 10,000
-                  </span>
+                  <CharacterCounter
+                    current={formData.challenges?.length || 0}
+                    max={10000}
+                    id="challenges-counter"
+                  />
                 </div>
               </div>
             </div>
