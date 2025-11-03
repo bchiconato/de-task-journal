@@ -1,6 +1,7 @@
 import { useState, useEffect, lazy, Suspense } from 'react';
 import { InputForm } from './components/InputForm';
 import { Toast } from './components/Toast';
+import { ModeToggle } from './components/ModeToggle';
 import { useToast } from './hooks/useToast';
 import { useAbortableRequest } from './hooks/useAbortableRequest';
 import { useAnnouncer } from './hooks/useAnnouncer';
@@ -66,6 +67,10 @@ function App() {
   const { toasts, showSuccess, showError, removeToast } = useToast();
   const abortController = useAbortableRequest();
   const announcer = useAnnouncer();
+  const activeTabId =
+    mode === 'architecture'
+      ? 'mode-toggle-tab-architecture'
+      : 'mode-toggle-tab-task';
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -106,23 +111,6 @@ function App() {
     };
 
     fetchPages();
-  }, []);
-
-  useEffect(() => {
-    const handleKeyDown = (e) => {
-      if (e.target.getAttribute('role') !== 'tab') return;
-
-      if (e.key === 'ArrowLeft') {
-        e.preventDefault();
-        handleModeChange('task');
-      } else if (e.key === 'ArrowRight') {
-        e.preventDefault();
-        handleModeChange('architecture');
-      }
-    };
-
-    document.addEventListener('keydown', handleKeyDown);
-    return () => document.removeEventListener('keydown', handleKeyDown);
   }, []);
 
   const handleGenerate = async (formData) => {
@@ -288,36 +276,7 @@ function App() {
                 <h1 className="text-sm font-medium text-white">Task Journal</h1>
               </div>
 
-              <div
-                role="tablist"
-                aria-label="Documentation mode"
-                className="inline-flex items-center gap-1"
-              >
-                <button
-                  role="tab"
-                  aria-selected={mode === 'task'}
-                  onClick={() => handleModeChange('task')}
-                  className={`h-9 px-3 text-sm font-medium rounded-md transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#60E7A9]/50 ${
-                    mode === 'task'
-                      ? 'bg-[#011D21] text-white'
-                      : 'text-white/70 hover:text-white hover:bg-[#004850]'
-                  }`}
-                >
-                  Task
-                </button>
-                <button
-                  role="tab"
-                  aria-selected={mode === 'architecture'}
-                  onClick={() => handleModeChange('architecture')}
-                  className={`h-9 px-3 text-sm font-medium rounded-md transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#60E7A9]/50 ${
-                    mode === 'architecture'
-                      ? 'bg-[#011D21] text-white'
-                      : 'text-white/70 hover:text-white hover:bg-[#004850]'
-                  }`}
-                >
-                  Architecture
-                </button>
-              </div>
+              <ModeToggle mode={mode} onChange={handleModeChange} />
             </div>
 
             <div className="flex items-center gap-2">
@@ -387,7 +346,13 @@ function App() {
           {view === 'guide' ? (
             <Guide onBack={() => setView('main')} />
           ) : (
-            <>
+            <section
+              id="mode-toggle-panel"
+              role="tabpanel"
+              aria-labelledby={activeTabId}
+              tabIndex={-1}
+              className="focus:outline-none"
+            >
               <div className="space-y-3 mb-12 text-center">
                 <h2 className="text-3xl font-semibold text-slate-900 leading-tight">
                   Documentation Generator
@@ -456,7 +421,7 @@ function App() {
                   )}
                 </div>
               </div>
-            </>
+            </section>
           )}
         </main>
       </div>
