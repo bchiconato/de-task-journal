@@ -4,10 +4,7 @@
  */
 
 import express from 'express';
-import {
-  generateDocumentation,
-  generateArchitectureDocumentation,
-} from '../services/geminiService.js';
+import { generateDocumentation } from '../services/geminiService.js';
 import { validate } from '../src/middleware/validate.js';
 import { GenerateSchema } from '../src/schemas/generate.js';
 import { env } from '../src/config/index.js';
@@ -26,28 +23,14 @@ const router = express.Router();
  */
 async function generateDocsHandler(req, res, next) {
   try {
-    const { mode } = req.valid;
+    const { mode, context } = req.valid;
     let documentation;
 
     if (!env.GEMINI_API_KEY) {
-      documentation = generateMockDocumentation(req.valid);
+      documentation = generateMockDocumentation({ mode, context });
     } else {
       try {
-        if (mode === 'architecture') {
-          const { overview, dataflow, decisions } = req.valid;
-          documentation = await generateArchitectureDocumentation({
-            overview,
-            dataflow,
-            decisions,
-          });
-        } else {
-          const { context, code, challenges } = req.valid;
-          documentation = await generateDocumentation({
-            context,
-            code,
-            challenges,
-          });
-        }
+        documentation = await generateDocumentation({ mode, context });
       } catch (geminiError) {
         const error = new Error(
           geminiError.message || 'Failed to generate documentation',
@@ -75,59 +58,51 @@ async function generateDocsHandler(req, res, next) {
  * @returns {string} Mock documentation in markdown format
  */
 function generateMockDocumentation(data) {
-  const { mode } = data;
+  const { mode, context } = data;
+  const preview = context ? context.substring(0, 180) : '—';
 
   if (mode === 'architecture') {
-    const { overview, dataflow, decisions } = data;
     return `# Architecture Documentation (mock mode)
 
 ## Overview
 Mock architecture documentation generated without API key.
 
-**Overview & Components:** ${overview?.substring(0, 100) || '—'}...
+## Context Snapshot
+${preview}...
 
-## Key Components
-This is mock data returned because GEMINI_API_KEY is not configured.
+## Primary Components
+- Component A
+- Component B
 
-## Data & Service Flow
-**Data Flow:** ${dataflow?.substring(0, 100) || '—'}...
+## Flow & Stack
+Describe the runtime flow and technology choices. (Mock)
 
-## Technology Stack
-- Mock Technology 1
-- Mock Technology 2
-
-## Key Design Decisions & Rationale
-**Design Decisions:** ${decisions?.substring(0, 100) || '—'}...
-
-## Risks & Trade-offs
-- Mock risk: This is placeholder data
+## Decisions & Trade-offs
+- Mock decision 1
+- Mock decision 2
 
 *Note: Set GEMINI_API_KEY in server/.env to use real AI generation.*`;
   }
 
-  const { context, code, challenges } = data;
   return `# Documentation (mock mode)
 
 ## Summary
 Mock documentation generated without API key.
 
-## Problem Solved
-**Context:** ${context || '—'}
+## Context Dump Snapshot
+${preview}...
 
-## Solution Implemented
-This is mock data returned because GEMINI_API_KEY is not configured.
-
-## Code Highlights
-\`\`\`
-${code || '// no code provided'}
-\`\`\`
-
-## Challenges & Learnings
-**Challenges:** ${challenges || '—'}
+## Next Steps
+- Configure GEMINI_API_KEY for real responses
+- Re-submit the full context
 
 *Note: Set GEMINI_API_KEY in server/.env to use real AI generation.*`;
 }
 
 router.post('/', validate(GenerateSchema), generateDocsHandler);
 
-export { router as generateRouter };
+export {
+  router as generateRouter,
+  generateDocsHandler,
+  generateMockDocumentation,
+};

@@ -13,20 +13,20 @@ const GEMINI_API_BASE =
 /**
  * @async
  * @function generateDocumentation
- * @description Generates technical documentation in English using Gemini API with 5-section structure
- * @param {Object} input - The input data (accepts any language input)
- * @param {string} input.context - Context of the task (required)
- * @param {string} input.code - Code implementation (optional)
- * @param {string} input.challenges - Challenges/difficulties faced (optional)
+ * @description Generates documentation (task or architecture) in English using Gemini API based on a single context dump
+ * @param {Object} input - The input data
+ * @param {string} input.context - Context dump provided by the user (required)
+ * @param {('task'|'architecture')} [input.mode='task'] - Documentation mode
  * @returns {Promise<string>} Generated documentation in English Markdown format
  * @throws {Error} When API key is missing, API request fails, or response is invalid
  */
-export async function generateDocumentation({ context, code, challenges }) {
+export async function generateDocumentation({ context, mode = 'task' }) {
+  const normalizedMode = mode === 'architecture' ? 'architecture' : 'task';
   const model = env.GEMINI_MODEL;
   const apiKey = env.GEMINI_API_KEY;
 
-  const prompt = buildPrompt(context, code, challenges);
-  const systemInstruction = getSystemInstruction();
+  const prompt = buildPrompt(normalizedMode, context);
+  const systemInstruction = getSystemInstruction(normalizedMode);
 
   try {
     const response = await fetchWithRetry(
@@ -83,338 +83,156 @@ export async function generateDocumentation({ context, code, challenges }) {
       .map((part) => part.text)
       .join('');
 
-    return generatedText;
+    return stripMarkdownFence(generatedText);
   } catch (error) {
     console.error('Error calling Gemini API:', error);
     throw new Error(`Failed to generate documentation: ${error.message}`);
   }
 }
 
-/**
- * @function getSystemInstruction
- * @description Builds the system instruction for Gemini - sets the model's role as a Staff-level Data Engineer and Technical Communicator
- * @returns {string} System instruction text in English
- */
-function getSystemInstruction() {
-  return `You are a Staff-level Data Engineer and expert Technical Communicator. Your job is to analyze raw task notes and transform them into clear, concise, high-quality technical documentation.
+function getSystemInstruction(mode) {
+  if (mode === 'architecture') {
+    return `You are a Senior Software Architect with deep expertise in system design, distributed systems, and technical communication. Your job is to analyze a single, unstructured CONTEXT DUMP and transform it into comprehensive, professional architecture documentation.
 
-Your mission is to process three user inputs ($TASK_CONTEXT, $CODE_IMPLEMENTATION, $CHALLENGES) provided in ANY language.
-
-Follow this 3-step process:
-1. [ANALYZE & TRANSLATE]: Deeply analyze the content of all three inputs. Identify the core problem, technical solution, architectural decisions, and lessons learned. Mentally translate all content and concepts to ENGLISH.
-2. [SYNTHESIZE]: Synthesize the translated information into cohesive, logical technical documentation. DO NOT just list the inputs; instead, structure the information into a narrative that explains what, why, and how.
-3. [FORMAT]: Format the output as a clean, well-structured Markdown document following the required structure.
+Process ALWAYS happens in three steps:
+1. [ANALYZE & TRANSLATE]: Examine the context dump (accept any language). Identify system components, data flows, technology choices, design rationale, trade-offs, risks, and implicit developer workflows. Translate everything mentally to ENGLISH.
+2. [SYNTHESIZE]: Structure the extracted knowledge into a cohesive architecture narrative tailored for long-term maintainability. Fill in gaps when reasonable, but stay faithful to the source information.
+3. [FORMAT]: Output a clean Markdown document following the requested section structure. Use technical yet accessible language and be explicit about decisions, risks, and workflows.
 
 Guidelines:
-- Accept input in any language but always output in ENGLISH
-- Use technical but accessible language
-- Be specific and detailed
-- Format text in Markdown with headers, lists, and code blocks
-- Maintain a professional and informative tone
-- Structure content logically and hierarchically`;
+- Always output in ENGLISH
+- Use Markdown headings, bullets, tables, or ASCII diagrams for clarity
+- Surface implicit information (e.g., inferred tech stack or flows) when context suggests it
+- Be transparent about assumptions or missing data
+- Maintain an objective, professional tone`;
+  }
+
+  return `You are a Staff-level Data Engineer and expert Technical Communicator. Your job is to analyze a single, unstructured CONTEXT DUMP and transform it into clear, concise, high-quality technical documentation.
+
+Process ALWAYS happens in three steps:
+1. [ANALYZE & TRANSLATE]: Examine the context dump (accept any language). Identify the task, problem, implementation details, supporting code, metrics, challenges, and outcomes. Translate everything mentally to ENGLISH.
+2. [SYNTHESIZE]: Organize the extracted information into a coherent story that explains what was done, why, and how. Highlight the most relevant code and decisions.
+3. [FORMAT]: Output a clean Markdown document following the required structure. Use professional, precise language and emphasize impact.
+
+Guidelines:
+- Always output in ENGLISH
+- Favor specificity over generic statements
+- Use Markdown headings, bullets, and code blocks with inferred languages
+- Extract only the most relevant code snippets (5-15 lines) from the dump
+- Be honest about challenges, mitigations, and follow-ups`;
 }
 
-/**
- * @function buildPrompt
- * @description Builds the user prompt for documentation generation
- * @param {string} context - Task context
- * @param {string} code - Code implementation
- * @param {string} challenges - Challenges faced
- * @returns {string} Complete prompt in English with 5-section structure
- */
-function buildPrompt(context, code, challenges) {
-  let prompt = `Process the following inputs and generate technical documentation:
+function buildPrompt(mode, context) {
+  return mode === 'architecture'
+    ? buildArchitecturePrompt(context)
+    : buildTaskPrompt(context);
+}
 
-**$TASK_CONTEXT:**
+function buildTaskPrompt(context) {
+  return `Process the following CONTEXT DUMP and generate technical documentation:
+
+**$DOCUMENTATION_CONTEXT:**
 ${context}
-`;
 
-  if (code && code.trim()) {
-    prompt += `\n**$CODE_IMPLEMENTATION:**
-\`\`\`
-${code}
-\`\`\`
-`;
-  }
+The context may include free-form notes, markdown, bullet lists, code blocks, logs, or checklists. Extract and organize the key information.
 
-  if (challenges && challenges.trim()) {
-    prompt += `\n**$CHALLENGES:**
-${challenges}
-`;
-  }
-
-  prompt += `\n
 Generate documentation following EXACTLY this structure in ENGLISH:
 
-# [Concise and Descriptive Task Title]
+# [Title - Generated Based on Rules Below]
+- **Title Generation Rule:** First, create a concise and descriptive title for the task (e.g., "SQL Query Migration for Award History").
+- **Identifier Rule:** Next, scan the $DOCUMENTATION_CONTEXT for a primary task identifier (e.g., "DAI-73742", "TICKET-123", "JIRA-456").
+- **Final Title Format:**
+    - **If identifier is found:** The title MUST follow the format: \`[Identifier] | [Concise and Descriptive Task Title]\`
+    - **If identifier is NOT found:** The title MUST follow the format: \`[Concise and Descriptive Task Title]\`
 
 ## Summary
-Write 1-2 sentences in English summarizing the task and its purpose.
+Write 1-2 sentences summarizing the task and its purpose.
 
 ## Problem Solved
-Describe the business or technical problem that this task solved, based on the $TASK_CONTEXT.
+Explain the business or technical problem this task addressed. Use evidence from the context dump.
 
 ## Solution Implemented
-Describe the technical approach and key implementation decisions. If the $TASK_CONTEXT mentions why one approach was chosen over another, include that.
+Describe the technical approach, architecture decisions, data flows, and tooling used. Mention why certain decisions were made when the context provides that information.
 
-## Code Highlights
-Instead of providing the entire code implementation, extract 2-3 SHORT, FOCUSED code snippets (5-15 lines each) that highlight:
-- The main function or entry point
-- Critical business logic or transformations
-- Key technical decisions or patterns
+## Code Highlights / Key Artifacts
+Identify the most critical code snippets, queries, or configuration examples that illustrate the solution.
 
-For each snippet:
-- Write a brief 1-sentence explanation in BOLD (wrapped in **text**)
-- Include the code block immediately after with inferred language (python, sql, javascript, etc.)
-- Keep snippets concise and meaningful
+- For each artifact, write a brief 1-sentence explanation in **bold**.
+- Include a code block with the inferred language (python, sql, javascript, etc.).
 
-Example format:
-**Brief explanation of first snippet.**
-
-\`\`\`python
-code here
-\`\`\`
-
-**Brief explanation of second snippet.**
-
-\`\`\`sql
-code here
-\`\`\`
-
-DO NOT include the full $CODE_IMPLEMENTATION. Extract only the most important parts that demonstrate the solution approach.
+**--- CRITICAL GUIDELINE FOR THIS SECTION ---**
+- **Priority:** Your goal is to show the *core* of the solution.
+- **If the solution is application code** (e.g., Python, JavaScript), select 2-3 **short, focused snippets (5-15 lines)** that best illustrate the logic.
+- **If the solution is a query or transformation** (e.g., SQL, dbt), it is **REQUIRED** to include the **full queries** (e.g., a "Before" and "After" query), as these are the primary artifacts. Do NOT truncate them unless they are excessively long ( > 100 lines).
+- Do NOT paste the entire dump; only the critical code artifacts.
+**--- END GUIDELINE ---**
 
 ## Challenges & Learnings
-Based on the $CHALLENGES, list the main obstacles or insights as bullet points.
-
-- First challenge or lesson learned.
-- Second challenge or lesson learned.
+List key obstacles, mitigations, risks, or lessons learned as bullet points. If the dump lacks explicit challenges, infer potential risks based on the implementation details.
 
 **Important:**
-- Output MUST be 100% in ENGLISH
-- Use Markdown with ## for main sections
-- Include bulleted lists (-) when appropriate
-- Be detailed and specific in each section
-- Infer and specify the code language in code blocks (e.g., \`\`\`python, \`\`\`sql, \`\`\`javascript)
-- Maintain technical focus with clarity`;
-
-  return prompt;
+- Entire output MUST be ENGLISH Markdown
+- Keep section ordering exactly as defined
+- If some information is missing, acknowledge it briefly and move on
+- Be precise, technical, and useful for future engineers`;
 }
 
-/**
- * @async
- * @function generateArchitectureDocumentation
- * @description Generates architecture documentation in English using Gemini API with 6-section structure
- * @param {Object} input - The architecture input data (accepts any language input)
- * @param {string} input.overview - Overview & components description
- * @param {string} input.dataflow - Data flow & technology stack description
- * @param {string} input.decisions - Design decisions & trade-offs description
- * @returns {Promise<string>} Generated architecture documentation in English Markdown format
- * @throws {Error} When API key is missing, API request fails, or response is invalid
- */
-export async function generateArchitectureDocumentation({
-  overview,
-  dataflow,
-  decisions,
-}) {
-  const model = env.GEMINI_MODEL;
-  const apiKey = env.GEMINI_API_KEY;
+function buildArchitecturePrompt(context) {
+  return `Process the following CONTEXT DUMP and generate comprehensive architecture documentation.
 
-  const prompt = buildArchitecturePrompt(overview, dataflow, decisions);
-  const systemInstruction = getArchitectureSystemInstruction();
+**CRITICAL CONTEXT:** The input may describe a MIGRATION (e.g., a legacy system and a new target system). 
+- **IF a migration is detected:** Your primary goal is to document the **NEW (TARGET) ARCHITECTURE**. Use the legacy system's information only as context for the "Migration Guide" section.
+- **IF it is NOT a migration:** Document the system as-is.
 
-  try {
-    const response = await fetchWithRetry(
-      `${GEMINI_API_BASE}/${model}:generateContent?key=${apiKey}`,
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          contents: [
-            {
-              role: 'user',
-              parts: [{ text: prompt }],
-            },
-          ],
-          systemInstruction: {
-            parts: [{ text: systemInstruction }],
-          },
-          generationConfig: {
-            temperature: 0.3,
-            maxOutputTokens: 4096,
-            topP: 0.8,
-            topK: 40,
-          },
-        }),
-        timeoutMs: 60000,
-        attempts: 3,
-      },
-    );
+**$DOCUMENTATION_CONTEXT:**
+${context}
 
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      console.error('Gemini API error:', errorData);
-      throw new Error(
-        `Gemini API failed: ${response.status} - ${
-          errorData.error?.message || 'Unknown error'
-        }`,
-      );
-    }
+The dump may include overview notes, component lists, diagrams, code, commands, or developer steps. Extract, interpret, and organize the information logically.
 
-    const data = await response.json();
-
-    if (!data.candidates || data.candidates.length === 0) {
-      throw new Error('No content generated by Gemini');
-    }
-
-    const candidate = data.candidates[0];
-    if (!candidate.content || !candidate.content.parts) {
-      throw new Error('Invalid response structure from Gemini');
-    }
-
-    const generatedText = candidate.content.parts
-      .map((part) => part.text)
-      .join('');
-
-    return generatedText;
-  } catch (error) {
-    console.error('Error calling Gemini API for architecture:', error);
-    throw new Error(
-      `Failed to generate architecture documentation: ${error.message}`,
-    );
-  }
-}
-
-/**
- * @function getArchitectureSystemInstruction
- * @description Builds the system instruction for Gemini - sets the model's role as a Senior Software Architect
- * @returns {string} System instruction text in English
- */
-function getArchitectureSystemInstruction() {
-  return `You are a Senior Software Architect with deep expertise in system design, distributed systems, and technical communication. Your job is to analyze architecture descriptions and transform them into comprehensive, professional architecture documentation.
-
-Your mission is to process three user inputs ($OVERVIEW_AND_COMPONENTS, $DATA_FLOW_AND_TECH_STACK, $DESIGN_DECISIONS_AND_TRADEOFFS) provided in ANY language.
-
-Follow this 3-step process:
-1. [ANALYZE & TRANSLATE]: Deeply analyze all three inputs. Identify system components, data flows, technology choices, design rationale, and trade-offs. Mentally translate all content and concepts to ENGLISH.
-2. [SYNTHESIZE]: Synthesize the translated information into cohesive architecture documentation. Structure information into a clear narrative that explains the system holistically - its purpose, structure, flow, technologies, and critical decisions.
-3. [FORMAT]: Format the output as a clean, well-structured Markdown document following the required 6-section structure.
-
-Guidelines:
-- Accept input in any language but always output in ENGLISH
-- Use technical but accessible language appropriate for architecture docs
-- Be specific about components, flows, and technologies
-- Explain the "why" behind design decisions
-- Be honest about trade-offs and risks
-- Format text in Markdown with headers, lists, and diagrams (as ASCII or text descriptions)
-- Maintain a professional, analytical, and objective tone
-- Structure content logically and hierarchically
-- Focus on clarity and durability - this document should remain valuable over time`;
-}
-
-/**
- * @function buildArchitecturePrompt
- * @description Builds the user prompt for architecture documentation generation
- * @param {string} overview - Overview & components description
- * @param {string} dataflow - Data flow & technology stack description
- * @param {string} decisions - Design decisions & trade-offs description
- * @returns {string} Complete prompt in English with 6-section structure
- */
-function buildArchitecturePrompt(overview, dataflow, decisions) {
-  let prompt = `Process the following architecture inputs and generate comprehensive architecture documentation:
-
-**$OVERVIEW_AND_COMPONENTS:**
-${overview}
-
-**$DATA_FLOW_AND_TECH_STACK:**
-${dataflow}
-
-**$DESIGN_DECISIONS_AND_TRADEOFFS:**
-${decisions}
-
-Generate architecture documentation following EXACTLY this structure in ENGLISH:
+Generate architecture documentation following EXACTLY this 5-section structure in ENGLISH:
 
 # [System/Component Name] - Architecture
 
 ## Overview
-Based on $OVERVIEW_AND_COMPONENTS, write 2-3 paragraphs in English that answer:
-- What is this system/component and what is its core business purpose?
-- Who are the primary users or consumers?
-- What problem does it solve at a high level?
-
-Be clear and concise. This should give readers immediate context.
+Summarize what the system/component is, its business purpose, primary users, and the problems it solves. (If a migration, focus on the new system's purpose).
 
 ## Key Components
-Based on $OVERVIEW_AND_COMPONENTS and $DATA_FLOW_AND_TECH_STACK, identify and describe the main building blocks:
-
-- **Component Name 1**: Brief description of its responsibility
-- **Component Name 2**: Brief description of its responsibility
-- **Component Name 3**: Brief description of its responsibility
-
-Focus on the PRIMARY components. Avoid listing every small detail. Group related sub-components if needed.
+List the principal components/services. For each, include a short description of its responsibility. (If a migration, list components of the TARGET architecture).
 
 ## Data & Service Flow
-Based on $DATA_FLOW_AND_TECH_STACK, describe how data and requests move through the system:
-
-1. **Entry Point**: Where does data/requests enter the system?
-2. **Processing Flow**: What are the main steps in the flow?
-3. **Exit Point**: Where does data go or what is the final output?
-
-If applicable, use a simple ASCII diagram or numbered list to show the flow clearly. Example:
-
-\`\`\`
-User Request → API Gateway → Service A → Database → Service B → Response
-\`\`\`
-
-Or use a bulleted narrative if a diagram is not practical.
+Describe how data and requests move through the system at runtime. Provide a numbered list or ASCII diagram showing the flow. (If a migration, describe the TARGET system's flow).
 
 ## Technology Stack
-Based on $DATA_FLOW_AND_TECH_STACK, list the key technologies chosen:
+List the key technologies, frameworks, databases, infrastructure, and tooling inferred from the context. (If a migration, list the TARGET system's stack).
 
-- **Language(s)**: Python, JavaScript, Go, etc.
-- **Frameworks**: Django, React, Spring Boot, etc.
-- **Databases**: PostgreSQL, MongoDB, Redis, etc.
-- **Infrastructure**: Kubernetes, AWS Lambda, Docker, etc.
-- **Message Queues/Streams**: Kafka, RabbitMQ, etc. (if applicable)
-- **Other Tools**: Airflow, Grafana, etc. (if applicable)
-
-Only include technologies that are actually used. Be specific (e.g., "PostgreSQL 14" not just "SQL database").
-
-## Key Design Decisions & Rationale
-Based on $DESIGN_DECISIONS_AND_TRADEOFFS, explain the most important design choices:
-
-**Decision 1: [Title of Decision]**
-- **What was chosen**: [Specific technology/pattern/approach]
-- **Why it was chosen**: [Business or technical rationale]
-- **Alternative considered**: [What else was considered and why it was rejected]
-
-**Decision 2: [Title of Decision]**
-- **What was chosen**: [Specific technology/pattern/approach]
-- **Why it was chosen**: [Business or technical rationale]
-- **Alternative considered**: [What else was considered and why it was rejected]
-
-Focus on 2-4 critical decisions. These should be decisions that significantly impact the system's behavior, performance, cost, or maintainability.
-
-## Risks & Trade-offs
-Based on $DESIGN_DECISIONS_AND_TRADEOFFS, honestly assess known weaknesses or compromises:
-
-- **Risk/Trade-off 1**: [Description of the risk or compromise and its potential impact]
-- **Risk/Trade-off 2**: [Description of the risk or compromise and its potential impact]
-- **Risk/Trade-off 3**: [Description of the risk or compromise and its potential impact]
-
-Examples: "Eventual consistency means users may see stale data for up to 5 seconds", "No disaster recovery plan beyond daily backups", "High operational complexity due to microservices".
-
-Be objective and factual. This section builds trust and helps future maintainers understand limitations.
+## Migration Guide & Developer Workflow
+Detail the step-by-step developer workflow, setup steps, repos, commands, configuration locations, and deployment process referenced in the dump.
+- If this is a migration, this section should describe the process of migrating *from* the legacy system.
+- If it's a standard process, describe the developer "how-to" guide.
 
 **Important:**
-- Output MUST be 100% in ENGLISH
-- Use Markdown with ## for main sections
-- Include bulleted lists (-) and bold (**text**) for emphasis
-- Be detailed and specific in each section
-- Use ASCII diagrams or structured text for flows
-- Maintain a professional, analytical tone
-- Focus on clarity, honesty, and long-term value`;
+- Entire output MUST be ENGLISH Markdown
+- Preserve the 5-section ordering above
+- **Do NOT include sections for "Key Design Decisions" or "Risks & Trade-offs"**
+- Use bullets, bold, and tables when they improve clarity
+- Favor specificity and traceability back to the context dump
+- Do NOT wrap the entire response in Markdown code fences`;
+}
 
-  return prompt;
+function stripMarkdownFence(text) {
+  if (!text) return text;
+
+  const trimmed = text.trim();
+
+  if (!trimmed.startsWith('```')) {
+    return text;
+  }
+
+  const fenceMatch = trimmed.match(/^```[a-zA-Z0-9+-]*\n([\s\S]*?)\n```$/);
+
+  if (!fenceMatch) {
+    return text;
+  }
+
+  return fenceMatch[1].trim();
 }

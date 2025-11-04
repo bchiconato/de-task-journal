@@ -2,76 +2,118 @@
  * @fileoverview API integration tests for POST /api/generate endpoint
  */
 
-import { describe, it, expect, vi } from 'vitest';
-import request from 'supertest';
-import app from '../src/app.js';
+import { beforeEach, afterEach, describe, it, expect, vi } from 'vitest';
+import { validate } from '../src/middleware/validate.js';
+import { GenerateSchema } from '../src/schemas/generate.js';
+import { errorHandler } from '../src/middleware/errors.js';
+import { generateDocsHandler } from '../routes/generate.js';
+import * as geminiService from '../services/geminiService.js';
+import { env } from '../src/config/index.js';
+
+const validator = validate(GenerateSchema);
+
+const originalEnv = { ...env };
+
+const createMockRes = () => {
+  return {
+    statusCode: 200,
+    body: undefined,
+    finished: false,
+    status(code) {
+      this.statusCode = code;
+      return this;
+    },
+    json(payload) {
+      this.body = payload;
+      this.finished = true;
+      return this;
+    },
+  };
+};
+
+const executeGenerateRequest = async (body) => {
+  const req = { body, valid: undefined };
+  const res = createMockRes();
+  const nextCalls = [];
+  const next = (err) => {
+    if (err) {
+      nextCalls.push(err);
+    }
+  };
+
+  await validator(req, res, next);
+
+  if (!res.finished && res.statusCode === 200) {
+    await generateDocsHandler(req, res, next);
+  }
+
+  if (!res.finished && nextCalls.length) {
+    errorHandler(nextCalls[0], req, res, () => {});
+  }
+
+  return { res, error: nextCalls[0] };
+};
+
+beforeEach(() => {
+  Object.assign(env, originalEnv);
+  vi.restoreAllMocks();
+});
+
+afterEach(() => {
+  vi.restoreAllMocks();
+});
 
 describe('POST /api/generate', () => {
   it('returns 400 on empty payload', async () => {
-    const response = await request(app).post('/api/generate').send({});
+    const { res } = await executeGenerateRequest({});
 
-    expect(response.status).toBe(400);
+    expect(res.statusCode).toBe(400);
   });
 
   it('returns 400 when context is too short', async () => {
-    const response = await request(app).post('/api/generate').send({
-      context: 'short',
-    });
+    const { res } = await executeGenerateRequest({ context: 'short' });
 
-    expect(response.status).toBe(400);
-    expect(response.body).toHaveProperty('error');
+    expect(res.statusCode).toBe(400);
+    expect(res.body).toHaveProperty('error');
   });
 
   it('returns 400 when context is missing', async () => {
-    const response = await request(app).post('/api/generate').send({
+    const { res } = await executeGenerateRequest({
       code: 'console.log("test")',
     });
 
-    expect(response.status).toBe(400);
+    expect(res.statusCode).toBe(400);
   });
 
   it('returns 200 on valid payload with mocked Gemini response', async () => {
-    global.fetch = vi.fn(() =>
-      Promise.resolve({
-        ok: true,
-        status: 200,
-        json: async () => ({
-          candidates: [
-            {
-              content: {
-                parts: [{ text: '# Summary\n\nGenerated documentation.' }],
-              },
-            },
-          ],
-        }),
-        headers: new Headers(),
-      }),
-    );
+    env.GEMINI_API_KEY = 'test-key';
+    const docSpy = vi
+      .spyOn(geminiService, 'generateDocumentation')
+      .mockResolvedValue('# Summary\n\nGenerated documentation.');
 
-    const response = await request(app).post('/api/generate').send({
+    const { res } = await executeGenerateRequest({
       context: 'This is a valid context with enough characters.',
-      code: 'console.log("hello")',
     });
 
-    expect(response.status).toBe(200);
-    expect(response.body).toHaveProperty('documentation');
-    expect(response.body.documentation).toContain('Summary');
+    expect(docSpy).toHaveBeenCalledTimes(1);
+    expect(res.statusCode).toBe(200);
+    expect(res.body).toHaveProperty('documentation');
+    expect(res.body.documentation).toContain('Summary');
   });
 
   it('handles Gemini API errors gracefully', async () => {
-    global.fetch = vi.fn(() =>
-      Promise.resolve({
-        ok: false,
-        status: 429,
-        statusText: 'Too Many Requests',
-        headers: new Headers(),
-      }),
+    env.GEMINI_API_KEY = 'test-key';
+    vi.spyOn(geminiService, 'generateDocumentation').mockRejectedValue(
+      new Error('Gemini failure'),
     );
 
-    const response = await request(app).post('/api/generate').send({
+    const { res } = await executeGenerateRequest({
       context: 'Valid context for testing error handling.',
     });
 
-    expect(response.status).toBe(500);
+    expect(res.statusCode).toBe(500);
+    expect(res.body).toMatchObject({
+      error: 'gemini_error',
+    });
   });
 });
