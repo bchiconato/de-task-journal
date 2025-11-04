@@ -4,7 +4,7 @@ A full-stack web application that helps data engineers document their work by au
 
 ## Features
 
-- **Intuitive Input Form**: Capture task context, code implementation, and challenges (accepts input in any language)
+- **Intuitive Input Form**: Paste a single context dump (any language) and let the AI organize it automatically
 - **AI-Powered Documentation**: Generate comprehensive technical documentation in English using Google Gemini AI (FREE tier available)
 - **Notion Integration**: Automatically send generated documentation to your Notion page with smart chunking (handles documents >100 blocks)
 - **Modern UI**: Clean, responsive design built with React and Tailwind CSS
@@ -179,16 +179,15 @@ Open your browser and navigate to `http://localhost:5173`
 
 ## Usage
 
-1. **Enter Task Context** (required): Describe your data engineering task
-2. **Add Code Implementation** (optional): Paste any relevant code
-3. **Describe Challenges** (optional): Note any difficulties faced
-4. **Click "Generate Documentation"**: Wait for Claude AI to generate your documentation
-5. **Review Generated Content**: Read through the generated documentation
-6. **Copy or Send to Notion**: Either copy to clipboard or send directly to your Notion page
+1. **Pick the mode** (Task or Architecture) that matches the documentation you need
+2. **Paste your full context** (required): use the single field for notes, code, decisions, risks, and anything else
+3. **Click "Generate Documentation"**: wait for the Gemini response
+4. **Review the result**: edit in the built-in markdown editor if needed
+5. **Copy or send to Notion**: choose whichever action fits your workflow
 
 ## Generated Documentation Structure
 
-The AI generates documentation with the following sections in English:
+In **Task** mode, the AI generates documentation with the following structure:
 
 1. **Summary**: 1-2 sentences summarizing the task and its purpose
 2. **Problem Solved**: Description of the business or technical problem
@@ -196,7 +195,7 @@ The AI generates documentation with the following sections in English:
 4. **Code Highlights**: Brief explanation of code snippet with inferred language (python, sql, javascript, etc.)
 5. **Challenges & Learnings**: Main obstacles or insights as bullet points
 
-The system accepts input in any language but always generates output in English.
+In **Architecture** mode, the AI produces a full architecture document covering overview, components, flow, technology stack, developer workflow, decisions, and risks. In both modes the system accepts input in any language and always returns English documentation.
 
 ## API Endpoints
 
