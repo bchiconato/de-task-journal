@@ -157,7 +157,7 @@ export function GeneratedContent({
         </div>
       ) : (
         <div
-          className="prose prose-sm sm:prose lg:prose-lg max-w-[65ch] mx-auto space-y-6 pt-6"
+          className="prose prose-sm sm:prose lg:prose-lg max-w-[65ch] mx-auto space-y-6 pt-6 overflow-x-auto"
           role="article"
           aria-live="polite"
           style={{ lineHeight: '1.6' }}

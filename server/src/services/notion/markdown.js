@@ -189,13 +189,22 @@ export function markdownToNotionBlocks(markdown) {
       continue;
     }
 
+    if (isTableStart(lines, i)) {
+      const { block: tableBlock, nextIndex } = parseTable(lines, i);
+      blocks.push(tableBlock);
+      i = nextIndex;
+      continue;
+    }
+
     if (line.startsWith('# ')) {
       blocks.push({
         object: 'block',
         type: 'heading_1',
         heading_1: {
           rich_text: parseInlineMarkdown(line.substring(2)),
+          is_toggleable: true,
         },
+        children: [],
       });
       i++;
       continue;
@@ -312,7 +321,92 @@ export function markdownToNotionBlocks(markdown) {
     i++;
   }
 
+  if (blocks.length > 1 && blocks[0].type === 'heading_1') {
+    const headingBlock = blocks[0];
+    headingBlock.children = [
+      ...(headingBlock.children || []),
+      ...blocks.slice(1),
+    ];
+    return [headingBlock];
+  }
+
   return blocks;
+}
+
+function isTableStart(lines, index) {
+  if (index + 1 >= lines.length) return false;
+  const header = lines[index].trim();
+  const separator = lines[index + 1].trim();
+  if (!header.startsWith('|') || !separator.startsWith('|')) return false;
+  const headerCells = splitTableRow(header);
+  const separatorCells = splitTableRow(separator);
+  if (headerCells.length < 2 || headerCells.length !== separatorCells.length) {
+    return false;
+  }
+  return separatorCells.every((cell) =>
+    /^:?-{3,}:?$/.test(cell.replace(/\s+/g, '')),
+  );
+}
+
+function splitTableRow(row) {
+  return row
+    .trim()
+    .replace(/^\|/, '')
+    .replace(/\|$/, '')
+    .split('|')
+    .map((cell) => cell.trim());
+}
+
+function parseTable(lines, startIndex) {
+  const headerLine = lines[startIndex];
+  const headerCells = splitTableRow(headerLine);
+  const rows = [];
+
+  let currentIndex = startIndex + 2;
+  while (
+    currentIndex < lines.length &&
+    lines[currentIndex].trim().startsWith('|')
+  ) {
+    rows.push(splitTableRow(lines[currentIndex]));
+    currentIndex++;
+  }
+
+  const columnCount = headerCells.length;
+
+  const headerRow = createTableRow(headerCells);
+  const dataRows = rows.map((cells) => {
+    const filled = [...cells];
+    while (filled.length < columnCount) {
+      filled.push('');
+    }
+    if (filled.length > columnCount) {
+      filled.length = columnCount;
+    }
+    return createTableRow(filled);
+  });
+
+  const tableBlock = {
+    object: 'block',
+    type: 'table',
+    table: {
+      table_width: columnCount,
+      has_column_header: true,
+      has_row_header: false,
+      children: [headerRow, ...dataRows],
+    },
+  };
+
+  return { block: tableBlock, nextIndex: currentIndex };
+}
+
+function createTableRow(cells) {
+  return {
+    object: 'block',
+    type: 'table_row',
+    table_row: {
+      cells: cells.map((cell) => parseInlineMarkdown(cell)),
+    },
+  };
 }
 
 /**

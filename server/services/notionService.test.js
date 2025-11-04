@@ -9,6 +9,22 @@ import {
   splitLongText,
 } from '../src/services/notion/markdown.js';
 
+const flattenBlocks = (blocks) => {
+  const result = [];
+
+  const visit = (items) => {
+    for (const block of items) {
+      result.push(block);
+      if (Array.isArray(block.children) && block.children.length) {
+        visit(block.children);
+      }
+    }
+  };
+
+  visit(blocks);
+  return result;
+};
+
 describe('parseInlineMarkdown', () => {
   it('should return plain text for strings without formatting', () => {
     const result = parseInlineMarkdown('Plain text');
@@ -271,7 +287,7 @@ describe('markdownToNotionBlocks', () => {
   it('should detect dividers from markdown', () => {
     const markdown = '# Title\n\n---\n\nContent after divider';
     const blocks = markdownToNotionBlocks(markdown);
-    const dividers = blocks.filter((b) => b.type === 'divider');
+    const dividers = flattenBlocks(blocks).filter((b) => b.type === 'divider');
     expect(dividers).toHaveLength(1);
   });
 
@@ -297,16 +313,35 @@ def hello():
 Visit [documentation](https://docs.example.com) for more.`;
 
     const blocks = markdownToNotionBlocks(markdown);
+    const flatBlocks = flattenBlocks(blocks);
 
     expect(blocks.filter((b) => b.type === 'heading_1')).toHaveLength(1);
-    expect(blocks.filter((b) => b.type === 'heading_2')).toHaveLength(3);
-    expect(blocks.filter((b) => b.type === 'paragraph').length).toBeGreaterThan(
-      0,
+    expect(flatBlocks.filter((b) => b.type === 'heading_2')).toHaveLength(3);
+    expect(
+      flatBlocks.filter((b) => b.type === 'paragraph').length,
+    ).toBeGreaterThan(0);
+    expect(
+      flatBlocks.filter((b) => b.type === 'bulleted_list_item'),
+    ).toHaveLength(2);
+    expect(flatBlocks.filter((b) => b.type === 'code')).toHaveLength(1);
+  });
+
+  it('should convert markdown tables', () => {
+    const markdown = `| Column A | Column B |
+| --- | --- |
+| Value 1 | Value 2 |`;
+
+    const blocks = markdownToNotionBlocks(markdown);
+    expect(blocks).toHaveLength(1);
+    expect(blocks[0].type).toBe('table');
+    expect(blocks[0].table.table_width).toBe(2);
+    expect(blocks[0].table.children).toHaveLength(2);
+    expect(blocks[0].table.children[0].table_row.cells[0][0].text.content).toBe(
+      'Column A',
     );
-    expect(blocks.filter((b) => b.type === 'bulleted_list_item')).toHaveLength(
-      2,
+    expect(blocks[0].table.children[1].table_row.cells[1][0].text.content).toBe(
+      'Value 2',
     );
-    expect(blocks.filter((b) => b.type === 'code')).toHaveLength(1);
   });
 
   it('should handle mixed list types', () => {

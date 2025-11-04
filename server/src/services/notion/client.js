@@ -14,6 +14,13 @@ import { performance } from 'node:perf_hooks';
 
 const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
+const clone = (value) => {
+  if (typeof globalThis.structuredClone === 'function') {
+    return globalThis.structuredClone(value);
+  }
+  return JSON.parse(JSON.stringify(value));
+};
+
 /**
  * @function withUrl
  * @description Constructs full Notion API URL from path
@@ -65,22 +72,75 @@ export async function appendBlocksChunked({ token, blockId, children }) {
     return { blocksAdded: 0, chunks: [], chunkCount: 0, responses: [] };
   }
 
-  const chunks = [];
-  for (let i = 0; i < children.length; i += MAX_BLOCKS_PER_REQUEST) {
-    chunks.push(children.slice(i, i + MAX_BLOCKS_PER_REQUEST));
+  const preparedBlocks = children.map((block) => prepareBlock(block));
+  const stats = {
+    blocksAdded: 0,
+    chunks: [],
+    responses: [],
+  };
+
+  await appendPreparedBlocks(token, blockId, preparedBlocks, stats);
+
+  return {
+    blocksAdded: stats.blocksAdded,
+    chunks: stats.chunks,
+    chunkCount: stats.chunks.length,
+    responses: stats.responses,
+  };
+}
+
+function prepareBlock(block) {
+  const cloned = clone(block);
+
+  if ('object' in cloned) {
+    delete cloned.object;
   }
 
-  const responses = [];
-  const chunkSummaries = [];
-  for (let i = 0; i < chunks.length; i++) {
-    const chunk = chunks[i];
+  if (cloned.type === 'table') {
+    const tableChildren = Array.isArray(cloned.table?.children)
+      ? cloned.table.children
+      : [];
+
+    const preparedRows = tableChildren.map((row) => prepareBlock(row).block);
+
+    cloned.table = {
+      ...cloned.table,
+      children: preparedRows,
+    };
+
+    return {
+      block: cloned,
+      children: [],
+    };
+  }
+
+  const rawChildren = Array.isArray(cloned.children) ? cloned.children : [];
+  const preparedChildren = rawChildren.map((child) => prepareBlock(child));
+  delete cloned.children;
+
+  return {
+    block: cloned,
+    children: preparedChildren,
+  };
+}
+
+async function appendPreparedBlocks(token, blockId, preparedNodes, stats) {
+  if (!preparedNodes || preparedNodes.length === 0) {
+    return;
+  }
+
+  const total = preparedNodes.length;
+  for (let i = 0; i < total; i += MAX_BLOCKS_PER_REQUEST) {
+    const chunkNodes = preparedNodes.slice(i, i + MAX_BLOCKS_PER_REQUEST);
+    const chunkBlocks = chunkNodes.map((node) => node.block);
+
     const chunkStartedAt = new Date().toISOString();
     const startTime = performance.now();
 
     const res = await fetchWithRetry(withUrl(`/blocks/${blockId}/children`), {
       method: 'PATCH',
       headers: defaultHeaders(token),
-      body: JSON.stringify({ children: chunk }),
+      body: JSON.stringify({ children: chunkBlocks }),
       timeoutMs: 10000,
       attempts: 3,
     });
@@ -89,7 +149,7 @@ export async function appendBlocksChunked({ token, blockId, children }) {
       const errorData = await res.json().catch(() => ({}));
       const errorMessage =
         errorData.message ||
-        `Failed to append blocks (chunk ${i + 1}/${chunks.length}): ${res.status}`;
+        `Failed to append blocks (chunk ${i / MAX_BLOCKS_PER_REQUEST + 1}/${Math.ceil(total / MAX_BLOCKS_PER_REQUEST)}): ${res.status}`;
 
       if (res.status === 403) {
         throw new Error(
@@ -111,30 +171,40 @@ export async function appendBlocksChunked({ token, blockId, children }) {
     }
 
     const responseData = await res.json();
-    responses.push(responseData);
+    stats.responses.push(responseData);
+    stats.blocksAdded += chunkBlocks.length;
 
     const durationMs = Math.round(performance.now() - startTime);
-    const summary = {
-      index: i + 1,
-      size: chunk.length,
+    stats.chunks.push({
+      index: stats.chunks.length + 1,
+      size: chunkBlocks.length,
       durationMs,
       startedAt: chunkStartedAt,
-    };
-    chunkSummaries.push(summary);
+    });
 
-    console.info(
-      `Notion append chunk ${summary.index}/${chunks.length} | ${summary.size} blocks | ${summary.durationMs}ms`,
-    );
+    const appendedResults = Array.isArray(responseData.results)
+      ? responseData.results
+      : [];
 
-    if (i < chunks.length - 1) {
+    for (let j = 0; j < chunkNodes.length; j++) {
+      const childNodes = chunkNodes[j].children;
+      if (!childNodes || childNodes.length === 0) {
+        continue;
+      }
+
+      const appendedBlock = appendedResults[j];
+      if (!appendedBlock || !appendedBlock.id) {
+        console.warn(
+          'Notion response missing block id for nested children; skipping nested append.',
+        );
+        continue;
+      }
+
+      await appendPreparedBlocks(token, appendedBlock.id, childNodes, stats);
+    }
+
+    if (i + MAX_BLOCKS_PER_REQUEST < total) {
       await wait(RPS_THROTTLE_MS);
     }
   }
-
-  return {
-    blocksAdded: children.length,
-    chunks: chunkSummaries,
-    chunkCount: chunks.length,
-    responses,
-  };
 }

@@ -72,9 +72,7 @@ async function notionHandler(req, res, next) {
     let finalContent = content;
 
     if (mode === 'architecture') {
-      const title = extractTitleFromMarkdown(content);
-      const timestamp = new Date().toISOString().split('T')[0];
-      finalContent = `🏗️ # [ARCHITECTURE] - ${title} (${timestamp})\n\n${content}\n\n---\n`;
+      finalContent = `${content}\n\n---\n`;
     }
 
     const blocks = markdownToNotionBlocks(finalContent);
@@ -100,24 +98,7 @@ async function notionHandler(req, res, next) {
   }
 }
 
-/**
- * @function extractTitleFromMarkdown
- * @description Extracts the first H1 heading from markdown content
- * @param {string} markdown - Markdown content
- * @returns {string} Extracted title or default text
- */
-function extractTitleFromMarkdown(markdown) {
-  const lines = markdown.split('\n');
-  for (const line of lines) {
-    const trimmed = line.trim();
-    if (trimmed.startsWith('# ')) {
-      return trimmed.substring(2).trim();
-    }
-  }
-  return 'Architecture Documentation';
-}
-
 router.get('/pages', listPagesHandler);
 router.post('/', validate(NotionExportSchema), notionHandler);
 
-export { router as notionRouter };
+export { router as notionRouter, notionHandler, listPagesHandler };

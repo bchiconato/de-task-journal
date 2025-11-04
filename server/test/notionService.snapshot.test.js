@@ -41,6 +41,16 @@ console.log('hello');
   expect(blocks).toMatchSnapshot();
 });
 
+test('maps markdown tables to Notion table blocks', () => {
+  const md = `| Name | Role |
+| ---- | ---- |
+| Alice | Engineer |
+| Bob | Analyst |`;
+
+  const blocks = markdownToNotionBlocks(md);
+  expect(blocks).toMatchSnapshot();
+});
+
 test('maps complete document with mixed block types', () => {
   const md = `# Project Summary
 

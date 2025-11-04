@@ -7,7 +7,280 @@ exports[`handles markdown with only whitespace 1`] = `[]`;
 exports[`maps complete document with mixed block types 1`] = `
 [
   {
+    "children": [
+      {
+        "object": "block",
+        "paragraph": {
+          "rich_text": [
+            {
+              "annotations": {
+                "bold": false,
+                "code": false,
+                "color": "default",
+                "italic": false,
+                "strikethrough": false,
+                "underline": false,
+              },
+              "text": {
+                "content": "This is a paragraph with ",
+              },
+              "type": "text",
+            },
+            {
+              "annotations": {
+                "bold": true,
+                "code": false,
+                "color": "default",
+                "italic": false,
+                "strikethrough": false,
+                "underline": false,
+              },
+              "text": {
+                "content": "bold",
+              },
+              "type": "text",
+            },
+            {
+              "annotations": {
+                "bold": false,
+                "code": false,
+                "color": "default",
+                "italic": false,
+                "strikethrough": false,
+                "underline": false,
+              },
+              "text": {
+                "content": " and ",
+              },
+              "type": "text",
+            },
+            {
+              "annotations": {
+                "bold": false,
+                "code": false,
+                "color": "default",
+                "italic": true,
+                "strikethrough": false,
+                "underline": false,
+              },
+              "text": {
+                "content": "italic",
+              },
+              "type": "text",
+            },
+            {
+              "annotations": {
+                "bold": false,
+                "code": false,
+                "color": "default",
+                "italic": false,
+                "strikethrough": false,
+                "underline": false,
+              },
+              "text": {
+                "content": " text.",
+              },
+              "type": "text",
+            },
+          ],
+        },
+        "type": "paragraph",
+      },
+      {
+        "heading_2": {
+          "rich_text": [
+            {
+              "annotations": {
+                "bold": false,
+                "code": false,
+                "color": "default",
+                "italic": false,
+                "strikethrough": false,
+                "underline": false,
+              },
+              "text": {
+                "content": "Implementation",
+              },
+              "type": "text",
+            },
+          ],
+        },
+        "object": "block",
+        "type": "heading_2",
+      },
+      {
+        "bulleted_list_item": {
+          "rich_text": [
+            {
+              "annotations": {
+                "bold": false,
+                "code": false,
+                "color": "default",
+                "italic": false,
+                "strikethrough": false,
+                "underline": false,
+              },
+              "text": {
+                "content": "Used Express for the API",
+              },
+              "type": "text",
+            },
+          ],
+        },
+        "object": "block",
+        "type": "bulleted_list_item",
+      },
+      {
+        "bulleted_list_item": {
+          "rich_text": [
+            {
+              "annotations": {
+                "bold": false,
+                "code": false,
+                "color": "default",
+                "italic": false,
+                "strikethrough": false,
+                "underline": false,
+              },
+              "text": {
+                "content": "Connected to Notion API",
+              },
+              "type": "text",
+            },
+          ],
+        },
+        "object": "block",
+        "type": "bulleted_list_item",
+      },
+      {
+        "bulleted_list_item": {
+          "rich_text": [
+            {
+              "annotations": {
+                "bold": false,
+                "code": false,
+                "color": "default",
+                "italic": false,
+                "strikethrough": false,
+                "underline": false,
+              },
+              "text": {
+                "content": "Added error handling",
+              },
+              "type": "text",
+            },
+          ],
+        },
+        "object": "block",
+        "type": "bulleted_list_item",
+      },
+      {
+        "code": {
+          "language": "python",
+          "rich_text": [
+            {
+              "text": {
+                "content": "def hello_world():
+    print("Hello")",
+              },
+              "type": "text",
+            },
+          ],
+        },
+        "object": "block",
+        "type": "code",
+      },
+      {
+        "heading_3": {
+          "rich_text": [
+            {
+              "annotations": {
+                "bold": false,
+                "code": false,
+                "color": "default",
+                "italic": false,
+                "strikethrough": false,
+                "underline": false,
+              },
+              "text": {
+                "content": "Next Steps",
+              },
+              "type": "text",
+            },
+          ],
+        },
+        "object": "block",
+        "type": "heading_3",
+      },
+      {
+        "numbered_list_item": {
+          "rich_text": [
+            {
+              "annotations": {
+                "bold": false,
+                "code": false,
+                "color": "default",
+                "italic": false,
+                "strikethrough": false,
+                "underline": false,
+              },
+              "text": {
+                "content": "Add tests",
+              },
+              "type": "text",
+            },
+          ],
+        },
+        "object": "block",
+        "type": "numbered_list_item",
+      },
+      {
+        "numbered_list_item": {
+          "rich_text": [
+            {
+              "annotations": {
+                "bold": false,
+                "code": false,
+                "color": "default",
+                "italic": false,
+                "strikethrough": false,
+                "underline": false,
+              },
+              "text": {
+                "content": "Deploy to production",
+              },
+              "type": "text",
+            },
+          ],
+        },
+        "object": "block",
+        "type": "numbered_list_item",
+      },
+      {
+        "numbered_list_item": {
+          "rich_text": [
+            {
+              "annotations": {
+                "bold": false,
+                "code": false,
+                "color": "default",
+                "italic": false,
+                "strikethrough": false,
+                "underline": false,
+              },
+              "text": {
+                "content": "Monitor performance",
+              },
+              "type": "text",
+            },
+          ],
+        },
+        "object": "block",
+        "type": "numbered_list_item",
+      },
+    ],
     "heading_1": {
+      "is_toggleable": true,
       "rich_text": [
         {
           "annotations": {
@@ -27,276 +300,6 @@ exports[`maps complete document with mixed block types 1`] = `
     },
     "object": "block",
     "type": "heading_1",
-  },
-  {
-    "object": "block",
-    "paragraph": {
-      "rich_text": [
-        {
-          "annotations": {
-            "bold": false,
-            "code": false,
-            "color": "default",
-            "italic": false,
-            "strikethrough": false,
-            "underline": false,
-          },
-          "text": {
-            "content": "This is a paragraph with ",
-          },
-          "type": "text",
-        },
-        {
-          "annotations": {
-            "bold": true,
-            "code": false,
-            "color": "default",
-            "italic": false,
-            "strikethrough": false,
-            "underline": false,
-          },
-          "text": {
-            "content": "bold",
-          },
-          "type": "text",
-        },
-        {
-          "annotations": {
-            "bold": false,
-            "code": false,
-            "color": "default",
-            "italic": false,
-            "strikethrough": false,
-            "underline": false,
-          },
-          "text": {
-            "content": " and ",
-          },
-          "type": "text",
-        },
-        {
-          "annotations": {
-            "bold": false,
-            "code": false,
-            "color": "default",
-            "italic": true,
-            "strikethrough": false,
-            "underline": false,
-          },
-          "text": {
-            "content": "italic",
-          },
-          "type": "text",
-        },
-        {
-          "annotations": {
-            "bold": false,
-            "code": false,
-            "color": "default",
-            "italic": false,
-            "strikethrough": false,
-            "underline": false,
-          },
-          "text": {
-            "content": " text.",
-          },
-          "type": "text",
-        },
-      ],
-    },
-    "type": "paragraph",
-  },
-  {
-    "heading_2": {
-      "rich_text": [
-        {
-          "annotations": {
-            "bold": false,
-            "code": false,
-            "color": "default",
-            "italic": false,
-            "strikethrough": false,
-            "underline": false,
-          },
-          "text": {
-            "content": "Implementation",
-          },
-          "type": "text",
-        },
-      ],
-    },
-    "object": "block",
-    "type": "heading_2",
-  },
-  {
-    "bulleted_list_item": {
-      "rich_text": [
-        {
-          "annotations": {
-            "bold": false,
-            "code": false,
-            "color": "default",
-            "italic": false,
-            "strikethrough": false,
-            "underline": false,
-          },
-          "text": {
-            "content": "Used Express for the API",
-          },
-          "type": "text",
-        },
-      ],
-    },
-    "object": "block",
-    "type": "bulleted_list_item",
-  },
-  {
-    "bulleted_list_item": {
-      "rich_text": [
-        {
-          "annotations": {
-            "bold": false,
-            "code": false,
-            "color": "default",
-            "italic": false,
-            "strikethrough": false,
-            "underline": false,
-          },
-          "text": {
-            "content": "Connected to Notion API",
-          },
-          "type": "text",
-        },
-      ],
-    },
-    "object": "block",
-    "type": "bulleted_list_item",
-  },
-  {
-    "bulleted_list_item": {
-      "rich_text": [
-        {
-          "annotations": {
-            "bold": false,
-            "code": false,
-            "color": "default",
-            "italic": false,
-            "strikethrough": false,
-            "underline": false,
-          },
-          "text": {
-            "content": "Added error handling",
-          },
-          "type": "text",
-        },
-      ],
-    },
-    "object": "block",
-    "type": "bulleted_list_item",
-  },
-  {
-    "code": {
-      "language": "python",
-      "rich_text": [
-        {
-          "text": {
-            "content": "def hello_world():
-    print("Hello")",
-          },
-          "type": "text",
-        },
-      ],
-    },
-    "object": "block",
-    "type": "code",
-  },
-  {
-    "heading_3": {
-      "rich_text": [
-        {
-          "annotations": {
-            "bold": false,
-            "code": false,
-            "color": "default",
-            "italic": false,
-            "strikethrough": false,
-            "underline": false,
-          },
-          "text": {
-            "content": "Next Steps",
-          },
-          "type": "text",
-        },
-      ],
-    },
-    "object": "block",
-    "type": "heading_3",
-  },
-  {
-    "numbered_list_item": {
-      "rich_text": [
-        {
-          "annotations": {
-            "bold": false,
-            "code": false,
-            "color": "default",
-            "italic": false,
-            "strikethrough": false,
-            "underline": false,
-          },
-          "text": {
-            "content": "Add tests",
-          },
-          "type": "text",
-        },
-      ],
-    },
-    "object": "block",
-    "type": "numbered_list_item",
-  },
-  {
-    "numbered_list_item": {
-      "rich_text": [
-        {
-          "annotations": {
-            "bold": false,
-            "code": false,
-            "color": "default",
-            "italic": false,
-            "strikethrough": false,
-            "underline": false,
-          },
-          "text": {
-            "content": "Deploy to production",
-          },
-          "type": "text",
-        },
-      ],
-    },
-    "object": "block",
-    "type": "numbered_list_item",
-  },
-  {
-    "numbered_list_item": {
-      "rich_text": [
-        {
-          "annotations": {
-            "bold": false,
-            "code": false,
-            "color": "default",
-            "italic": false,
-            "strikethrough": false,
-            "underline": false,
-          },
-          "text": {
-            "content": "Monitor performance",
-          },
-          "type": "text",
-        },
-      ],
-    },
-    "object": "block",
-    "type": "numbered_list_item",
   },
 ]
 `;
@@ -324,7 +327,54 @@ exports[`maps markdown code blocks to Notion code blocks with language 1`] = `
 exports[`maps markdown headings to Notion heading blocks 1`] = `
 [
   {
+    "children": [
+      {
+        "heading_2": {
+          "rich_text": [
+            {
+              "annotations": {
+                "bold": false,
+                "code": false,
+                "color": "default",
+                "italic": false,
+                "strikethrough": false,
+                "underline": false,
+              },
+              "text": {
+                "content": "H2 Subtitle",
+              },
+              "type": "text",
+            },
+          ],
+        },
+        "object": "block",
+        "type": "heading_2",
+      },
+      {
+        "heading_3": {
+          "rich_text": [
+            {
+              "annotations": {
+                "bold": false,
+                "code": false,
+                "color": "default",
+                "italic": false,
+                "strikethrough": false,
+                "underline": false,
+              },
+              "text": {
+                "content": "H3 Section",
+              },
+              "type": "text",
+            },
+          ],
+        },
+        "object": "block",
+        "type": "heading_3",
+      },
+    ],
     "heading_1": {
+      "is_toggleable": true,
       "rich_text": [
         {
           "annotations": {
@@ -344,50 +394,6 @@ exports[`maps markdown headings to Notion heading blocks 1`] = `
     },
     "object": "block",
     "type": "heading_1",
-  },
-  {
-    "heading_2": {
-      "rich_text": [
-        {
-          "annotations": {
-            "bold": false,
-            "code": false,
-            "color": "default",
-            "italic": false,
-            "strikethrough": false,
-            "underline": false,
-          },
-          "text": {
-            "content": "H2 Subtitle",
-          },
-          "type": "text",
-        },
-      ],
-    },
-    "object": "block",
-    "type": "heading_2",
-  },
-  {
-    "heading_3": {
-      "rich_text": [
-        {
-          "annotations": {
-            "bold": false,
-            "code": false,
-            "color": "default",
-            "italic": false,
-            "strikethrough": false,
-            "underline": false,
-          },
-          "text": {
-            "content": "H3 Section",
-          },
-          "type": "text",
-        },
-      ],
-    },
-    "object": "block",
-    "type": "heading_3",
   },
 ]
 `;
@@ -530,6 +536,142 @@ exports[`maps markdown numbered lists to Notion numbered_list_item blocks 1`] = 
     },
     "object": "block",
     "type": "numbered_list_item",
+  },
+]
+`;
+
+exports[`maps markdown tables to Notion table blocks 1`] = `
+[
+  {
+    "object": "block",
+    "table": {
+      "children": [
+        {
+          "object": "block",
+          "table_row": {
+            "cells": [
+              [
+                {
+                  "annotations": {
+                    "bold": false,
+                    "code": false,
+                    "color": "default",
+                    "italic": false,
+                    "strikethrough": false,
+                    "underline": false,
+                  },
+                  "text": {
+                    "content": "Name",
+                  },
+                  "type": "text",
+                },
+              ],
+              [
+                {
+                  "annotations": {
+                    "bold": false,
+                    "code": false,
+                    "color": "default",
+                    "italic": false,
+                    "strikethrough": false,
+                    "underline": false,
+                  },
+                  "text": {
+                    "content": "Role",
+                  },
+                  "type": "text",
+                },
+              ],
+            ],
+          },
+          "type": "table_row",
+        },
+        {
+          "object": "block",
+          "table_row": {
+            "cells": [
+              [
+                {
+                  "annotations": {
+                    "bold": false,
+                    "code": false,
+                    "color": "default",
+                    "italic": false,
+                    "strikethrough": false,
+                    "underline": false,
+                  },
+                  "text": {
+                    "content": "Alice",
+                  },
+                  "type": "text",
+                },
+              ],
+              [
+                {
+                  "annotations": {
+                    "bold": false,
+                    "code": false,
+                    "color": "default",
+                    "italic": false,
+                    "strikethrough": false,
+                    "underline": false,
+                  },
+                  "text": {
+                    "content": "Engineer",
+                  },
+                  "type": "text",
+                },
+              ],
+            ],
+          },
+          "type": "table_row",
+        },
+        {
+          "object": "block",
+          "table_row": {
+            "cells": [
+              [
+                {
+                  "annotations": {
+                    "bold": false,
+                    "code": false,
+                    "color": "default",
+                    "italic": false,
+                    "strikethrough": false,
+                    "underline": false,
+                  },
+                  "text": {
+                    "content": "Bob",
+                  },
+                  "type": "text",
+                },
+              ],
+              [
+                {
+                  "annotations": {
+                    "bold": false,
+                    "code": false,
+                    "color": "default",
+                    "italic": false,
+                    "strikethrough": false,
+                    "underline": false,
+                  },
+                  "text": {
+                    "content": "Analyst",
+                  },
+                  "type": "text",
+                },
+              ],
+            ],
+          },
+          "type": "table_row",
+        },
+      ],
+      "has_column_header": true,
+      "has_row_header": false,
+      "table_width": 2,
+    },
+    "type": "table",
   },
 ]
 `;
