@@ -1,357 +1,525 @@
-# Data Engineering Task Documenter
+# Task Journal
 
-A full-stack web application that helps data engineers document their work by automatically generating professional technical documentation using Google Gemini AI and sending it to Notion.
+An AI-powered documentation generator that transforms your raw notes and task descriptions into polished technical documentation, with seamless Notion integration.
+
+## Table of Contents
+
+- [Overview](#overview)
+- [Features](#features)
+- [Tech Stack](#tech-stack)
+- [Prerequisites](#prerequisites)
+- [Installation](#installation)
+- [Configuration](#configuration)
+- [Development](#development)
+- [Usage](#usage)
+- [Project Structure](#project-structure)
+- [Testing](#testing)
+
+## Overview
+
+**Task Journal** is a full-stack web application designed for data engineers, software developers, and technical professionals who need to generate comprehensive technical documentation quickly. Instead of crafting documentation from scratch, you can dump all your notes, code snippets, challenges, and learnings into a single text field, and the application uses AI to structure and format them into professional documentation.
+
+The application operates in two specialized modes:
+
+- **Task Mode**: For day-to-day engineering work. Submit your problem statement, solution outline, code snippets, challenges, and lessons learned—the AI synthesizes them into clear task documentation.
+- **Architecture Mode**: For systems and platform-level documentation. Provide your overview, components, data flows, design decisions, and risks—the AI structures it into comprehensive architecture documentation.
+
+Once generated, documentation can be edited in-app and sent directly to your Notion workspace with automatic chunking to respect API limits.
 
 ## Features
 
-- **Intuitive Input Form**: Paste a single context dump (any language) and let the AI organize it automatically
-- **AI-Powered Documentation**: Generate comprehensive technical documentation in English using Google Gemini AI (FREE tier available)
-- **Notion Integration**: Automatically send generated documentation to your Notion page with smart chunking (handles documents >100 blocks)
-- **Modern UI**: Clean, responsive design built with React and Tailwind CSS
-- **Error Handling**: Robust error handling with user-friendly messages
-- **Copy to Clipboard**: Easily copy generated documentation
+- **Dual Documentation Modes**: Task-focused and architecture-focused modes tailored to different documentation needs
+- **AI-Powered Generation**: Uses Google Gemini API to generate professional documentation from unstructured notes
+- **Notion Integration**: Send generated documentation directly to Notion with automatic large-content handling
+- **In-App Editing**: Edit generated documentation with a syntax-highlighted Markdown editor before sending
+- **Auto-Saving Drafts**: Form inputs are automatically saved to browser storage as you type
+- **Generation History**: Keep track of your 50 most recent generated documents with one-click restoration
+- **Accessible UI**: WCAG-compliant interface with keyboard navigation, screen reader support, and reduced-motion support
+- **Responsive Design**: Fully responsive two-column layout for desktop and mobile
+- **Real-Time Feedback**: Toast notifications and live announcements for user actions and system status
 
 ## Tech Stack
 
 ### Frontend
-- React (Vite)
-- Tailwind CSS
-- Prism.js (syntax highlighting)
+- **React 19** — Modern UI framework with hooks and concurrent features
+- **Vite** — Fast build tool and development server
+- **Tailwind CSS** — Utility-first CSS framework for styling
+- **React Markdown & React Syntax Highlighter** — Markdown rendering and syntax highlighting
+- **Lucide React** — Lightweight icon library
+- **Vitest & Testing Library** — Testing framework and utilities
+- **MSW (Mock Service Worker)** — API mocking for tests
 
 ### Backend
-- Node.js
-- Express
-- Google Gemini API (REST)
-- Notion API
+- **Node.js & Express** — Server runtime and HTTP framework
+- **Google Gemini API** — Large language model for documentation generation
+- **Notion API** — Integration for sending documentation to Notion
+- **Vitest** — Testing framework for backend tests
+- **Zod** — Schema validation library
 
-## Project Structure
-
-```
-de-task-journal/
-├── client/                 # React frontend
-│   ├── src/
-│   │   ├── components/     # React components
-│   │   │   ├── InputForm.jsx
-│   │   │   ├── GeneratedContent.jsx
-│   │   │   ├── LoadingSpinner.jsx
-│   │   │   └── ErrorMessage.jsx
-│   │   ├── utils/
-│   │   │   └── api.js      # API utilities
-│   │   ├── App.jsx         # Main app component
-│   │   ├── main.jsx
-│   │   └── index.css       # Tailwind styles
-│   └── package.json
-├── server/                 # Express backend
-│   ├── routes/
-│   │   ├── generate.js     # Gemini API route
-│   │   └── notion.js       # Notion API route (with chunking)
-│   ├── services/
-│   │   ├── geminiService.js  # Google Gemini integration
-│   │   └── notionService.js  # Notion integration (100-block chunking)
-│   ├── index.js            # Express server
-│   └── package.json
-├── .env                    # Environment variables
-├── .env.example            # Environment template
-├── .gitignore
-└── README.md
-```
+### DevOps & Build
+- **Makefile** — Build automation and script orchestration
+- **ESLint** — Code linting and quality checks
+- **Prettier** — Code formatting
 
 ## Prerequisites
 
-- Node.js (v18 or higher recommended)
-- npm or yarn
-- Google Gemini API key (FREE tier available!)
-- Notion Integration Token
+Before you get started, ensure you have the following installed on your system:
 
-## Setup Instructions
+- **Node.js** — Version 18.x or higher (check with `node --version`)
+- **npm** — Version 9.x or higher (check with `npm --version`)
+- **Make** — Optional but recommended for running commands (check with `make --version`)
+
+### API Keys Required
+
+1. **Google Gemini API Key** — For AI-powered documentation generation
+   - Sign up at [Google AI Studio](https://makersuite.google.com/app/apikey)
+   - Create a new API key
+
+2. **Notion API Key & Database Access** — For Notion integration
+   - Create an integration at [Notion Developers](https://www.notion.so/my-integrations)
+   - Copy your internal integration token
+   - Share target Notion pages with your integration (click "Share" → "Invite" → select integration)
+
+## Installation
 
 ### 1. Clone the Repository
 
 ```bash
-git clone <repository-url>
+git clone https://github.com/bchiconato/de-task-journal.git
 cd de-task-journal
 ```
 
-### 2. Configure Environment Variables
-
-Copy the example file and configure your keys:
+### 2. Install Dependencies
 
 ```bash
-cp .env.example .env
+make install
 ```
 
-Then edit `.env` with your API keys:
+This command installs dependencies for both the client and server:
 
-```env
-# Google Gemini API Key (FREE tier available!)
-GEMINI_API_KEY=your_gemini_api_key_here
+```bash
+npm install --prefix ./client
+npm install --prefix ./server
+```
 
-# Gemini Model (optional, defaults to gemini-2.0-flash-exp)
-GEMINI_MODEL=gemini-2.0-flash-exp
+### 3. Set Up Environment Variables
 
-# Notion API Integration Token
-NOTION_API_KEY=your_notion_api_key_here
+#### Server Configuration
 
-# Notion Page ID
-NOTION_PAGE_ID=your_notion_page_id_here
+Create a `.env` file in the `server/` directory:
 
-# Server Port
+```bash
+# Google Gemini API Configuration
+GEMINI_API_KEY=your-gemini-api-key-here
+
+# Notion API Configuration
+NOTION_API_KEY=your-notion-integration-token
+NOTION_PAGE_ID=your-default-notion-page-id-optional
+
+# Server Configuration
 PORT=3001
+NODE_ENV=development
 ```
 
-### 3. Get Your API Keys
+#### Client Configuration
 
-#### Google Gemini API Key (FREE!)
+No environment variables are required for the client in development. The client communicates with the backend server.
 
-1. Go to [Google AI Studio](https://aistudio.google.com/app/apikey)
-2. Sign in with your Google account
-3. Click "Get API key" or "Create API key"
-4. Copy the key and add it to your `.env` file as `GEMINI_API_KEY`
+### 4. Verify Installation
 
-**Free Tier Limits:**
-- 15 requests per minute (RPM)
-- 1 million tokens per minute (TPM)
-- 1,500 requests per day (RPD)
-- No credit card required!
+```bash
+make build
+```
 
-**Available Models:**
-- `gemini-2.0-flash-exp` (Recommended - Latest, fastest, free)
-- `gemini-1.5-flash` (Fast, efficient)
-- `gemini-1.5-pro` (Most capable)
+This will build the client application and verify everything is set up correctly.
 
-#### Notion Integration Token
+## Configuration
 
-1. Go to [Notion Integrations](https://www.notion.so/my-integrations)
-2. Click "New integration"
-3. Give it a name (e.g., "DE Task Documenter")
-4. Select the workspace
-5. Copy the "Internal Integration Token"
-6. Add it to your `.env` file as `NOTION_API_KEY`
+### Notion Integration Setup
 
-#### Get Notion Page ID
+1. **Create a Notion Integration**
+   - Go to [Notion Developers](https://www.notion.so/my-integrations)
+   - Click "New integration"
+   - Name it "Task Journal"
+   - Copy the integration token (this is your `NOTION_API_KEY`)
 
-1. Open your Notion page in a browser
-2. The URL will look like: `https://www.notion.so/Page-Name-299c6319-3f57-808a-a250-f75cfdd7f47b`
-3. The page ID is the last part: `299c6319-3f57-808a-a250-f75cfdd7f47b`
-4. **Important**: You must share the page with your integration:
-   - Open the page in Notion
-   - Click "Share" button
+2. **Share Pages with the Integration**
+   - Open each Notion page you want to use
+   - Click the "Share" button (top-right)
    - Click "Invite"
-   - Select your integration from the list
+   - Select your "Task Journal" integration
+   - Ensure it has "Insert content" permissions
 
-### 4. Install Dependencies
+3. **Set Default Page (Optional)**
+   - Add `NOTION_PAGE_ID` to your `.env` file
+   - This page will be pre-selected when the app loads
 
-#### Install server dependencies:
+### Google Gemini API Configuration
+
+1. **Generate API Key**
+   - Visit [Google AI Studio](https://makersuite.google.com/app/apikey)
+   - Click "Create API Key"
+   - Copy the key and add it to `.env` as `GEMINI_API_KEY`
+
+2. **Rate Limits**
+   - Free tier: 60 requests per minute
+   - Paid tier: Up to 1,000 requests per minute
+   - Adjust usage according to your plan
+
+## Development
+
+### Start Development Servers
+
 ```bash
-cd server
-npm install
+make dev
 ```
 
-#### Install client dependencies:
+This command starts both the backend and frontend development servers:
+
+- **Backend**: http://localhost:3001 (Express server with hot-reload)
+- **Frontend**: http://localhost:5173 (Vite dev server with hot-reload)
+
+The frontend will automatically connect to the backend API.
+
+### Available Development Commands
+
 ```bash
-cd ../client
-npm install
+# Install dependencies
+make install
+
+# Lint code in client and server
+make lint
+
+# Fix linting issues
+make lint-fix
+
+# Format code
+make format
+
+# Check formatting without making changes
+make check
+
+# Build the client for production
+make build
+
+# Run the full test suite
+make test
+
+# Run linting, format checks, and build
+make all
 ```
 
-### 5. Run the Application
+### Development Workflow
 
-You need to run both the server and client:
+1. **Frontend Development**: The Vite dev server supports Hot Module Replacement (HMR)—changes are reflected instantly without refreshing
+2. **Backend Development**: Express server restarts automatically on file changes
+3. **Testing**: Run `make test` to execute the full Vitest suite across both client and server
 
-#### Terminal 1 - Run the backend server:
-```bash
-cd server
-npm run dev
+### Project Structure
+
 ```
-
-The server will start on `http://localhost:3001`
-
-#### Terminal 2 - Run the frontend:
-```bash
-cd client
-npm run dev
+de-task-journal/
+├── client/                          # React frontend application
+│   ├── public/                      # Static assets
+│   ├── src/
+│   │   ├── components/              # Reusable React components
+│   │   │   ├── AppErrorBoundary.jsx # Error boundary for error handling
+│   │   │   ├── GeneratedContent.jsx # Markdown preview and editor
+│   │   │   ├── InputForm.jsx        # Form for collecting documentation inputs
+│   │   │   ├── ModeToggle.jsx       # Task/Architecture mode switcher
+│   │   │   ├── Toast.jsx            # Toast notifications
+│   │   │   └── Guide.jsx            # In-app help guide
+│   │   ├── hooks/                   # Custom React hooks
+│   │   │   ├── useAbortableRequest.js  # Abort controller management
+│   │   │   ├── useAnnouncer.js         # Live region announcements
+│   │   │   └── useToast.js             # Toast state management
+│   │   ├── utils/
+│   │   │   ├── api.js              # API client functions
+│   │   │   └── validation.js       # Form validation logic
+│   │   ├── styles/                 # Global and component styles
+│   │   ├── App.jsx                 # Main application component
+│   │   ├── main.jsx                # React entry point
+│   │   └── index.css               # Global styles
+│   ├── test/                       # Frontend tests
+│   │   ├── setup.js                # Vitest configuration
+│   │   ├── msw.js                  # API mocking setup
+│   │   └── *.test.jsx              # Component tests
+│   ├── package.json                # Frontend dependencies
+│   ├── vite.config.js              # Vite configuration
+│   ├── vitest.config.js            # Vitest configuration
+│   └── tailwind.config.cjs         # Tailwind CSS configuration
+├── server/                         # Express backend application
+│   ├── src/
+│   │   ├── config/
+│   │   │   └── index.js           # Environment and config management
+│   │   ├── middleware/
+│   │   │   ├── validate.js        # Request validation middleware
+│   │   │   └── errors.js          # Error handling middleware
+│   │   ├── schemas/
+│   │   │   ├── generate.js        # Zod schema for /generate endpoint
+│   │   │   └── notion.js          # Zod schema for /notion endpoint
+│   │   ├── services/
+│   │   │   └── notion/
+│   │   │       ├── client.js      # Notion API client
+│   │   │       ├── markdown.js    # Markdown-to-Notion conversion
+│   │   │       ├── search.js      # Notion page search utilities
+│   │   │       └── config.js      # Notion configuration
+│   │   ├── lib/
+│   │   │   └── http.js            # HTTP utilities (fetch with retry)
+│   │   ├── routes.js              # API route definitions
+│   │   └── app.js                 # Express app setup
+│   ├── services/
+│   │   └── geminiService.js       # Google Gemini API integration
+│   ├── routes/
+│   │   ├── generate.js            # POST /api/generate endpoint
+│   │   └── notion.js              # POST /api/notion endpoint
+│   ├── test/                      # Backend tests
+│   │   ├── setup.js               # Vitest configuration
+│   │   └── *.test.js              # API and service tests
+│   ├── index.js                   # Server entry point
+│   ├── package.json               # Backend dependencies
+│   └── vitest.config.js           # Vitest configuration
+├── scripts/
+│   ├── run-eslint.mjs             # ESLint runner
+│   └── run-format.mjs             # Prettier formatter runner
+├── Makefile                       # Build and development automation
+├── package.json                   # Monorepo root package.json
+└── README.md                      # This file
 ```
-
-The client will start on `http://localhost:5173` (or another port if 5173 is busy)
-
-### 6. Open the Application
-
-Open your browser and navigate to `http://localhost:5173`
 
 ## Usage
 
-1. **Pick the mode** (Task or Architecture) that matches the documentation you need
-2. **Paste your full context** (required): use the single field for notes, code, decisions, risks, and anything else
-3. **Click "Generate Documentation"**: wait for the Gemini response
-4. **Review the result**: edit in the built-in markdown editor if needed
-5. **Copy or send to Notion**: choose whichever action fits your workflow
+### Starting the Application
 
-## Generated Documentation Structure
+1. **Ensure servers are running**:
+   ```bash
+   make dev
+   ```
+   This starts both the backend (port 3001) and frontend (port 5173) servers.
 
-In **Task** mode, the AI generates documentation with the following structure:
+2. **Open your browser**:
+   Navigate to http://localhost:5173
 
-1. **Summary**: 1-2 sentences summarizing the task and its purpose
-2. **Problem Solved**: Description of the business or technical problem
-3. **Solution Implemented**: Technical approach and key implementation decisions
-4. **Code Highlights**: Brief explanation of code snippet with inferred language (python, sql, javascript, etc.)
-5. **Challenges & Learnings**: Main obstacles or insights as bullet points
+### Generating Documentation
 
-In **Architecture** mode, the AI produces a full architecture document covering overview, components, flow, technology stack, developer workflow, decisions, and risks. In both modes the system accepts input in any language and always returns English documentation.
+#### Step 1: Select Your Documentation Mode
 
-## API Endpoints
+Click the **"Task"** or **"Architecture"** tab in the header to switch between modes:
+
+- **Task Mode**: For individual tasks, tickets, and day-to-day work
+- **Architecture Mode**: For systems, platforms, and high-level designs
+
+#### Step 2: Select a Notion Target Page
+
+Use the **"Notion Target"** dropdown to select where you want the documentation sent. The list is populated with pages your Notion integration has access to.
+
+> **Tip**: If the dropdown is empty, ensure you've shared the target Notion pages with your integration (see Configuration).
+
+#### Step 3: Fill Out the Context Field
+
+Paste all your notes, code snippets, and information into the single **"Context"** text field. The AI handles the separation and structuring automatically.
+
+**Example for Task Mode**:
+```
+# Task Overview
+We needed to implement a caching layer for user profile data
+
+# Problem
+Response times were slow due to repeated database queries
+
+# Solution Implemented
+Used Redis with a 5-minute TTL for profile cache
+
+# Code
+const redis = require('redis');
+const client = redis.createClient();
+
+async function getProfile(userId) {
+  const cached = await client.get(`profile:${userId}`);
+  if (cached) return JSON.parse(cached);
+  
+  const profile = await db.getProfile(userId);
+  await client.setex(`profile:${userId}`, 300, JSON.stringify(profile));
+  return profile;
+}
+
+# Challenges
+Memory usage spiked initially—resolved by implementing LRU eviction
+```
+
+#### Step 4: Generate Documentation
+
+Click the **"Generate Documentation"** button. The AI will process your input and generate professional documentation in the right panel.
+
+#### Step 5: Edit (Optional)
+
+Click the **"Edit"** button to modify the generated Markdown directly. Click **"Save"** to return to the preview.
+
+#### Step 6: Send to Notion
+
+Click **"Send to Notion"** to push the documentation to your selected Notion page. The system automatically handles large documents by splitting them into Notion-compatible chunks.
+
+### Using History
+
+Click the **"Clock"** icon in the header to view your 50 most recent generated documents:
+
+- **Click an item** to restore its documentation and inputs
+- **Click the ×** to remove an item from history
+- **Click "Clear"** to clear the entire history
+
+All history is stored locally in your browser.
+
+## Testing
+
+### Run All Tests
+
+```bash
+make test
+```
+
+This runs the complete Vitest suite for both client and server components.
+
+### Run Tests for Specific Packages
+
+```bash
+# Frontend tests only
+npm test --prefix ./client -- --run
+
+# Backend tests only
+npm test --prefix ./server -- --run
+```
+
+### Test Organization
+
+- **Frontend Tests**: Located in `client/test/`
+  - Component tests with React Testing Library
+  - Hook tests with Vitest
+  - Accessibility tests with jest-axe
+  - API mocking with MSW
+
+- **Backend Tests**: Located in `server/test/`
+  - API endpoint integration tests
+  - Service layer tests
+  - Notion integration tests with snapshots
+  - HTTP utility tests (retry logic, timeouts)
+
+## Code Quality
+
+### Linting and Formatting
+
+```bash
+# Lint code
+make lint
+
+# Fix linting issues
+make lint-fix
+
+# Format code
+make format
+
+# Check formatting without changes
+make check
+```
+
+### Tools Used
+
+- **ESLint** — JavaScript linting with React hooks and accessibility plugins
+- **Prettier** — Code formatting for consistency
+- **Tailwind CSS** — Utility-first CSS for maintainable styles
+
+## Accessibility
+
+The application prioritizes accessibility and follows WCAG 2.1 guidelines:
+
+- **Keyboard Navigation**: All interactive elements are keyboard accessible
+- **Screen Reader Support**: Proper ARIA labels, live regions, and semantic HTML
+- **Focus Management**: Clear focus indicators and logical tab order
+- **Reduced Motion**: Respects `prefers-reduced-motion` media query
+- **Color Contrast**: Meets WCAG AA standards
+- **Error Messages**: Clear, accessible error handling
+
+## API Reference
 
 ### POST /api/generate
-Generates technical documentation using Google Gemini AI
 
-**Request Body:**
+Generates technical documentation using the Gemini API.
+
+**Request Body**:
 ```json
 {
-  "context": "Task context (required)",
-  "code": "Code implementation (optional)",
-  "challenges": "Challenges faced (optional)"
+  "context": "string (required, minimum 50 characters)",
+  "mode": "task|architecture (optional, defaults to 'task')"
 }
 ```
 
-**Response:**
+**Response**:
 ```json
 {
-  "success": true,
-  "documentation": "Generated markdown documentation..."
+  "documentation": "string (markdown formatted)"
 }
 ```
 
 ### POST /api/notion
-Sends content to Notion page (automatically chunks documents >100 blocks)
 
-**Request Body:**
+Sends documentation to a Notion page.
+
+**Request Body**:
 ```json
 {
-  "content": "Markdown content to send"
+  "content": "string (required, markdown formatted)",
+  "pageId": "string (optional if using NOTION_PAGE_ID)",
+  "title": "string (optional, for creating new page)",
+  "mode": "task|architecture (optional)"
 }
 ```
 
-**Response:**
+**Response**:
 ```json
 {
   "success": true,
-  "blocksAdded": 150,
-  "chunks": 2,
-  "message": "Content successfully sent to Notion"
+  "blocksAdded": 42,
+  "chunks": 1
 }
 ```
 
-**Note:** The endpoint automatically splits large documents into chunks of ≤100 blocks to comply with Notion's API limits.
+## Environment Variables
+
+### Server `.env` File
+
+```bash
+# Required
+GEMINI_API_KEY=your-google-gemini-api-key
+NOTION_API_KEY=your-notion-integration-token
+
+# Optional
+NOTION_PAGE_ID=default-page-id-for-sending-docs
+PORT=3001
+NODE_ENV=development
+```
 
 ## Troubleshooting
 
-### Server won't start
-- Make sure the PORT (default 3001) is not already in use
-- Check that all environment variables are set correctly
+### Notion Integration Issues
 
-### Gemini API errors
-- Verify your `GEMINI_API_KEY` is correct and active
-- Check the [Google AI Studio](https://aistudio.google.com/app/apikey) for API status
-- Ensure you haven't exceeded free tier limits (15 RPM, 1500 RPD)
-- Try using a different model (e.g., `gemini-1.5-flash` instead of `gemini-2.0-flash-exp`)
+**Problem**: "No pages available" in the dropdown
+- **Solution**: Ensure the Notion integration is shared with the target pages (Share → Invite → Select integration)
 
-### Notion API errors
-- **"object_not_found"**: Ensure your `NOTION_API_KEY` is correct
-- **"unauthorized"**: Verify you've shared the Notion page with your integration
-  - Open the page in Notion
-  - Click "Share" → "Invite" → Select your integration
-- **"validation_error"**: Check the `NOTION_PAGE_ID` is correct
-- **100-block limit**: The app automatically chunks large documents, but verify chunking is working in server logs
+**Problem**: "Failed to send to Notion"
+- **Solution**: Verify `NOTION_API_KEY` is correct and the integration has "Insert content" permissions
 
-### CORS errors
-- Make sure the backend server is running on port 3001
-- Check that the API_BASE_URL in `client/src/utils/api.js` matches your server URL
+### Generation Issues
 
-### Generated content not in English
-- Check your `GEMINI_MODEL` supports system instructions (recommended: `gemini-2.0-flash-exp`)
-- The system instructions should enforce English output
-- Verify the prompt explicitly states "Output MUST be 100% in ENGLISH"
-- Try regenerating or using a different model
+**Problem**: Generation times out
+- **Solution**: Ensure `GEMINI_API_KEY` is valid and you haven't exceeded rate limits
+- **Solution**: Reduce the amount of context (aim for under 10,000 characters)
 
-## Development
+**Problem**: Empty or incomplete documentation
+- **Solution**: Ensure the context field has at least 50 characters of meaningful content
 
-### Running in Development Mode
+### Development Issues
 
-Both client and server support hot reloading:
+**Problem**: Port 3001 or 5173 already in use
+- **Solution**: Kill existing processes or change ports in configuration files
 
-```bash
-# Server (with nodemon)
-cd server
-npm run dev
-
-# Client (with Vite)
-cd client
-npm run dev
-```
-
-### Building for Production
-
-```bash
-# Build client
-cd client
-npm run build
-
-# The built files will be in client/dist/
-```
-
-## Testing
-
-The project uses Vitest for both server and client testing with comprehensive test coverage.
-
-### Running Tests
-
-```bash
-# Run all tests (server + client) once
-npm test
-
-# Run all tests in watch mode
-npm run test:watch
-
-# Run tests for a specific file or pattern
-npm test -- InputForm
-
-# Run tests matching a specific name
-npm test -- -t "validates context field"
-
-# Run tests with coverage report
-npm run test:coverage
-```
-
-### Test Structure
-
-**Server Tests** (Node environment):
-- API integration tests with Supertest
-- HTTP retry and timeout tests
-- Snapshot tests for Notion block conversion
-- Unit tests for service functions
-
-**Client Tests** (jsdom environment):
-- Component tests with React Testing Library
-- Hook tests with renderHook
-- User interaction tests with user-event
-- Network mocking with MSW
-
-### Coverage
-
-Tests are configured with the following coverage thresholds:
-- Lines: 80%
-- Branches: 70%
-- Functions: 80%
-- Statements: 80%
-
-Coverage reports are generated in:
-- `server/coverage/` for backend tests
-- `client/coverage/` for frontend tests
-
-### Updating Snapshots
-
-```bash
-# Update all snapshots
-npm test -- -u
-
-# Update snapshots for a specific file
-npm test -- notionService.snapshot -u
-```
+**Problem**: Dependencies fail to install
+- **Solution**: Delete `node_modules/` and `package-lock.json`, then run `make install` again
