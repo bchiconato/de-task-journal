@@ -26,8 +26,18 @@
 }
 
 .code-impl textarea {
-  color: #f3f6fc;
+  color: #f3f6fc !important;
   caret-color: #ffffff;
+  opacity: 1 !important;
+  background: transparent !important;
+  -webkit-text-fill-color: #f3f6fc !important;
+  position: relative;
+  z-index: 2;
+}
+
+.code-impl .w-tc-editor-preview {
+  visibility: hidden;
+  pointer-events: none;
 }
 
 .code-impl .token.title,

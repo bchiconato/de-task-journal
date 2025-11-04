@@ -1,4 +1,4 @@
-import { useState, useEffect, lazy, Suspense } from 'react';
+import { useState, useEffect, useRef, lazy, Suspense } from 'react';
 import { InputForm } from './components/InputForm';
 import { Toast } from './components/Toast';
 import { ModeToggle } from './components/ModeToggle';
@@ -10,7 +10,7 @@ import {
   sendToNotion,
   getNotionPages,
 } from './utils/api';
-import { FileText, Clock, HelpCircle } from 'lucide-react';
+import { FileText, Clock, HelpCircle, X } from 'lucide-react';
 import { Guide } from './components/Guide';
 
 const GeneratedContent = lazy(() =>
@@ -63,6 +63,23 @@ function App() {
   });
 
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
+  const historyButtonRef = useRef(null);
+  const historyMenuRef = useRef(null);
+
+  const persistHistory = (nextHistory) => {
+    try {
+      if (!nextHistory.length) {
+        localStorage.removeItem('de-task-journal:docHistory');
+      } else {
+        localStorage.setItem(
+          'de-task-journal:docHistory',
+          JSON.stringify(nextHistory),
+        );
+      }
+    } catch (err) {
+      console.error('Failed to persist history:', err);
+    }
+  };
 
   const { toasts, showSuccess, showError, removeToast } = useToast();
   const abortController = useAbortableRequest();
@@ -133,10 +150,7 @@ function App() {
       };
       setHistory((prevHistory) => {
         const updatedHistory = [newHistoryItem, ...prevHistory.slice(0, 49)];
-        localStorage.setItem(
-          'de-task-journal:docHistory',
-          JSON.stringify(updatedHistory),
-        );
+        persistHistory(updatedHistory);
         return updatedHistory;
       });
 
@@ -197,6 +211,11 @@ function App() {
     }
   };
 
+  const handleNavigateToMain = () => {
+    setView('main');
+    setIsHistoryOpen(false);
+  };
+
   const handleModeChange = (newMode) => {
     setMode(newMode);
     setDocumentation('');
@@ -226,6 +245,62 @@ function App() {
     setDocumentation(newMarkdown);
   };
 
+  const handleClearHistory = () => {
+    if (!history.length) {
+      return;
+    }
+    persistHistory([]);
+    setHistory([]);
+    showSuccess('History cleared');
+    announcer.announcePolite('History cleared.');
+  };
+
+  const handleRemoveHistoryItem = (id) => {
+    if (!history.some((item) => item.id === id)) {
+      return;
+    }
+    const updatedHistory = history.filter((item) => item.id !== id);
+    persistHistory(updatedHistory);
+    setHistory(updatedHistory);
+    showSuccess('Removed entry from history');
+    announcer.announcePolite('History entry removed.');
+  };
+
+  useEffect(() => {
+    if (!isHistoryOpen) {
+      return undefined;
+    }
+
+    const handleClickOutside = (event) => {
+      const buttonEl = historyButtonRef.current;
+      const menuEl = historyMenuRef.current;
+      if (!buttonEl || !menuEl) {
+        return;
+      }
+
+      const target = event.target;
+      if (menuEl.contains(target) || buttonEl.contains(target)) {
+        return;
+      }
+
+      setIsHistoryOpen(false);
+    };
+
+    const handleEscape = (event) => {
+      if (event.key === 'Escape') {
+        setIsHistoryOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener('keydown', handleEscape);
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('keydown', handleEscape);
+    };
+  }, [isHistoryOpen]);
+
   /**
    * @function handleLoadFromHistory
    * @description Loads a documentation item from history
@@ -236,6 +311,8 @@ function App() {
     if (!historyItem) return;
     setMode(historyItem.mode);
     setDocumentation(historyItem.documentation);
+    setView('main');
+    setIsHistoryOpen(false);
     showSuccess(`Loaded "${historyItem.title}" from history!`);
     announcer.announcePolite(`Loaded "${historyItem.title}" from history.`);
   };
@@ -246,11 +323,15 @@ function App() {
         Skip to main content
       </a>
 
-      <div className="min-h-screen bg-slate-50">
+      <div className="min-h-screen bg-slate-50 overflow-x-hidden">
         <header className="sticky top-0 z-40 bg-[#003740] border-b border-[#004850]">
           <div className="mx-auto max-w-screen-2xl h-14 px-4 flex items-center justify-between gap-4">
             <div className="flex items-center gap-6">
-              <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={handleNavigateToMain}
+                className="flex items-center gap-2 rounded-md px-1.5 py-1 text-left text-white/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#60E7A9]/50"
+              >
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
                   width="48"
@@ -258,6 +339,7 @@ function App() {
                   viewBox="0 0 192 192"
                   fill="none"
                   className="text-white/90"
+                  aria-hidden="true"
                 >
                   <g clipPath="url(#A)" fill="currentColor">
                     <path d="M155.42 95.347c-.216-20.629-4.169-45.572-23.573-56.784-17.789-10.287-51.307-10.048-69.545-.684-17.72 8.963-24.054 30.038-24.934 48.738-.903 20.641.016 45.976 15.32 61.359 10.515 10.448 26.232 13.347 40.522 13.833 10.837.22 22.263-.627 32.53-4.639 24.572-9.541 30.067-38.068 29.681-61.716v-.106h-.001zm-48.816-68.816c19.447 1.865 38.672 12.774 47.287 30.615 8.036 16.871 9.645 37.969 6.813 56.384-4.037 25.967-18.666 44.99-44.882 51.235-16.031 3.632-35.089 3.105-50.189-3.556-23.032-10.168-33.776-32.812-34.434-57.213-.914-19.429.929-40.801 13.565-56.347C59.832 29.056 83.705 24.254 106.5 26.52l.104.011z" />
@@ -273,10 +355,20 @@ function App() {
                     </clipPath>
                   </defs>
                 </svg>
-                <h1 className="text-sm font-medium text-white">Task Journal</h1>
-              </div>
+                <span
+                  role="heading"
+                  aria-level={1}
+                  className="text-sm font-medium"
+                >
+                  Task Journal
+                </span>
+              </button>
 
-              <ModeToggle mode={mode} onChange={handleModeChange} />
+              <ModeToggle
+                mode={mode}
+                onChange={handleModeChange}
+                onSelect={handleNavigateToMain}
+              />
             </div>
 
             <div className="flex items-center gap-2">
@@ -289,6 +381,7 @@ function App() {
               </button>
               <div className="relative">
                 <button
+                  ref={historyButtonRef}
                   onClick={() => setIsHistoryOpen(!isHistoryOpen)}
                   aria-label="History"
                   aria-haspopup="menu"
@@ -301,36 +394,64 @@ function App() {
                 {isHistoryOpen && (
                   <div
                     role="menu"
-                    className="absolute right-0 mt-2 min-w-64 max-h-80 rounded-lg border border-[#004850] bg-[#003740] shadow-lg p-1 overflow-auto"
+                    ref={historyMenuRef}
+                    className="absolute right-0 mt-2 min-w-64 max-h-80 rounded-lg border border-[#004850] bg-[#003740] shadow-lg overflow-auto"
                   >
+                    <div className="flex items-center justify-between px-3 py-2 border-b border-white/10">
+                      <span className="text-xs font-semibold uppercase tracking-wide text-white/60">
+                        History
+                      </span>
+                      <button
+                        type="button"
+                        onClick={handleClearHistory}
+                        disabled={history.length === 0}
+                        className="text-xs font-medium text-white/60 hover:text-white disabled:opacity-40 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#60E7A9]/50 rounded px-2 py-1 transition-colors"
+                      >
+                        Clear
+                      </button>
+                    </div>
                     {history.length === 0 ? (
                       <p className="px-4 py-8 text-center text-sm text-white/70">
                         No history yet
                       </p>
                     ) : (
-                      <>
+                      <ul className="py-1 space-y-1">
                         {history.slice(0, 10).map((item) => (
-                          <button
-                            key={item.id}
-                            role="menuitem"
-                            onClick={() => {
-                              handleLoadFromHistory(item);
-                              setIsHistoryOpen(false);
-                            }}
-                            className="w-full text-left px-3 py-2 rounded-md hover:bg-[#004850] transition-colors group"
-                          >
-                            <p
-                              className="font-medium text-sm text-white/90 truncate group-hover:text-white"
-                              title={item.title}
+                          <li key={item.id} className="group relative px-1">
+                            <button
+                              type="button"
+                              role="menuitem"
+                              onClick={() => {
+                                handleLoadFromHistory(item);
+                                setIsHistoryOpen(false);
+                              }}
+                              className="w-full text-left px-3 pr-20 py-2 rounded-md flex flex-col gap-0.5 transition-colors hover:bg-[#004850] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#60E7A9]/50"
                             >
-                              {item.title}
-                            </p>
-                            <p className="text-xs text-white/60 mt-0.5 group-hover:text-white/70">
-                              {item.timestamp}
-                            </p>
-                          </button>
+                              <p
+                                className="font-medium text-sm text-white/90 truncate"
+                                title={item.title}
+                              >
+                                {item.title}
+                              </p>
+                              <p className="text-xs text-white/60">
+                                {item.timestamp}
+                              </p>
+                            </button>
+                            <button
+                              type="button"
+                              aria-label="Remove from history"
+                              onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                handleRemoveHistoryItem(item.id);
+                              }}
+                              className="absolute right-4 top-1/2 -translate-y-1/2 p-1 rounded hover:bg-[#60E7A9]/10 text-white/60 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#60E7A9]/50 opacity-0 group-hover:opacity-100 focus-visible:opacity-100 transition-[opacity,color]"
+                            >
+                              <X className="w-3 h-3" aria-hidden="true" />
+                            </button>
+                          </li>
                         ))}
-                      </>
+                      </ul>
                     )}
                   </div>
                 )}
@@ -414,8 +535,8 @@ function App() {
                         Ready to generate documentation
                       </p>
                       <p className="text-sm text-slate-500 mt-2 leading-relaxed">
-                        Fill out the form above and click Generate to create
-                        your documentation
+                        Fill out the form and click Generate Documentation to
+                        create your documentation
                       </p>
                     </div>
                   )}

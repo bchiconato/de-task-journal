@@ -45,14 +45,14 @@ export function Guide({ onBack }) {
           </p>
           <ul className="list-disc pl-5 space-y-1">
             <li>
-              <strong>Task Mode:</strong> Ideal for documenting specific
-              engineering tasks, like building a pipeline or fixing a bug. It
-              focuses on context, code, and challenges.
+              <strong>Task Mode:</strong> Ideal for day-to-day engineering work.
+              Paste a single dump with the problem, solution outline, key code,
+              learnings, and outcomes.
             </li>
             <li>
-              <strong>Architecture Mode:</strong> Designed for high-level system
-              documentation. It prompts for an overview, data flow, and key
-              design decisions.
+              <strong>Architecture Mode:</strong> Best suited for systems and
+              platforms. Use the same single field for overview, components,
+              flows, decisions, and risks.
             </li>
           </ul>
         </FeatureCard>
@@ -68,9 +68,8 @@ export function Guide({ onBack }) {
               your Notion integration has access to.
             </li>
             <li>
-              <strong>Required Fields:</strong> Fields marked with a red
-              asterisk (*) are required. The form has built-in validation to
-              guide you.
+              <strong>Single Field:</strong> All context lives in one textarea.
+              Paste notes however you prefer — the AI handles the separation.
             </li>
             <li>
               <strong>Auto-Saving Drafts:</strong> Your progress in the form is

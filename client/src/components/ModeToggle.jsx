@@ -8,9 +8,10 @@ import { useCallback, useMemo, useRef } from 'react';
  * @param {Object} props
  * @param {'task'|'architecture'} props.mode - Currently selected documentation mode
  * @param {(mode: 'task'|'architecture') => void} props.onChange - Callback fired when the mode changes
+ * @param {(mode: 'task'|'architecture') => void} [props.onSelect] - Callback fired whenever a mode is selected
  * @returns {JSX.Element}
  */
-export function ModeToggle({ mode, onChange }) {
+export function ModeToggle({ mode, onChange, onSelect = () => {} }) {
   const tabOrder = useMemo(() => ['task', 'architecture'], []);
   const taskRef = useRef(null);
   const architectureRef = useRef(null);
@@ -33,9 +34,10 @@ export function ModeToggle({ mode, onChange }) {
       if (mode !== nextMode) {
         onChange(nextMode);
       }
+      onSelect(nextMode);
       focusTab(nextMode);
     },
-    [focusTab, mode, onChange],
+    [focusTab, mode, onChange, onSelect],
   );
 
   const handleKeyDown = useCallback(
@@ -44,7 +46,8 @@ export function ModeToggle({ mode, onChange }) {
         event.preventDefault();
         const currentIndex = tabOrder.indexOf(mode);
         const offset = event.key === 'ArrowLeft' ? -1 : 1;
-        const nextIndex = (currentIndex + tabOrder.length + offset) % tabOrder.length;
+        const nextIndex =
+          (currentIndex + tabOrder.length + offset) % tabOrder.length;
         const nextMode = tabOrder[nextIndex];
         selectMode(nextMode);
         return;

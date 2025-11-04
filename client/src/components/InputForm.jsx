@@ -1,11 +1,102 @@
 /**
- * @fileoverview Interactive form for collecting task or architecture documentation inputs with validation and persistence
+ * @fileoverview Interactive form for collecting documentation inputs with validation and persistence
  */
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { ArchitectureFields } from './ArchitectureFields';
 import { validateForm, hasErrors, getErrorCount } from '../utils/validation';
-import { CodeImplementationEditor } from './CodeImplementationEditor';
 import { CharacterCounter } from './CharacterCounter';
+
+const CONTEXT_COPY = {
+  task: {
+    title: 'Task Context',
+    description:
+      'Paste every note you have: goals, problem statement, solution details, snippets, metrics, lessons learned, next steps. The AI will separate the pieces automatically.',
+    placeholder:
+      'Example dump:\n\n# Task\nWhy we needed this work\n\n# Solution\nImplementation notes, commands, queries, file paths\n\n# Code\n```python\n# key snippet\n```\n\n# Challenges\nWhat failed, mitigations, follow-ups\n\nInclude anything that helps future you understand the task.',
+  },
+  architecture: {
+    title: 'Architecture Context',
+    description:
+      'Paste a complete dump covering overview, components, data flows, decisions, risks, diagrams (text), commands, repos, and anything else. The AI will structure the final document.',
+    placeholder:
+      'Example dump:\n\n## Overview\nSystem name, business context, primary users\n\n## Components\n- API Gateway ...\n- Stream Processor ...\n\n## Data Flow\nStep-by-step runtime flow or ASCII diagram\n\n## Decisions & Risks\nKey trade-offs, open issues, mitigations\n\nDrop the entire context in one block.',
+  },
+};
+
+function mapLegacyDraftToContext(draftData, mode) {
+  if (!draftData || draftData.mode !== mode) {
+    return null;
+  }
+
+  if (typeof draftData.context === 'string' && draftData.context.trim()) {
+    if (mode === 'task') {
+      const segments = [draftData.context.trim()];
+
+      if (draftData.code && draftData.code.trim()) {
+        segments.push(
+          '## Code Implementation\n```\n' + draftData.code.trim() + '\n```',
+        );
+      }
+
+      if (draftData.challenges && draftData.challenges.trim()) {
+        segments.push(
+          '## Challenges & Learnings\n' + draftData.challenges.trim(),
+        );
+      }
+
+      return segments.join('\n\n');
+    }
+
+    return draftData.context;
+  }
+
+  if (mode === 'task') {
+    const segments = [];
+
+    if (draftData.context && draftData.context.trim()) {
+      segments.push(draftData.context.trim());
+    }
+
+    if (draftData.code && draftData.code.trim()) {
+      segments.push(
+        '## Code Implementation\n```\n' + draftData.code.trim() + '\n```',
+      );
+    }
+
+    if (draftData.challenges && draftData.challenges.trim()) {
+      segments.push(
+        '## Challenges & Learnings\n' + draftData.challenges.trim(),
+      );
+    }
+
+    if (segments.length) {
+      return segments.join('\n\n');
+    }
+  }
+
+  if (mode === 'architecture') {
+    const segments = [];
+
+    if (draftData.overview && draftData.overview.trim()) {
+      segments.push('## Overview & Components\n' + draftData.overview.trim());
+    }
+
+    if (draftData.dataflow && draftData.dataflow.trim()) {
+      segments.push('## Data Flow & Tech Stack\n' + draftData.dataflow.trim());
+    }
+
+    if (draftData.decisions && draftData.decisions.trim()) {
+      segments.push(
+        '## Design Decisions & Trade-offs\n' + draftData.decisions.trim(),
+      );
+    }
+
+    if (segments.length) {
+      return segments.join('\n\n');
+    }
+  }
+
+  return null;
+}
 
 /**
  * @component InputForm
@@ -31,28 +122,21 @@ export function InputForm({
   isLoadingPages = false,
   pagesError = null,
 }) {
-  const getInitialFormData = useCallback(() => {
-    if (mode === 'architecture') {
-      return {
-        overview: '',
-        dataflow: '',
-        decisions: '',
-      };
-    }
-    return {
+  const getInitialFormData = useCallback(
+    () => ({
       context: '',
-      code: '',
-      challenges: '',
-    };
-  }, [mode]);
+    }),
+    [],
+  );
 
   const [formData, setFormData] = useState(() => {
     try {
       const savedDraft = localStorage.getItem('de-task-journal:formDraft');
       if (savedDraft) {
         const draftData = JSON.parse(savedDraft);
-        if (draftData.mode === mode) {
-          return draftData;
+        const legacyContext = mapLegacyDraftToContext(draftData, mode);
+        if (typeof legacyContext === 'string') {
+          return { context: legacyContext };
         }
       }
     } catch (e) {
@@ -66,11 +150,6 @@ export function InputForm({
   const [touched, setTouched] = useState({});
 
   const contextRef = useRef(null);
-  const codeRef = useRef(null);
-  const challengesRef = useRef(null);
-  const overviewRef = useRef(null);
-  const dataflowRef = useRef(null);
-  const decisionsRef = useRef(null);
 
   useEffect(() => {
     const initialData = getInitialFormData();
@@ -79,19 +158,19 @@ export function InputForm({
     setTouched({});
   }, [mode, getInitialFormData]);
 
-  /**
-   * @description Auto-saves form data to localStorage with debounce
-   */
   useEffect(() => {
     const timer = setTimeout(() => {
-      const hasData = formData.context || formData.overview;
-      if (hasData) {
+      const trimmed = formData.context?.trim();
+      if (trimmed) {
         localStorage.setItem(
           'de-task-journal:formDraft',
           JSON.stringify({ ...formData, mode }),
         );
+      } else {
+        localStorage.removeItem('de-task-journal:formDraft');
       }
     }, 500);
+
     return () => clearTimeout(timer);
   }, [formData, mode]);
 
@@ -130,52 +209,29 @@ export function InputForm({
   const handleSubmit = (e) => {
     e.preventDefault();
 
-    if (mode === 'architecture') {
-      setTouched({
-        overview: true,
-        dataflow: true,
-        decisions: true,
-      });
-    } else {
-      setTouched({
-        context: true,
-        code: true,
-        challenges: true,
-      });
-    }
+    setTouched({
+      context: true,
+    });
 
     const formErrors = validateForm(formData, mode);
 
     if (hasErrors(formErrors)) {
       setErrors(formErrors);
 
-      if (mode === 'architecture') {
-        if (formErrors.overview && overviewRef.current) {
-          overviewRef.current.focus();
-        } else if (formErrors.dataflow && dataflowRef.current) {
-          dataflowRef.current.focus();
-        } else if (formErrors.decisions && decisionsRef.current) {
-          decisionsRef.current.focus();
-        }
-      } else {
-        if (formErrors.context && contextRef.current) {
-          contextRef.current.focus();
-        } else if (formErrors.code && codeRef.current) {
-          codeRef.current.focus();
-        } else if (formErrors.challenges && challengesRef.current) {
-          challengesRef.current.focus();
-        }
+      if (formErrors.context && contextRef.current) {
+        contextRef.current.focus();
       }
 
       const errorCount = getErrorCount(formErrors);
       console.log(`Form has ${errorCount} error${errorCount !== 1 ? 's' : ''}`);
-
       return;
     }
 
     localStorage.removeItem('de-task-journal:formDraft');
     onGenerate({ ...formData, mode });
   };
+
+  const copy = CONTEXT_COPY[mode] ?? CONTEXT_COPY.task;
 
   return (
     <form
@@ -184,16 +240,6 @@ export function InputForm({
       noValidate
       aria-label="Documentation generation form"
     >
-      <header className="space-y-2">
-        <h2 className="text-2xl font-semibold text-slate-900">
-          Data Engineering Task Documenter
-        </h2>
-        <p className="text-sm text-slate-600 leading-relaxed">
-          Capture task context, implementation details, and send polished docs
-          to Notion in one pass.
-        </p>
-      </header>
-
       <section className="rounded-2xl border border-slate-200 bg-white p-6 md:p-8">
         <div className="space-y-4">
           <div>
@@ -245,193 +291,53 @@ export function InputForm({
         </div>
       </section>
 
-      {mode === 'architecture' ? (
-        <ArchitectureFields
-          formData={formData}
-          errors={errors}
-          touched={touched}
-          onFieldChange={handleChange}
-          onFieldBlur={handleBlur}
-          isLoading={isLoading}
-          refs={{ overviewRef, dataflowRef, decisionsRef }}
-        />
-      ) : (
-        <>
-          <section className="rounded-2xl border border-slate-200 bg-white p-6 md:p-8">
-            <div className="space-y-6">
-              <div>
-                <h3 className="text-base font-semibold text-slate-900">
-                  Task Context
-                </h3>
-                <p className="text-sm text-slate-500 mt-1 leading-relaxed">
-                  Describe what you built, the problem it solves, and any key
-                  technical decisions
-                </p>
-              </div>
+      <section className="rounded-2xl border border-slate-200 bg-white p-6 md:p-8">
+        <div className="space-y-6">
+          <div>
+            <h3 className="text-base font-semibold text-slate-900">
+              {copy.title}
+            </h3>
+            <p className="text-sm text-slate-500 mt-1 leading-relaxed">
+              {copy.description}
+            </p>
+          </div>
 
-              <div>
-                <label htmlFor="context" className="sr-only">
-                  Task context
-                </label>
-                <textarea
-                  ref={contextRef}
-                  id="context"
-                  name="context"
-                  value={formData.context || ''}
-                  onChange={(e) => handleChange('context', e.target.value)}
-                  onBlur={() => handleBlur('context')}
-                  placeholder="Example: Building an ETL pipeline to migrate customer data from MySQL to Snowflake..."
-                  rows={8}
-                  disabled={isLoading}
-                  className="w-full px-4 py-3 rounded-lg border border-slate-200 bg-white text-sm text-slate-900 leading-relaxed placeholder:text-slate-400 hover:bg-slate-50 focus-visible:ring-2 focus-visible:ring-[#003B44] focus-visible:ring-offset-1 focus-visible:outline-none disabled:opacity-50 resize-none transition-colors"
-                />
-                <div className="flex items-center justify-between mt-2">
-                  {touched.context && errors.context ? (
-                    <p className="text-sm text-red-600 leading-relaxed">
-                      {errors.context}
-                    </p>
-                  ) : (
-                    <p className="text-sm text-slate-500 leading-relaxed">
-                      Required field
-                    </p>
-                  )}
-                  <CharacterCounter
-                    current={formData.context?.length || 0}
-                    max={10000}
-                    id="context-counter"
-                  />
-                </div>
-              </div>
-            </div>
-          </section>
-
-          <section className="rounded-2xl border border-slate-200 bg-white overflow-hidden">
-            <div className="flex items-center justify-between px-4 md:px-5 py-3 border-b border-slate-100 bg-slate-50">
-              <div>
-                <h3 className="text-base font-semibold text-slate-900">
-                  Code Implementation
-                </h3>
-                <p className="text-sm text-slate-500 mt-0.5 leading-relaxed">
-                  Optional
-                </p>
-              </div>
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => handleChange('code', '')}
-                  className="text-xs text-slate-600 hover:text-slate-900 transition-colors"
-                  disabled={isLoading || !formData.code}
-                >
-                  Clear
-                </button>
-                <span className="text-slate-300">|</span>
-                <button
-                  type="button"
-                  className="text-xs text-[#003B44] hover:text-[#004850] transition-colors"
-                  disabled={isLoading}
-                  onClick={() =>
-                    handleChange(
-                      'code',
-                      '# Sample Python code\ndef hello_world():\n    print("Hello, World!")\n\nhello_world()',
-                    )
-                  }
-                >
-                  Paste sample
-                </button>
-              </div>
-            </div>
-
-            <div className="h-72">
-              <CodeImplementationEditor
-                ref={codeRef}
-                value={formData.code}
-                onChange={(v) => handleChange('code', v)}
-                language="python"
-                placeholder="# Paste your code here...
-# Supports Python, SQL, JavaScript, and more"
-                onBlur={() => handleBlur('code')}
-                padding={16}
-                disabled={isLoading}
-                className="h-full"
-                style={{
-                  fontSize: '0.875rem',
-                  fontFamily:
-                    'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
-                  backgroundColor: '#ffffff',
-                  color: '#1e293b',
-                  border: 'none',
-                  lineHeight: '1.6',
-                }}
-              />
-            </div>
-
-            <div className="px-4 md:px-5 py-3 border-t border-slate-100 bg-slate-50 flex items-center justify-between">
-              {touched.code && errors.code ? (
+          <div>
+            <label htmlFor="context" className="sr-only">
+              Documentation context
+            </label>
+            <textarea
+              ref={contextRef}
+              id="context"
+              name="context"
+              value={formData.context || ''}
+              onChange={(e) => handleChange('context', e.target.value)}
+              onBlur={() => handleBlur('context')}
+              placeholder={copy.placeholder}
+              rows={18}
+              disabled={isLoading}
+              className="w-full px-4 py-3 rounded-lg border border-slate-200 bg-white text-sm text-slate-900 leading-relaxed placeholder:text-slate-400 hover:bg-slate-50 focus-visible:ring-2 focus-visible:ring-[#003B44] focus-visible:ring-offset-1 focus-visible:outline-none disabled:opacity-50 resize-none transition-colors"
+              style={{ minHeight: '28rem' }}
+            />
+            <div className="flex items-center justify-between mt-2">
+              {touched.context && errors.context ? (
                 <p className="text-sm text-red-600 leading-relaxed">
-                  {errors.code}
+                  {errors.context}
                 </p>
               ) : (
                 <p className="text-sm text-slate-500 leading-relaxed">
-                  Include relevant code snippets
+                  * Required field
                 </p>
               )}
               <CharacterCounter
-                current={formData.code?.length || 0}
-                max={10000}
-                id="code-counter"
+                current={formData.context?.length || 0}
+                max={30000}
+                id="context-counter"
               />
             </div>
-          </section>
-
-          <section className="rounded-2xl border border-slate-200 bg-white p-6 md:p-8">
-            <div className="space-y-6">
-              <div>
-                <h3 className="text-base font-semibold text-slate-900">
-                  Challenges & Learnings
-                </h3>
-                <p className="text-sm text-slate-500 mt-1 leading-relaxed">
-                  Share obstacles you faced, how you overcame them, and lessons
-                  learned
-                </p>
-              </div>
-
-              <div>
-                <label htmlFor="challenges" className="sr-only">
-                  Challenges and difficulties
-                </label>
-                <textarea
-                  ref={challengesRef}
-                  id="challenges"
-                  name="challenges"
-                  value={formData.challenges || ''}
-                  onChange={(e) => handleChange('challenges', e.target.value)}
-                  onBlur={() => handleBlur('challenges')}
-                  placeholder="Example: Encountered performance issues with large datasets, had to implement batch processing..."
-                  rows={6}
-                  disabled={isLoading}
-                  className="w-full px-4 py-3 rounded-lg border border-slate-200 bg-white text-sm text-slate-900 leading-relaxed placeholder:text-slate-400 hover:bg-slate-50 focus-visible:ring-2 focus-visible:ring-[#003B44] focus-visible:ring-offset-1 focus-visible:outline-none disabled:opacity-50 resize-none transition-colors"
-                />
-                <div className="flex items-center justify-between mt-2">
-                  {touched.challenges && errors.challenges ? (
-                    <p className="text-sm text-red-600 leading-relaxed">
-                      {errors.challenges}
-                    </p>
-                  ) : (
-                    <p className="text-sm text-slate-500 leading-relaxed">
-                      Optional field
-                    </p>
-                  )}
-                  <CharacterCounter
-                    current={formData.challenges?.length || 0}
-                    max={10000}
-                    id="challenges-counter"
-                  />
-                </div>
-              </div>
-            </div>
-          </section>
-        </>
-      )}
+          </div>
+        </div>
+      </section>
 
       <div className="flex gap-3">
         <button

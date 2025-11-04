@@ -13,11 +13,9 @@ describe('InputForm', () => {
     render(<InputForm onGenerate={vi.fn()} isLoading={false} />);
 
     expect(
-      screen.getByText('Data Engineering Task Documenter'),
+      screen.getByLabelText(/documentation context/i, { exact: false }),
     ).toBeInTheDocument();
-    expect(
-      screen.getByLabelText(/task context/i, { exact: false }),
-    ).toBeInTheDocument();
+    expect(screen.getByText('Notion Target')).toBeInTheDocument();
   });
 
   it('shows validation error when context is too short', async () => {
@@ -26,14 +24,14 @@ describe('InputForm', () => {
 
     render(<InputForm onGenerate={onGenerate} isLoading={false} />);
 
-    const contextField = screen.getByLabelText(/task context/i, {
+    const contextField = screen.getByLabelText(/documentation context/i, {
       exact: false,
     });
     await user.type(contextField, 'short');
     await user.tab();
 
     expect(
-      await screen.findByText(/context.*10.*characters/i),
+      await screen.findByText(/context is too short/i),
     ).toBeInTheDocument();
   });
 
@@ -43,7 +41,7 @@ describe('InputForm', () => {
 
     render(<InputForm onGenerate={onGenerate} isLoading={false} />);
 
-    const contextField = screen.getByLabelText(/task context/i, {
+    const contextField = screen.getByLabelText(/documentation context/i, {
       exact: false,
     });
     await user.type(
@@ -71,7 +69,7 @@ describe('InputForm', () => {
     await user.click(generateButton);
 
     expect(onGenerate).not.toHaveBeenCalled();
-    expect(await screen.findByText(/context.*required/i)).toBeInTheDocument();
+    expect(await screen.findByText(/context is required/i)).toBeInTheDocument();
   });
 
   it('disables submit button when isLoading is true', () => {
@@ -86,7 +84,7 @@ describe('InputForm', () => {
 
     render(<InputForm onGenerate={vi.fn()} isLoading={false} />);
 
-    const contextField = screen.getByLabelText(/task context/i, {
+    const contextField = screen.getByLabelText(/documentation context/i, {
       exact: false,
     });
     await user.type(contextField, 'Test');
@@ -103,8 +101,6 @@ describe('InputForm', () => {
       name: /documentation generation/i,
     });
     expect(form).toHaveAttribute('noValidate');
-
-    expect(screen.getByLabelText(/form/i)).toBeInTheDocument();
   });
 
   it('clears error when user starts typing after validation error', async () => {
@@ -115,13 +111,13 @@ describe('InputForm', () => {
     const generateButton = screen.getByRole('button', { name: /generate/i });
     await user.click(generateButton);
 
-    expect(await screen.findByText(/context.*required/i)).toBeInTheDocument();
+    expect(await screen.findByText(/context is required/i)).toBeInTheDocument();
 
-    const contextField = screen.getByLabelText(/task context/i, {
+    const contextField = screen.getByLabelText(/documentation context/i, {
       exact: false,
     });
     await user.type(contextField, 'Valid context');
 
-    expect(screen.queryByText(/context.*required/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/context is required/i)).not.toBeInTheDocument();
   });
 });
