@@ -84,6 +84,35 @@ Describe the runtime flow and technology choices. (Mock)
 *Note: Set GEMINI_API_KEY in server/.env to use real AI generation.*`;
   }
 
+  if (mode === 'meeting') {
+    return `# Meeting Record: Project Sync (mock mode)
+
+## Executive Summary
+Mock meeting documentation generated without API key. This would normally contain a summary of the meeting's primary objective, key outcomes, and overall sentiment.
+
+## Context Snapshot
+${preview}...
+
+## Key Decisions & Definitions
+* **Mock Decision 1:** Example decision made during the meeting
+* **Mock Decision 2:** Another important agreement
+
+## Technical Context Extracted
+* *Technologies mentioned:* GCP, Snowflake, Airflow
+* *Architectural changes:* Gold Layer migration
+* *Data points:* Mock tables and fields
+
+## Action Items & Next Steps
+* [ ] **Team Member 1**: Complete mock task 1 (deadline: TBD)
+* [ ] **Team Member 2**: Complete mock task 2 (deadline: TBD)
+
+## Open Questions & Risks
+* Mock open question 1
+* Mock risk or concern 2
+
+*Note: Set GEMINI_API_KEY in server/.env to use real AI generation.*`;
+  }
+
   return `# Documentation (mock mode)
 
 ## Summary

@@ -75,6 +75,15 @@ async function notionHandler(req, res, next) {
       finalContent = `${content}\n\n---\n`;
     }
 
+    if (mode === 'meeting') {
+      const today = new Date().toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+      });
+      finalContent = `📅 # [MEETING] - ${today}\n\n${content}\n\n---\n`;
+    }
+
     const blocks = markdownToNotionBlocks(finalContent);
     console.log(`Generated ${blocks.length} Notion blocks (mode: ${mode})`);
 
