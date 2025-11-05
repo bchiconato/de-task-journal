@@ -1,31 +1,35 @@
 import { useCallback, useMemo, useRef } from 'react';
 
 /**
- * @fileoverview Accessible two-tab toggle for switching between task and architecture modes
+ * @fileoverview Accessible three-tab toggle for switching between task, architecture, and meeting modes
  * @component ModeToggle
  * @example
  *   <ModeToggle mode="task" onChange={(value) => setMode(value)} />
  * @param {Object} props
- * @param {'task'|'architecture'} props.mode - Currently selected documentation mode
- * @param {(mode: 'task'|'architecture') => void} props.onChange - Callback fired when the mode changes
- * @param {(mode: 'task'|'architecture') => void} [props.onSelect] - Callback fired whenever a mode is selected
+ * @param {'task'|'architecture'|'meeting'} props.mode - Currently selected documentation mode
+ * @param {(mode: 'task'|'architecture'|'meeting') => void} props.onChange - Callback fired when the mode changes
+ * @param {(mode: 'task'|'architecture'|'meeting') => void} [props.onSelect] - Callback fired whenever a mode is selected
  * @returns {JSX.Element}
  */
 export function ModeToggle({ mode, onChange, onSelect = () => {} }) {
-  const tabOrder = useMemo(() => ['task', 'architecture'], []);
+  const tabOrder = useMemo(() => ['task', 'architecture', 'meeting'], []);
   const taskRef = useRef(null);
   const architectureRef = useRef(null);
+  const meetingRef = useRef(null);
 
   const tabIds = {
     task: 'mode-toggle-tab-task',
     architecture: 'mode-toggle-tab-architecture',
+    meeting: 'mode-toggle-tab-meeting',
   };
 
   const focusTab = useCallback((targetMode) => {
     if (targetMode === 'task') {
       taskRef.current?.focus();
-    } else {
+    } else if (targetMode === 'architecture') {
       architectureRef.current?.focus();
+    } else {
+      meetingRef.current?.focus();
     }
   }, []);
 
@@ -75,7 +79,12 @@ export function ModeToggle({ mode, onChange, onSelect = () => {} }) {
 
   const buildButtonProps = (targetMode) => ({
     id: tabIds[targetMode],
-    ref: targetMode === 'task' ? taskRef : architectureRef,
+    ref:
+      targetMode === 'task'
+        ? taskRef
+        : targetMode === 'architecture'
+          ? architectureRef
+          : meetingRef,
     role: 'tab',
     tabIndex: mode === targetMode ? 0 : -1,
     'aria-controls': 'mode-toggle-panel',
@@ -100,6 +109,9 @@ export function ModeToggle({ mode, onChange, onSelect = () => {} }) {
       </button>
       <button type="button" {...buildButtonProps('architecture')}>
         Architecture
+      </button>
+      <button type="button" {...buildButtonProps('meeting')}>
+        Meeting
       </button>
     </div>
   );
