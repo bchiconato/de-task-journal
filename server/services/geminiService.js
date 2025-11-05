@@ -13,15 +13,20 @@ const GEMINI_API_BASE =
 /**
  * @async
  * @function generateDocumentation
- * @description Generates documentation (task or architecture) in English using Gemini API based on a single context dump
+ * @description Generates documentation (task, architecture, or meeting) in English using Gemini API based on a single context dump
  * @param {Object} input - The input data
  * @param {string} input.context - Context dump provided by the user (required)
- * @param {('task'|'architecture')} [input.mode='task'] - Documentation mode
+ * @param {('task'|'architecture'|'meeting')} [input.mode='task'] - Documentation mode
  * @returns {Promise<string>} Generated documentation in English Markdown format
  * @throws {Error} When API key is missing, API request fails, or response is invalid
  */
 export async function generateDocumentation({ context, mode = 'task' }) {
-  const normalizedMode = mode === 'architecture' ? 'architecture' : 'task';
+  const normalizedMode =
+    mode === 'architecture'
+      ? 'architecture'
+      : mode === 'meeting'
+        ? 'meeting'
+        : 'task';
   const model = env.GEMINI_MODEL;
   const apiKey = env.GEMINI_API_KEY;
 
@@ -107,6 +112,21 @@ Guidelines:
 - Maintain an objective, professional tone`;
   }
 
+  if (mode === 'meeting') {
+    return `You are an expert Technical Project Manager and Systems Analyst. Your job is to analyze unstructured MEETING TRANSCRIPTS (often multilingual, typically Portuguese/English mix) and transform them into clear, actionable technical documentation in ENGLISH.
+
+Process ALWAYS happens in three steps:
+1. [FILTER & TRANSLATE]: Read the transcript. Mentally discard filler words and repetitive confirmations in ANY language (e.g., PT: "Uhum", "É", "Tipo assim", "Beleza"; EN: "Like", "You know", "Okay", "Right"). Translate vital information to ENGLISH internally.
+2. [SYNTHESIZE]: Connect dispersed comments into coherent points. If Speaker A suggests something in Portuguese and Speaker B agrees later in English, record this as a single verified decision in English.
+3. [FORMAT]: Output a clean Markdown document following the requested structure. Use professional, definitive language (e.g., change "maybe we should use GCP" to "Decision: Use GCP").
+
+Guidelines:
+- OUTPUT MUST ALWAYS BE IN ENGLISH.
+- Differentiate between firm DECISIONS and mere SUGGESTIONS.
+- Identify owners for action items whenever possible.
+- Extract technical terminology precisely, keeping original terms if they are proper nouns (e.g., "Gold Layer", "Raptor", "Airflow").`;
+  }
+
   return `You are a Staff-level Data Engineer and expert Technical Communicator. Your job is to analyze a single, unstructured CONTEXT DUMP and transform it into clear, concise, high-quality technical documentation.
 
 Process ALWAYS happens in three steps:
@@ -123,9 +143,13 @@ Guidelines:
 }
 
 function buildPrompt(mode, context) {
-  return mode === 'architecture'
-    ? buildArchitecturePrompt(context)
-    : buildTaskPrompt(context);
+  if (mode === 'architecture') {
+    return buildArchitecturePrompt(context);
+  }
+  if (mode === 'meeting') {
+    return buildMeetingPrompt(context);
+  }
+  return buildTaskPrompt(context);
 }
 
 function buildTaskPrompt(context) {
@@ -180,7 +204,7 @@ List key obstacles, mitigations, risks, or lessons learned as bullet points. If 
 function buildArchitecturePrompt(context) {
   return `Process the following CONTEXT DUMP and generate comprehensive architecture documentation.
 
-**CRITICAL CONTEXT:** The input may describe a MIGRATION (e.g., a legacy system and a new target system). 
+**CRITICAL CONTEXT:** The input may describe a MIGRATION (e.g., a legacy system and a new target system).
 - **IF a migration is detected:** Your primary goal is to document the **NEW (TARGET) ARCHITECTURE**. Use the legacy system's information only as context for the "Migration Guide" section.
 - **IF it is NOT a migration:** Document the system as-is.
 
@@ -217,6 +241,42 @@ Detail the step-by-step developer workflow, setup steps, repos, commands, config
 - Use bullets, bold, and tables when they improve clarity
 - Favor specificity and traceability back to the context dump
 - Do NOT wrap the entire response in Markdown code fences`;
+}
+
+function buildMeetingPrompt(context) {
+  return `Process the following MEETING TRANSCRIPT and generate technical documentation.
+
+**$DOCUMENTATION_CONTEXT:**
+${context}
+
+Generate meeting documentation following EXACTLY this structure in ENGLISH:
+
+# Meeting Record: [Create a concise, topic-focused title]
+
+## Executive Summary
+Provide a 3-5 sentence summary of the meeting's primary objective, key outcomes, and overall sentiment (e.g., was it a blocker resolution, a planning session, or a retrospective?).
+
+## Key Decisions & Definitions
+List explicit agreements made during the meeting. Use **bold** for the decision topic.
+* *Example:* **Migration Target:** The Gold Layer will be rebuilt directly on GCP, bypassing the legacy pipeline.
+
+## Technical Context Extracted
+Identify and list any technical details mentioned, even if briefly. Group them logically.
+* *Technologies mentioned:* (e.g., Snowflake, Airflow, BigQuery)
+* *Architectural changes:* (e.g., discussion about table structures, silver vs gold layer)
+* *Data points:* (Specific table names, fields, or metrics discussed)
+
+## Action Items & Next Steps
+Extract clear tasks. If a generic "we need to" is used, try to infer the owner based on who said it or their role.
+* [ ] **[Owner Name/Team]**: [Specific Task] (deadline if mentioned)
+
+## Open Questions & Risks
+List items that were discussed but NOT resolved, or potential problems raised by any participant (e.g., concerns about data validation, missing fields, timeline risks).
+
+**Important:**
+- Entire output MUST be ENGLISH Markdown.
+- Ignore conversational filler; focus on substantial content.
+- If a section has no relevant information from the transcript, write "Not discussed".`;
 }
 
 function stripMarkdownFence(text) {
