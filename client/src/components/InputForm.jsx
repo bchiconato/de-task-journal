@@ -20,6 +20,13 @@ const CONTEXT_COPY = {
     placeholder:
       'Example dump:\n\n## Overview\nSystem name, business context, primary users\n\n## Components\n- API Gateway ...\n- Stream Processor ...\n\n## Data Flow\nStep-by-step runtime flow or ASCII diagram\n\n## Decisions & Risks\nKey trade-offs, open issues, mitigations\n\nDrop the entire context in one block.',
   },
+  meeting: {
+    title: 'Meeting Transcript',
+    description:
+      'Paste meeting transcript or detailed notes (Portuguese/English mix accepted). Include speakers, topics discussed, decisions made, and action items. The AI will extract key information and translate to English.',
+    placeholder:
+      'Example dump:\n\n# Meeting: Gold Layer Migration Planning\nDate: 2025-11-05\nAttendees: João (Tech Lead), Maria (Data Engineer), Bob (PM)\n\n[João]: Vamos migrar a Gold Layer diretamente para GCP.\n[Maria]: Okay, and what about the validation?\n[João]: We need to implement field-level checks.\n[Bob]: When can we start?\n\n## Topics Discussed\n- Migration strategy\n- Data validation approach\n- Timeline and resources\n\nInclude full transcript or detailed notes with speaker names.',
+  },
 };
 
 function mapLegacyDraftToContext(draftData, mode) {

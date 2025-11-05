@@ -40,7 +40,9 @@ function App() {
   const [view, setView] = useState('main');
   const [mode, setMode] = useState(() => {
     const params = new URLSearchParams(window.location.search);
-    return params.get('mode') === 'architecture' ? 'architecture' : 'task';
+    const urlMode = params.get('mode');
+    const validModes = ['task', 'architecture', 'meeting'];
+    return validModes.includes(urlMode) ? urlMode : 'task';
   });
   const [documentation, setDocumentation] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
@@ -87,12 +89,16 @@ function App() {
   const activeTabId =
     mode === 'architecture'
       ? 'mode-toggle-tab-architecture'
-      : 'mode-toggle-tab-task';
+      : mode === 'meeting'
+        ? 'mode-toggle-tab-meeting'
+        : 'mode-toggle-tab-task';
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     if (mode === 'architecture') {
       params.set('mode', 'architecture');
+    } else if (mode === 'meeting') {
+      params.set('mode', 'meeting');
     } else {
       params.delete('mode');
     }
@@ -482,7 +488,9 @@ function App() {
                   Generate technical documentation for your data engineering{' '}
                   {mode === 'architecture'
                     ? 'architecture and design decisions'
-                    : 'tasks and implementations'}
+                    : mode === 'meeting'
+                      ? 'technical meetings and discussions'
+                      : 'tasks and implementations'}
                 </p>
               </div>
 

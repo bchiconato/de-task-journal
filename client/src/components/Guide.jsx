@@ -40,8 +40,8 @@ export function Guide({ onBack }) {
       <div className="space-y-8">
         <FeatureCard icon={<FileText size={20} />} title="Documentation Modes">
           <p>
-            The application offers two specialized modes, accessible via tabs in
-            the header:
+            The application offers three specialized modes, accessible via tabs
+            in the header:
           </p>
           <ul className="list-disc pl-5 space-y-1">
             <li>
@@ -53,6 +53,12 @@ export function Guide({ onBack }) {
               <strong>Architecture Mode:</strong> Best suited for systems and
               platforms. Use the same single field for overview, components,
               flows, decisions, and risks.
+            </li>
+            <li>
+              <strong>Meeting Mode:</strong> Perfect for technical meetings.
+              Paste meeting transcripts or notes (Portuguese/English mix
+              accepted). The AI extracts decisions, action items, and technical
+              context, translating everything to English.
             </li>
           </ul>
         </FeatureCard>
