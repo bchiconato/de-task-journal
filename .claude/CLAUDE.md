@@ -6,12 +6,13 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Data Engineering Documentation Generator — A full‑stack app with **dual documentation modes** that generates English technical documentation using Google Gemini AI and sends it to Notion with automatic block chunking.
+Data Engineering Documentation Generator — A full‑stack app with **triple documentation modes** that generates English technical documentation using Google Gemini AI and sends it to Notion with automatic block chunking.
 
-**Two Documentation Modes:**
+**Three Documentation Modes:**
 
 1. **Task Documentation Mode** — Documents completed data engineering tasks with 5-section structure (Summary, Problem Solved, Solution Implemented, Code Highlights, Challenges & Learnings)
-2. **Architecture Documentation Mode** — Documents system architecture and design decisions with 6-section structure (Overview, Data Flow, Key Decisions, Implementation Details, Trade-offs, Future Considerations)
+2. **Architecture Documentation Mode** — Documents system architecture and design decisions with 5-section structure (Overview, Key Components, Data & Service Flow, Technology Stack, Migration Guide & Developer Workflow)
+3. **Meeting Documentation Mode** — Synthesizes meeting transcripts (multilingual PT/EN) into actionable documentation with 6-section structure (Executive Summary, Key Decisions & Definitions, Technical Context Extracted, Action Items & Next Steps, Open Questions & Risks, Meeting Record)
 
 Users can switch between modes via tab-based UI and dynamically select target Notion pages from a dropdown of all shared pages.
 
@@ -74,8 +75,9 @@ npm install
 1. **Mode Selection** → User selects mode via `ModeToggle.jsx` (task or architecture)
    * Mode synced to URL query parameter (`?mode=architecture`)
 2. **User Input** → `InputForm.jsx` collects inputs based on mode:
-   * **Task Mode:** context (required), code (optional), challenges (optional)
-   * **Architecture Mode:** overview (required), dataflow (required), decisions (required)
+   * **Both Modes:** Single unified `context` field (accepts any input format)
+   * **Form Draft Auto-save:** Inputs saved to localStorage every 500ms
+   * **Legacy Support:** Migrates old multi-field drafts (context/code/challenges) to unified context
 3. **Generate Request** → `client/src/utils/api.js` → `POST /api/generate` with `mode` field
 4. **Request Validation** → `validate(GenerateSchema)` middleware validates using discriminated union:
    * TaskSchema validates task mode fields
@@ -88,8 +90,10 @@ npm install
    * Generation config: temperature 0.3, maxTokens 4096, topP 0.8, topK 40
 7. **Response** → Markdown docs in English:
    * **Task Mode:** 5 sections (Summary, Problem Solved, Solution Implemented, Code Highlights, Challenges & Learnings)
-   * **Architecture Mode:** 6 sections (Overview, Data Flow, Key Decisions, Implementation Details, Trade-offs, Future Considerations)
+   * **Architecture Mode:** 5 sections (Overview, Key Components, Data & Service Flow, Technology Stack, Migration Guide & Developer Workflow)
 8. **Display** → `GeneratedContent.jsx` lazy-loaded with React.lazy(), renders markdown with copy/send buttons
+   * **Edit Mode:** Toggle between preview and editor for markdown editing before sending to Notion
+   * **History:** Save to history (last 50 documentations stored in localStorage)
 
 **Notion Page Selection Flow:**
 
@@ -112,7 +116,7 @@ npm install
     * Converts markdown to Notion block JSON structures
 17. **Block Append** → `appendBlocksChunked()` from `server/src/services/notion/client.js`
     * Automatically chunks documents into ≤100 blocks per request
-    * Sends chunks sequentially with **100ms delay** between requests (note: config.js has 350ms constant but implementation uses 100ms)
+    * Sends chunks sequentially with **100ms delay** between requests (consistent with config.js)
     * Uses `notionCall()` retry wrapper for 429/5xx errors
     * Returns `{ blocksAdded, chunks, responses }` with full API responses
 
@@ -121,12 +125,13 @@ npm install
 **`geminiService.js`**
 
 * Direct REST API calls to Google Gemini (no SDK)
-* **Dual-mode generation functions:**
-  * `generateDocumentation(context, code, challenges)` — Task mode with 5-section structure
-  * `generateArchitectureDocumentation(overview, dataflow, decisions)` — Architecture mode with 6-section structure
-* Uses separate system instructions per mode:
-  * `getSystemInstruction()` — Task documentation instructions
-  * `getArchitectureSystemInstruction()` — Architecture documentation instructions
+* **Unified input interface:**
+  * `generateDocumentation(input)` — Accepts single context object with `mode` field
+  * Supports both task and architecture modes with mode-specific prompts
+* Uses mode-aware system instructions:
+  * `getSystemInstruction(mode)` — Returns task or architecture-specific instructions
+  * Task mode: 5 sections (Summary, Problem Solved, Solution Implemented, Code Highlights, Challenges & Learnings)
+  * Architecture mode: 5 sections (Overview, Key Components, Data & Service Flow, Technology Stack, Migration Guide & Developer Workflow)
 * Both modes generate English output (accepts input in any language)
 * Model configurable via `GEMINI_MODEL` env var (default: `gemini-2.0-flash-exp`)
 * Generation config: temperature 0.3, maxOutputTokens 4096, topP 0.8, topK 40
@@ -134,7 +139,7 @@ npm install
 
 **Notion Service** (`server/src/services/notion/`)
 
-The Notion integration is organized as a **modular service** with 8 specialized files:
+The Notion integration is organized as a **modular service** with 5 specialized files:
 
 * **`markdown.js`** — Core markdown‑to‑Notion conversion
   * `markdownToNotionBlocks(markdown)` converts markdown to Notion block JSON
@@ -155,20 +160,16 @@ The Notion integration is organized as a **modular service** with 8 specialized 
   * `chunkBlocks(blocks, size)` utility for splitting block arrays
 
 * **`config.js`** — Centralized constants
-  * Request limits: `MAX_BLOCKS_PER_REQUEST = 100`, `MAX_TEXT_LENGTH = 2000`, `RPS_THROTTLE_MS = 350`
+  * Request limits: `MAX_BLOCKS_PER_REQUEST = 100`, `MAX_TEXT_LENGTH = 2000`, `RPS_THROTTLE_MS = 100`
   * Safety limits: `MAX_ARRAY_ITEMS = 100`, `MAX_BLOCK_ELEMENTS = 1000`, `MAX_PAYLOAD_BYTES = 500 * 1024`, `MAX_NESTING_LEVELS = 2`
   * API version: `NOTION.version = '2022-06-28'` (pinned)
   * `defaultHeaders(token)` function for API headers
 
-* **`search.js`** — Page search functionality (NEW)
+* **`search.js`** — Page search functionality
   * `listSharedPages()` retrieves all pages shared with integration
   * `extractPageTitle()` extracts title from page objects
   * Pagination support for 100+ pages
   * Used by `GET /api/notion/pages` endpoint
-
-* **`exportPage.js`** — Page export functionality
-* **`paginate.js`** — Pagination utilities for list operations
-* **`throttle.js`** — Rate limiting utilities (100ms actual delay; note config constant is 350ms)
 
 ### Server Application Structure
 
@@ -217,16 +218,11 @@ The API uses **Zod** for type‑safe request validation. Schemas define expected
 
 **`server/src/schemas/generate.js`** — Generate endpoint schema
 
-* `GenerateSchema` — Validates `POST /api/generate` requests using **discriminated union** pattern
-* Discriminator: `mode` field ('task' | 'architecture')
-* **TaskSchema** (mode: 'task' or undefined):
-  * `context` (string, min 10 chars, required)
-  * `code` (string, max 10000 chars, optional)
-  * `challenges` (string, max 2000 chars, optional)
-* **ArchitectureSchema** (mode: 'architecture'):
-  * `overview` (string, 150-10000 chars, required)
-  * `dataflow` (string, 150-10000 chars, required)
-  * `decisions` (string, 150-10000 chars, required)
+* `GenerateSchema` — Validates `POST /api/generate` requests
+* Fields:
+  * `mode` (enum: 'task' | 'architecture', required)
+  * `context` (string, min 10 chars, required) — Unified input field for both modes
+* **Single context dump approach:** Both task and architecture modes accept the same unified context field
 * Returns detailed validation errors for invalid requests
 
 **`server/src/schemas/notion.js`** — Notion endpoint schema
@@ -282,27 +278,28 @@ Core UI components:
   * Updates URL query parameter on mode change
 
 * **`InputForm.jsx`** — Main form for collecting documentation inputs
-  * **Dual-mode rendering**: Shows different fields based on selected mode
-  * **Task Mode:** context (required), code (optional), challenges (optional)
-  * **Architecture Mode:** Renders `ArchitectureFields.jsx` component
+  * **Unified input:** Single context field for both task and architecture modes
+  * **Form draft auto-save:** Saves inputs to localStorage every 500ms (`de-task-journal:formDraft`)
+  * **Legacy migration:** Converts old multi-field drafts (context/code/challenges) to unified format
   * **Notion page selector:** Dropdown with all shared Notion pages (loaded from `GET /api/notion/pages`)
-  * **Persistence:** Selected page ID saved to localStorage
-  * Character counters for all text fields
+  * **Persistence:** Selected page ID saved to localStorage (`de-task-journal:selected-notion-page`)
+  * Character counters for text fields
   * Auto-focus on first invalid field on validation error
   * Collapsible on mobile with "Edit inputs" button for better UX after generation
 
-* **`ArchitectureFields.jsx`** — Architecture mode input fields (NEW)
-  * Three specialized text areas: overview, dataflow, decisions (all required)
-  * Character counters with 150-10000 char limits
-  * Integrated with main form validation
-
 * **`GeneratedContent.jsx`** — Displays generated markdown documentation
   * **Lazy-loaded** with React.lazy() for performance
+  * **Edit mode:** Toggle between markdown preview and editor for pre-send modifications
   * Renders markdown with syntax highlighting (react-markdown + Prism.js)
   * Copy to clipboard button
   * Send to Notion button
   * Accessible with ARIA labels
   * Suspense fallback with loading spinner
+
+* **`Guide.jsx`** — In-app help and onboarding component
+  * Feature walkthrough and troubleshooting guide
+  * Accessible via Help (?) icon in header
+  * Shown at `view === 'guide'` state
 
 * **`CodeImplementationEditor.jsx`** — Code input with syntax highlighting
   * Uses `@uiw/react-textarea-code-editor`
@@ -311,7 +308,6 @@ Core UI components:
 
 Support components:
 * **`AppErrorBoundary.jsx`** — React error boundary for graceful error handling
-* **`ErrorMessage.jsx`** — Consistent error message display
 * **`LoadingSpinner.jsx`** — Accessible loading indicator with ARIA live region
 * **`CharacterCounter.jsx`** — Character count display with max limits
 * **`FormField.jsx`** — Reusable form input wrapper with labels
@@ -327,6 +323,7 @@ Uses React `useState` hooks for application state:
 * `mode` — Current documentation mode ('task' | 'architecture')
   * **Synced to URL** query parameter (`?mode=architecture`) via useEffect
   * Read from URL on mount for shareable links
+* `view` — Current view ('main' | 'guide') for switching between main app and help
 * `documentation` — Generated markdown string
 * `isGenerating` — Loading state for Gemini API
 * `isSending` — Loading state for Notion API
@@ -334,11 +331,14 @@ Uses React `useState` hooks for application state:
 * `formCollapsed` — Form collapse state (auto-collapses after successful generation)
 * `notionPages` — List of available Notion pages (loaded from API)
 * `isLoadingPages` — Loading state for Notion pages fetch
+* `docHistory` — Array of last 50 generated documentations with timestamps
 * Toast notifications managed via `useToast()` hook
 * Screen reader announcements via `useAnnouncer()` hook
 
-**Persistence:**
-* Selected Notion page ID saved to localStorage (`de-task-journal:selected-notion-page`)
+**Persistence (localStorage):**
+* `de-task-journal:selected-notion-page` — Selected Notion page ID
+* `de-task-journal:formDraft` — Form inputs auto-saved every 500ms
+* `de-task-journal:docHistory` — Last 50 generated documentations with metadata
 
 **Accessibility:**
 * Skip link to main content for keyboard navigation
@@ -460,9 +460,10 @@ VITE_NOTION_PAGE_ID=                   # Notion page UUID for direct linking (op
 * **react-syntax-highlighter** (v15.5.0) — Syntax highlighting
 * **remark-gfm** (v4.0.0) — GitHub Flavored Markdown support
 * **prismjs** (v1.30.0) — Syntax highlighting library
+* **lucide-react** (v0.552.0) — Icon library for UI elements (Clock, FileText, HelpCircle, X, etc.)
 
 **Development**:
-* **vite** (v6.3.1) — Build tool and dev server
+* **vite** (^7.1.7) — Build tool and dev server
 * **@vitejs/plugin-react** (v5.0.1) — React plugin for Vite
 * **tailwindcss** (v3.4.18) — Utility‑first CSS framework
 * **@tailwindcss/typography** (v0.5.19) — Typography plugin for prose styling
@@ -484,7 +485,7 @@ VITE_NOTION_PAGE_ID=                   # Notion page UUID for direct linking (op
 
 ## Generated Documentation Structure
 
-The system generates documentation in **two different structures** based on the selected mode. Both modes accept input in any language but always output in English.
+The system generates documentation in **three different structures** based on the selected mode. All modes accept input in any language but always output in English.
 
 ### Task Documentation Mode (5 sections)
 
@@ -496,18 +497,36 @@ Enforced via `buildPrompt()` in `geminiService.js`:
 4. **Code Highlights** — Brief explanation of code snippet with inferred language
 5. **Challenges & Learnings** — Main obstacles or insights as bullet points
 
-### Architecture Documentation Mode (6 sections)
+### Architecture Documentation Mode (5 sections)
 
-Enforced via `buildArchitecturePrompt()` in `geminiService.js`:
+Enforced via `buildPrompt()` and `getSystemInstruction(mode)` in `geminiService.js`:
 
-1. **Overview** — High-level description of the system architecture
-2. **Data Flow** — How data moves through the system (sources → transformations → destinations)
-3. **Key Decisions** — Critical architectural and technical decisions with rationale
-4. **Implementation Details** — Technical implementation specifics (technologies, patterns, integrations)
-5. **Trade-offs** — Design trade-offs and their implications
-6. **Future Considerations** — Scalability, maintenance, and evolution considerations
+1. **Overview** — High-level description of the system architecture and its purpose
+2. **Key Components** — Main architectural components and their responsibilities
+3. **Data & Service Flow** — How data and services interact (sources → transformations → destinations)
+4. **Technology Stack** — Technologies, patterns, and integrations used
+5. **Migration Guide & Developer Workflow** — Implementation guidance, setup steps, and developer considerations
 
 **Notion Export:** Architecture mode documentation is prefixed with `🏗️ # [ARCHITECTURE] - {title} ({date})` when sent to Notion.
+
+### Meeting Documentation Mode (6 sections)
+
+Enforced via `buildMeetingPrompt()` and `getSystemInstruction('meeting')` in `geminiService.js`:
+
+1. **Meeting Record** — Concise, topic-focused title
+2. **Executive Summary** — 3-5 sentence summary of meeting objective, outcomes, and sentiment
+3. **Key Decisions & Definitions** — Explicit agreements made during the meeting
+4. **Technical Context Extracted** — Technologies mentioned, architectural changes, data points discussed
+5. **Action Items & Next Steps** — Clear tasks with inferred owners and deadlines
+6. **Open Questions & Risks** — Unresolved items or potential problems raised
+
+**Special Features:**
+- **Multilingual Input:** Accepts Portuguese/English mix (common in Brazilian tech meetings)
+- **Filler Word Filtering:** Automatically discards conversational noise (PT: "Uhum", "É", "Tipo assim"; EN: "Like", "You know", "Okay")
+- **Decision Extraction:** Differentiates firm DECISIONS from mere SUGGESTIONS
+- **Owner Inference:** Attempts to identify task owners from speaker context
+
+**Notion Export:** Meeting mode documentation is prefixed with `📅 # [MEETING] - {date}` when sent to Notion.
 
 ---
 
@@ -567,12 +586,10 @@ This handles indented code blocks in nested contexts (e.g., within lists or quot
 
 * `chunkBlocks(blocks, maxSize)` in `server/src/services/notion/index.js` — splits array into chunks of ≤100
 * `appendBlocksChunked()` in `server/src/services/notion/client.js` — sends chunks sequentially
-* **Throttle:** 100ms delay between requests in actual implementation (note: `config.js` has `RPS_THROTTLE_MS = 350` constant but code uses 100ms)
+* **Throttle:** 100ms delay between requests (consistent across config.js and implementation)
 * Returns `{ blocksAdded, chunks, responses }` with full API responses from each chunk
 
 **When to modify**: If adding new Markdown patterns (e.g., tables, callouts), update `markdownToNotionBlocks()` in `server/src/services/notion/markdown.js` and ensure chunking still works.
-
-**Important Discrepancy:** There is an inconsistency between the `RPS_THROTTLE_MS` constant (350ms) in `config.js` and the actual delay (100ms) used in `client.js`. The implementation uses 100ms via `await delay(100)` at line 178 of `server/src/services/notion/client.js`.
 
 ---
 
@@ -640,24 +657,18 @@ This handles indented code blocks in nested contexts (e.g., within lists or quot
 8. **Rate limiting**:
 
    * Gemini API: 15 RPM, 1500 RPD, 1M TPM (tokens per minute)
-   * Notion API: **Actual implementation uses 100ms delay** (not 350ms from config)
-   * Express rate limit: **200 requests per 15 minutes per IP** (not 100 as previously documented)
+   * Notion API: Uses **100ms delay** between chunk requests (consistent across config and implementation)
+   * Express rate limit: **200 requests per 15 minutes per IP**
    * Both use `fetchWithRetry()` with exponential backoff for 429 errors
 
-9. **Throttle delay inconsistency**:
-
-   * `server/src/services/notion/config.js` defines `RPS_THROTTLE_MS = 350`
-   * `server/src/services/notion/client.js` line 178 uses `await delay(100)` (100ms)
-   * **Action required**: Decide which value is correct and update either config or implementation
-
-10. **Mode parameter required**:
+9. **Mode parameter required**:
 
     * `POST /api/generate` requires `mode` field in request body ('task' | 'architecture')
     * If mode is undefined or 'task', uses TaskSchema validation and 5-section output
-    * If mode is 'architecture', uses ArchitectureSchema validation and 6-section output
+    * If mode is 'architecture', uses ArchitectureSchema validation and 5-section output
     * Missing or invalid mode will fail discriminated union validation
 
-11. **HTTP timeout**:
+10. **HTTP timeout**:
 
     * `fetchWithRetry()` has **12-second timeout** (not 30s)
     * Configurable via `config.timeoutMs` parameter
@@ -761,14 +772,30 @@ Required for end-to-end validation:
 6. **Multi-language input**: Test with input in different languages → verify English output
 
 **Architecture Mode Testing:**
-7. **Architecture generation**: Switch to Architecture tab → fill overview, dataflow, decisions → verify 6 sections in English
+7. **Architecture generation**: Switch to Architecture tab → fill context → verify 5 sections in English (Overview, Key Components, Data & Service Flow, Technology Stack, Migration Guide)
 8. **Notion prefix**: Send architecture docs → verify `🏗️ # [ARCHITECTURE] - {title} ({date})` prefix in Notion
 9. **Mode persistence**: Reload page with `?mode=architecture` query param → verify mode persists
 
+**Meeting Mode Testing:**
+10. **Meeting generation**: Switch to Meeting tab → paste meeting transcript (PT/EN mix) → verify 6 sections in English (Meeting Record, Executive Summary, Key Decisions, Technical Context, Action Items, Open Questions)
+11. **Multilingual handling**: Input transcript with Portuguese and English mixed → verify all output is in English with proper translation
+12. **Filler word filtering**: Include conversational filler words (PT: "Uhum", "É"; EN: "Like", "Okay") → verify they're filtered out in output
+13. **Decision extraction**: Include both firm decisions and suggestions → verify documentation differentiates between them
+14. **Notion prefix**: Send meeting docs → verify `📅 # [MEETING] - {date}` prefix in Notion
+15. **Mode persistence**: Reload page with `?mode=meeting` query param → verify mode persists
+
 **Page Selection Testing:**
-10. **Page dropdown**: Verify all shared Notion pages appear in dropdown
-11. **Page persistence**: Select page → reload → verify selection persists from localStorage
-12. **Dynamic selection**: Change page selection → send to different page → verify correct page receives content
+16. **Page dropdown**: Verify all shared Notion pages appear in dropdown
+17. **Page persistence**: Select page → reload → verify selection persists from localStorage
+18. **Dynamic selection**: Change page selection → send to different page → verify correct page receives content
+
+**History & Edit Features Testing:**
+19. **History system**: Generate docs → verify saved to history (Clock icon) → load from history → verify restored
+20. **History limit**: Generate 50+ docs → verify only last 50 saved
+21. **Edit mode**: Generate docs → toggle edit mode → modify markdown → verify changes preserved
+22. **Guide access**: Click Help (?) icon → verify Guide component displays → return to main view
+23. **Form draft auto-save**: Fill form → wait 500ms → reload page → verify draft restored
+24. **Legacy draft migration**: Manually add old-format draft to localStorage → reload → verify migrated to new format
 
 Check server console for:
 
@@ -908,8 +935,8 @@ All API routes are mounted under the `/api` prefix via `server/src/routes.js`:
 
 **Current endpoints**:
 * `POST /api/generate` — Generate documentation (task or architecture mode)
-  * Requires: `mode` ('task' | 'architecture') + mode-specific fields
-  * Returns: Markdown documentation (5 or 6 sections based on mode)
+  * Requires: `mode` ('task' | 'architecture') + `context` (unified input field)
+  * Returns: Markdown documentation (5 sections for both modes, different structure per mode)
 * `GET /api/notion/pages` — List all Notion pages shared with integration
   * Returns: `{ pages: [{ id, title }] }`
   * Used by: Page selector dropdown in UI
@@ -1132,17 +1159,101 @@ export async function callGemini(model, payload) { /* implementation */ }
 
 ---
 
-# Documentation Update Changelog (2025-11-01)
+# Documentation Update Changelog
 
 This section tracks major updates to CLAUDE.md to reflect actual implementation.
+
+---
+
+## 📅 Update 2025-11-05 (v3.0)
+
+### ✨ New Features Documented
+
+**History System:**
+- **Documentation History** — Saves last 50 generated documentations to localStorage
+- **History UI** — Accessible via Clock icon in header, includes timestamps
+- **History Management** — Load from history, remove individual items, clear all
+
+**Edit Mode:**
+- **Markdown Editing** — Toggle between preview and editor for generated content
+- **Pre-send Modifications** — Edit documentation before sending to Notion
+- **Live Preview** — Switch between edit and preview modes
+
+**Guide Component:**
+- **In-app Help** — Comprehensive help and onboarding system
+- **Accessible via Help Icon** — (?) button in header
+- **View State Management** — Switch between 'main' and 'guide' views
+
+**Form Draft Auto-save:**
+- **Auto-save** — Form inputs saved to localStorage every 500ms
+- **Legacy Migration** — Converts old multi-field drafts to unified context format
+- **Persistence** — Draft restored on page reload
+
+### 🔧 Critical Corrections
+
+**Architecture Mode Structure:**
+- **CORRECTED:** Architecture mode has **5 sections**, not 6
+- **Actual sections:** Overview, Key Components, Data & Service Flow, Technology Stack, Migration Guide & Developer Workflow
+- Updated throughout documentation
+
+**Input Schema Changes:**
+- **CORRECTED:** Both modes now use unified `context` field
+- **Removed:** Separate fields (overview, dataflow, decisions) no longer exist
+- **Single context dump** approach for both task and architecture modes
+
+**Dependencies Updated:**
+- **Vite:** Updated from v6.3.1 to ^7.1.7
+- **lucide-react:** Added v0.552.0 (icon library for UI elements)
+
+**Component List Corrections:**
+- **REMOVED:** ArchitectureFields.jsx (component doesn't exist)
+- **REMOVED:** ErrorMessage.jsx (component doesn't exist)
+- **ADDED:** Guide.jsx (in-app help component)
+
+**Notion Service:**
+- **CORRECTED:** 5 files, not 8 (removed exportPage.js, paginate.js, throttle.js from docs)
+- **Throttle delay:** Now consistently 100ms (config and implementation aligned)
+
+### 📦 Enhanced Documentation
+
+**State Management:**
+- Added `view` state for main/guide view switching
+- Added `docHistory` state for history management
+- Documented all localStorage keys and their purposes
+
+**localStorage Keys:**
+- `de-task-journal:selected-notion-page` — Selected Notion page ID
+- `de-task-journal:formDraft` — Form inputs (auto-saved every 500ms)
+- `de-task-journal:docHistory` — Last 50 documentations with metadata
+
+**Manual Testing:**
+- Added History system test scenarios (items 13-14)
+- Added Edit mode test scenario (item 15)
+- Added Guide component test scenario (item 16)
+- Added Form draft auto-save test scenarios (items 17-18)
+
+**Gemini Service:**
+- Clarified unified input interface: `generateDocumentation(input)`
+- Documented mode-aware system instructions: `getSystemInstruction(mode)`
+
+### ⚠️ Issues Resolved
+
+- ✅ **Throttle delay inconsistency** — RESOLVED (now consistent at 100ms)
+- ✅ **Architecture section count** — FIXED (corrected from 6 to 5)
+- ✅ **Vite version** — UPDATED to ^7.1.7
+- ✅ **Missing icon library** — ADDED lucide-react documentation
+
+---
+
+## 📅 Update 2025-11-01 (v2.0)
 
 ## ✨ Major Features Documented
 
 ### Dual-Mode Documentation System
-- **Architecture Documentation Mode** — NEW 6-section structure for documenting system architecture
+- **Architecture Documentation Mode** — 5-section structure for documenting system architecture
 - **Task Documentation Mode** — Existing 5-section structure (previously the only mode)
 - **Mode Toggle UI** — Tab-based switcher with URL synchronization (`?mode=architecture`)
-- **Discriminated Union Validation** — Zod schema pattern for mode-specific field validation
+- **Mode-aware Validation** — Zod schema pattern with mode field
 
 ### Dynamic Notion Page Selection
 - **GET /api/notion/pages** — NEW endpoint to list all shared Notion pages
@@ -1161,8 +1272,8 @@ This section tracks major updates to CLAUDE.md to reflect actual implementation.
 ### Configuration Corrections
 - **HTTP Timeout**: 12 seconds (not 30s as previously documented)
 - **Rate Limiting**: 200 requests/15min (not 100 as previously documented)
-- **Throttle Delay**: **INCONSISTENCY IDENTIFIED** — config.js has 350ms, implementation uses 100ms
-- **Notion Service**: 8 files (not 7), added `search.js`
+- **Throttle Delay**: 100ms (corrected in v3.0)
+- **Notion Service**: 5 files (corrected count)
 
 ### Dependency Versions
 - **React**: v19.1.1 (not "latest")
@@ -1180,7 +1291,6 @@ This section tracks major updates to CLAUDE.md to reflect actual implementation.
 
 ### New Components
 - **ModeToggle.jsx** — Tab-based mode switcher
-- **ArchitectureFields.jsx** — Architecture mode input fields
 - **useAnnouncer() hook** — Accessibility announcements via Context API
 
 ### Enhanced Hook Documentation
@@ -1203,19 +1313,19 @@ This section tracks major updates to CLAUDE.md to reflect actual implementation.
 - **Notion Response Structure** — Returns `{ blocksAdded, chunks, responses }` (not just 2 fields)
 - **Gemini Generation Config** — temperature 0.3, maxTokens 4096, topP 0.8, topK 40
 
-## ⚠️ Known Issues Documented
+## ⚠️ Known Issues (from v2.0)
 
-### Critical Inconsistencies
-1. **Throttle Delay Mismatch** — config.js (350ms) vs implementation (100ms) - requires resolution
-2. **RPS_THROTTLE_MS Constant** — Defined but not used correctly
+**RESOLVED in v3.0:**
+- ✅ **Throttle Delay Mismatch** — FIXED (now consistent at 100ms)
+- ✅ **Architecture section count** — FIXED (corrected to 5 sections)
+- ✅ **Missing components** — REMOVED from documentation
 
-### Action Items
-- Resolve throttle delay inconsistency
+**Still Outstanding:**
 - Create `client/.env.example` file (currently missing)
 - Consider implementing client-side tests (infrastructure in place)
 
 ---
 
-**Last Updated**: 2025-11-01
-**Documentation Version**: 2.0
-**Covers Implementation**: Current production codebase as of 2025-11-01
+**Last Updated**: 2025-11-05
+**Documentation Version**: 3.0
+**Covers Implementation**: Current production codebase as of 2025-11-05
