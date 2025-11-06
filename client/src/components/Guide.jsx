@@ -69,9 +69,16 @@ export function Guide({ onBack }) {
           </p>
           <ul className="list-disc pl-5 space-y-1">
             <li>
-              <strong>Notion Target:</strong> Select the Notion page where you
-              want to send the final document. This list is populated with pages
-              your Notion integration has access to.
+              <strong>Platform Selection:</strong> If both Notion and Confluence
+              are configured, you'll see radio buttons to choose which platform
+              to send documentation to. If only one is configured, it will be
+              selected automatically.
+            </li>
+            <li>
+              <strong>Target Page:</strong> Select the destination page where
+              you want to send the final document. The dropdown shows pages your
+              integration has access to (Notion or Confluence, depending on your
+              selection).
             </li>
             <li>
               <strong>Single Field:</strong> All context lives in one textarea.
@@ -102,10 +109,19 @@ export function Guide({ onBack }) {
               your clipboard.
             </li>
             <li>
-              <strong>Send to Notion:</strong> Sends the final documentation to
-              your selected Notion page. The tool automatically handles large
-              documents by splitting them into chunks to respect Notion's API
-              limits.
+              <strong>Send to Notion/Confluence:</strong> Sends the final
+              documentation to your selected page. The button text changes based
+              on the platform you selected. The tool automatically handles:
+              <ul className="list-disc pl-5 mt-1 space-y-1">
+                <li>
+                  <strong>Notion:</strong> Large documents are split into chunks
+                  to respect the 100-block-per-request API limit.
+                </li>
+                <li>
+                  <strong>Confluence:</strong> Markdown is converted to
+                  Confluence Storage Format (XHTML) and appended to the page.
+                </li>
+              </ul>
             </li>
           </ul>
         </FeatureCard>
@@ -135,23 +151,72 @@ export function Guide({ onBack }) {
           title="Common Questions"
         >
           <p>
-            <strong>
-              Why is the Notion Page dropdown empty or missing my page?
-            </strong>
+            <strong>Why is the page dropdown empty or missing my page?</strong>
           </p>
           <p>
-            This usually means your Notion integration hasn't been shared with
-            the page. To fix this, go to your page in Notion, click "Share" in
-            the top-right, click "Invite", and select your integration from the
-            list.
+            <strong>For Notion:</strong> Your Notion integration hasn't been
+            shared with the page. To fix this, go to your page in Notion, click
+            "Share" in the top-right, click "Invite", and select your
+            integration from the list.
           </p>
           <p>
-            <strong>Why did I get an error when sending to Notion?</strong>
+            <strong>For Confluence:</strong> Ensure your API token has the
+            correct permissions. Go to Confluence Settings → API Tokens and
+            verify your token has read/write access to the space containing your
+            page.
+          </p>
+
+          <p className="mt-4">
+            <strong>Why did I get an error when sending documentation?</strong>
           </p>
           <p>
-            Ensure your Notion API key and the selected Page ID are correct in
-            your setup. Also, confirm the integration has "Insert content"
-            permissions on the target page.
+            <strong>For Notion:</strong> Ensure your Notion API key is correct
+            and the integration has "Insert content" permissions on the target
+            page.
+          </p>
+          <p>
+            <strong>For Confluence:</strong> Verify your credentials in the
+            server configuration:
+          </p>
+          <ul className="list-disc pl-5 space-y-1">
+            <li>
+              <code className="text-xs bg-slate-200 px-1 py-0.5 rounded">
+                CONFLUENCE_DOMAIN
+              </code>{' '}
+              should be your Atlassian domain (e.g., mycompany.atlassian.net)
+            </li>
+            <li>
+              <code className="text-xs bg-slate-200 px-1 py-0.5 rounded">
+                CONFLUENCE_USER_EMAIL
+              </code>{' '}
+              should match the email associated with your API token
+            </li>
+            <li>
+              <code className="text-xs bg-slate-200 px-1 py-0.5 rounded">
+                CONFLUENCE_API_TOKEN
+              </code>{' '}
+              should be a valid API token from{' '}
+              <a
+                href="https://id.atlassian.com/manage-profile/security/api-tokens"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-indigo-600 underline hover:text-indigo-700"
+              >
+                Atlassian Account Settings
+              </a>
+            </li>
+          </ul>
+
+          <p className="mt-4">
+            <strong>How do I configure both Notion and Confluence?</strong>
+          </p>
+          <p>
+            Both platforms can be configured simultaneously in your server's{' '}
+            <code className="text-xs bg-slate-200 px-1 py-0.5 rounded">
+              .env
+            </code>{' '}
+            file. If both are set up, you'll see a platform selector at the top
+            of the form allowing you to choose where to send each document.
           </p>
         </FeatureCard>
       </div>

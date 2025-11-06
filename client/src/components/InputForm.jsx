@@ -4,6 +4,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { validateForm, hasErrors, getErrorCount } from '../utils/validation';
 import { CharacterCounter } from './CharacterCounter';
+import { PlatformSelector } from './PlatformSelector';
 
 const CONTEXT_COPY = {
   task: {
@@ -109,14 +110,18 @@ function mapLegacyDraftToContext(draftData, mode) {
  * @component InputForm
  * @description Documentation input form with accessibility and inline validation
  * @param {Object} props
- * @param {('task'|'architecture')} props.mode - Documentation mode
+ * @param {('task'|'architecture'|'meeting')} props.mode - Documentation mode
  * @param {Function} props.onGenerate - Form submission handler
  * @param {boolean} props.isLoading - Whether generation is in progress
  * @param {Array<{id: string, title: string}>} props.notionPages - Available Notion pages
+ * @param {Array<{id: string, title: string, spaceKey: string}>} props.confluencePages - Available Confluence pages
  * @param {string} props.selectedPageId - Currently selected page ID
  * @param {Function} props.onPageChange - Page selection change handler
  * @param {boolean} props.isLoadingPages - Whether pages are being loaded
  * @param {string|null} props.pagesError - Error message from page loading
+ * @param {{notion: boolean, confluence: boolean}} props.availablePlatforms - Which platforms are configured
+ * @param {'notion'|'confluence'} props.selectedPlatform - Currently selected platform
+ * @param {Function} props.onPlatformChange - Platform selection change handler
  * @returns {JSX.Element} Form with mode-specific fields
  */
 export function InputForm({
@@ -124,10 +129,14 @@ export function InputForm({
   onGenerate,
   isLoading = false,
   notionPages = [],
+  confluencePages = [],
   selectedPageId = '',
   onPageChange = () => {},
   isLoadingPages = false,
   pagesError = null,
+  availablePlatforms = { notion: false, confluence: false },
+  selectedPlatform = 'notion',
+  onPlatformChange = () => {},
 }) {
   const getInitialFormData = useCallback(
     () => ({
@@ -239,6 +248,9 @@ export function InputForm({
   };
 
   const copy = CONTEXT_COPY[mode] ?? CONTEXT_COPY.task;
+  const currentPages =
+    selectedPlatform === 'notion' ? notionPages : confluencePages;
+  const platformLabel = selectedPlatform === 'notion' ? 'Notion' : 'Confluence';
 
   return (
     <form
@@ -249,22 +261,28 @@ export function InputForm({
     >
       <section className="rounded-2xl border border-slate-200 bg-white p-6 md:p-8">
         <div className="space-y-4">
+          <PlatformSelector
+            selected={selectedPlatform}
+            onChange={onPlatformChange}
+            availablePlatforms={availablePlatforms}
+          />
+
           <div>
             <h3 className="text-base font-semibold text-slate-900">
-              Notion Target
+              {platformLabel} Target
             </h3>
             <p className="text-sm text-slate-500 mt-1 leading-relaxed">
-              Select the Notion page where documentation will be sent
+              Select the {platformLabel} page where documentation will be sent
             </p>
           </div>
 
           <div>
-            <label htmlFor="notion-page" className="sr-only">
-              Notion page
+            <label htmlFor="target-page" className="sr-only">
+              {platformLabel} page
             </label>
             <select
-              id="notion-page"
-              name="notionPage"
+              id="target-page"
+              name="targetPage"
               value={selectedPageId}
               onChange={(e) => onPageChange(e.target.value)}
               disabled={isLoadingPages || isLoading}
@@ -274,16 +292,19 @@ export function InputForm({
                 <option value="">Loading pages...</option>
               ) : pagesError ? (
                 <option value="">Failed to load pages</option>
-              ) : notionPages.length === 0 ? (
+              ) : currentPages.length === 0 ? (
                 <option value="">No pages available</option>
               ) : (
                 <>
                   {!selectedPageId && (
                     <option value="">Select a page...</option>
                   )}
-                  {notionPages.map((page) => (
+                  {currentPages.map((page) => (
                     <option key={page.id} value={page.id}>
                       {page.title}
+                      {selectedPlatform === 'confluence' && page.spaceKey
+                        ? ` (${page.spaceKey})`
+                        : ''}
                     </option>
                   ))}
                 </>

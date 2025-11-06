@@ -13,20 +13,22 @@ import { CodeImplementationEditor } from './CodeImplementationEditor';
  * @description Generated documentation preview with markdown rendering, editing capabilities, and action buttons
  * @param {Object} props
  * @param {string} props.content - Markdown content to render
- * @param {Function} props.onSendToNotion - Send to Notion handler
+ * @param {Function} props.onSend - Send to platform handler
  * @param {boolean} props.isSending - Whether send is in progress
  * @param {boolean} props.isEditing - Whether edit mode is active
  * @param {Function} props.onToggleEditing - Toggle edit mode handler
  * @param {Function} props.onDocumentationChange - Update documentation handler
+ * @param {'notion'|'confluence'} props.platform - Currently selected platform
  * @returns {JSX.Element|null} Rendered markdown preview or editor, or null if no content
  */
 export function GeneratedContent({
   content,
-  onSendToNotion,
+  onSend,
   isSending,
   isEditing,
   onToggleEditing,
   onDocumentationChange,
+  platform = 'notion',
 }) {
   const [justCopied, setJustCopied] = useState(false);
   const headingRef = useRef(null);
@@ -61,9 +63,11 @@ export function GeneratedContent({
     return () => timer && clearTimeout(timer);
   }, [justCopied]);
 
-  const handleSendToNotion = async () => {
-    await onSendToNotion(content);
+  const handleSend = async () => {
+    await onSend(content);
   };
+
+  const platformLabel = platform === 'notion' ? 'Notion' : 'Confluence';
 
   if (!content) return null;
 
@@ -124,7 +128,7 @@ export function GeneratedContent({
             {isEditing ? '✓ Save' : 'Edit'}
           </button>
           <button
-            onClick={handleSendToNotion}
+            onClick={handleSend}
             disabled={isSending}
             aria-disabled={isSending ? 'true' : undefined}
             className={`whitespace-nowrap px-4 py-2 rounded-lg text-sm font-medium transition-colors focus-visible:ring-2 focus-visible:ring-[#003B44]/50 focus-visible:ring-offset-2 focus-visible:outline-none ${
@@ -132,14 +136,14 @@ export function GeneratedContent({
                 ? 'bg-slate-400 cursor-not-allowed text-white'
                 : 'bg-[#003B44] hover:bg-[#004850] text-white'
             }`}
-            aria-label="Send documentation to Notion"
+            aria-label={`Send documentation to ${platformLabel}`}
             aria-busy={isSending}
           >
-            {isSending ? 'Sending...' : 'Send to Notion'}
+            {isSending ? 'Sending...' : `Send to ${platformLabel}`}
           </button>
           {isSending && (
             <span role="status" className="sr-only">
-              Sending documentation to Notion, please wait...
+              Sending documentation to {platformLabel}, please wait...
             </span>
           )}
         </div>
