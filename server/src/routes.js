@@ -6,10 +6,14 @@
 import express from 'express';
 import { generateRouter } from '../routes/generate.js';
 import { notionRouter } from '../routes/notion.js';
+import { confluenceRouter } from '../routes/confluence.js';
+import { configRouter } from '../routes/config.js';
 
 const router = express.Router();
 
 router.use('/generate', generateRouter);
 router.use('/notion', notionRouter);
+router.use('/confluence', confluenceRouter);
+router.use('/config', configRouter);
 
 export default router;
