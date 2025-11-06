@@ -33,8 +33,12 @@ describe('GeneratedContent', () => {
     const { container } = render(
       <GeneratedContent
         content=""
-        onSendToNotion={vi.fn()}
+        onSend={vi.fn()}
         isSending={false}
+        isEditing={false}
+        onToggleEditing={vi.fn()}
+        onDocumentationChange={vi.fn()}
+        platform="notion"
       />,
     );
 
@@ -45,8 +49,12 @@ describe('GeneratedContent', () => {
     render(
       <GeneratedContent
         content={mockContent}
-        onSendToNotion={vi.fn()}
+        onSend={vi.fn()}
         isSending={false}
+        isEditing={false}
+        onToggleEditing={vi.fn()}
+        onDocumentationChange={vi.fn()}
+        platform="notion"
       />,
     );
 
@@ -59,8 +67,12 @@ describe('GeneratedContent', () => {
     render(
       <GeneratedContent
         content={mockContent}
-        onSendToNotion={vi.fn()}
+        onSend={vi.fn()}
         isSending={false}
+        isEditing={false}
+        onToggleEditing={vi.fn()}
+        onDocumentationChange={vi.fn()}
+        platform="notion"
       />,
     );
 
@@ -77,8 +89,12 @@ describe('GeneratedContent', () => {
     const { getByLabelText } = render(
       <GeneratedContent
         content={mockContent}
-        onSendToNotion={vi.fn()}
+        onSend={vi.fn()}
         isSending={false}
+        isEditing={false}
+        onToggleEditing={vi.fn()}
+        onDocumentationChange={vi.fn()}
+        platform="notion"
       />,
     );
 
@@ -86,7 +102,6 @@ describe('GeneratedContent', () => {
 
     await act(async () => {
       await fireEvent.click(copyButton);
-      // Advance any pending timers
       vi.runAllTimers();
     });
 
@@ -100,8 +115,12 @@ describe('GeneratedContent', () => {
     const { getByLabelText } = render(
       <GeneratedContent
         content={mockContent}
-        onSendToNotion={vi.fn()}
+        onSend={vi.fn()}
         isSending={false}
+        isEditing={false}
+        onToggleEditing={vi.fn()}
+        onDocumentationChange={vi.fn()}
+        platform="notion"
       />,
     );
 
@@ -124,8 +143,12 @@ describe('GeneratedContent', () => {
     render(
       <GeneratedContent
         content={mockContent}
-        onSendToNotion={vi.fn()}
+        onSend={vi.fn()}
         isSending={false}
+        isEditing={false}
+        onToggleEditing={vi.fn()}
+        onDocumentationChange={vi.fn()}
+        platform="notion"
       />,
     );
 
@@ -135,13 +158,38 @@ describe('GeneratedContent', () => {
     expect(sendButton).not.toBeDisabled();
   });
 
-  it('calls onSendToNotion when Send to Notion is clicked', async () => {
-    const onSendToNotion = vi.fn().mockImplementation(() => Promise.resolve());
+  it('renders Send to Confluence button when platform is confluence', () => {
+    render(
+      <GeneratedContent
+        content={mockContent}
+        onSend={vi.fn()}
+        isSending={false}
+        isEditing={false}
+        onToggleEditing={vi.fn()}
+        onDocumentationChange={vi.fn()}
+        platform="confluence"
+      />,
+    );
+
+    const sendButton = screen.getByLabelText(
+      'Send documentation to Confluence',
+    );
+    expect(sendButton).toBeInTheDocument();
+    expect(sendButton).toHaveTextContent('Send to Confluence');
+    expect(sendButton).not.toBeDisabled();
+  });
+
+  it('calls onSend when Send button is clicked', async () => {
+    const onSend = vi.fn().mockImplementation(() => Promise.resolve());
     const { getByLabelText } = render(
       <GeneratedContent
         content={mockContent}
-        onSendToNotion={onSendToNotion}
+        onSend={onSend}
         isSending={false}
+        isEditing={false}
+        onToggleEditing={vi.fn()}
+        onDocumentationChange={vi.fn()}
+        platform="notion"
       />,
     );
 
@@ -150,15 +198,19 @@ describe('GeneratedContent', () => {
       await fireEvent.click(sendButton);
     });
 
-    expect(onSendToNotion).toHaveBeenCalledWith(mockContent);
+    expect(onSend).toHaveBeenCalledWith(mockContent);
   });
 
-  it('disables Send to Notion button when isSending is true', () => {
+  it('disables Send button when isSending is true', () => {
     render(
       <GeneratedContent
         content={mockContent}
-        onSendToNotion={vi.fn()}
+        onSend={vi.fn()}
         isSending={true}
+        isEditing={false}
+        onToggleEditing={vi.fn()}
+        onDocumentationChange={vi.fn()}
+        platform="notion"
       />,
     );
 
@@ -168,17 +220,41 @@ describe('GeneratedContent', () => {
     expect(sendButton).toHaveAttribute('aria-busy', 'true');
   });
 
-  it('shows status message when sending', () => {
+  it('shows status message when sending to Notion', () => {
     render(
       <GeneratedContent
         content={mockContent}
-        onSendToNotion={vi.fn()}
+        onSend={vi.fn()}
         isSending={true}
+        isEditing={false}
+        onToggleEditing={vi.fn()}
+        onDocumentationChange={vi.fn()}
+        platform="notion"
       />,
     );
 
     const statusMessage = screen.getByText(
       'Sending documentation to Notion, please wait...',
+    );
+    expect(statusMessage).toBeInTheDocument();
+    expect(statusMessage).toHaveClass('sr-only');
+  });
+
+  it('shows status message when sending to Confluence', () => {
+    render(
+      <GeneratedContent
+        content={mockContent}
+        onSend={vi.fn()}
+        isSending={true}
+        isEditing={false}
+        onToggleEditing={vi.fn()}
+        onDocumentationChange={vi.fn()}
+        platform="confluence"
+      />,
+    );
+
+    const statusMessage = screen.getByText(
+      'Sending documentation to Confluence, please wait...',
     );
     expect(statusMessage).toBeInTheDocument();
     expect(statusMessage).toHaveClass('sr-only');
@@ -190,8 +266,12 @@ describe('GeneratedContent', () => {
     const { container } = render(
       <GeneratedContent
         content={contentWithCode}
-        onSendToNotion={vi.fn()}
+        onSend={vi.fn()}
         isSending={false}
+        isEditing={false}
+        onToggleEditing={vi.fn()}
+        onDocumentationChange={vi.fn()}
+        platform="notion"
       />,
     );
 
@@ -204,8 +284,12 @@ describe('GeneratedContent', () => {
     render(
       <GeneratedContent
         content={mockContent}
-        onSendToNotion={vi.fn()}
+        onSend={vi.fn()}
         isSending={false}
+        isEditing={false}
+        onToggleEditing={vi.fn()}
+        onDocumentationChange={vi.fn()}
+        platform="notion"
       />,
     );
 
