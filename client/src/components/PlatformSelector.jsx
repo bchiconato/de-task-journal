@@ -28,12 +28,16 @@ export function PlatformSelector({ selected, onChange, availablePlatforms }) {
 
   return (
     <div className="mb-6">
-      <label className="mb-2 block text-base font-semibold text-slate-900">
+      <div className="mb-2 block text-base font-semibold text-slate-900">
         Send documentation to
-      </label>
+      </div>
       <div className="flex gap-4">
-        <label className="flex cursor-pointer items-center gap-2">
+        <label
+          htmlFor="platform-notion"
+          className="flex cursor-pointer items-center gap-2"
+        >
           <input
+            id="platform-notion"
             type="radio"
             name="platform"
             value="notion"
@@ -44,8 +48,12 @@ export function PlatformSelector({ selected, onChange, availablePlatforms }) {
           <span className="text-sm text-slate-500 leading-relaxed">Notion</span>
         </label>
 
-        <label className="flex cursor-pointer items-center gap-2">
+        <label
+          htmlFor="platform-confluence"
+          className="flex cursor-pointer items-center gap-2"
+        >
           <input
+            id="platform-confluence"
             type="radio"
             name="platform"
             value="confluence"
