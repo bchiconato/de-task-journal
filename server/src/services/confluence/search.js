@@ -77,7 +77,7 @@ export async function listConfluencePages({ domain, email, token }) {
  */
 function extractCursor(nextLink) {
   try {
-    const url = new URL(nextLink, 'https://example.com');
+    const url = new globalThis.URL(nextLink, 'https://example.com');
     return url.searchParams.get('cursor');
   } catch {
     return null;

@@ -4,11 +4,7 @@
  */
 
 import { fetchWithRetry } from '../../lib/http.js';
-import {
-  getConfluenceUrl,
-  getConfluenceHeaders,
-  CONFLUENCE_LIMITS,
-} from './config.js';
+import { getConfluenceUrl, getConfluenceHeaders } from './config.js';
 
 /**
  * @async
