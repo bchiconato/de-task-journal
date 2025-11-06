@@ -20,6 +20,9 @@ const Env = z.object({
   NOTION_API_KEY: z.string().optional(),
   NOTION_PAGE_ID: z.string().optional(),
   NOTION_PARENT_PAGE_ID: z.string().optional(),
+  CONFLUENCE_DOMAIN: z.string().optional(),
+  CONFLUENCE_USER_EMAIL: z.string().optional(),
+  CONFLUENCE_API_TOKEN: z.string().optional(),
   NODE_ENV: z.string().default('development'),
 });
 
@@ -28,7 +31,10 @@ const Env = z.object({
  * @type {Object}
  * @property {string} PORT - Server port number
  * @property {string} GEMINI_API_KEY - Google Gemini API key
- * @property {string} NOTION_TOKEN - Notion integration token
+ * @property {string} NOTION_API_KEY - Notion integration token
+ * @property {string} CONFLUENCE_DOMAIN - Confluence domain (e.g., mycompany.atlassian.net)
+ * @property {string} CONFLUENCE_USER_EMAIL - Confluence user email
+ * @property {string} CONFLUENCE_API_TOKEN - Confluence API token
  */
 export const env = (() => {
   const parsed = Env.safeParse(process.env);
@@ -52,5 +58,30 @@ export const env = (() => {
     console.warn('⚠️  NOTION_API_KEY not set. Notion endpoint will fail.');
   }
 
+  if (!data.CONFLUENCE_API_TOKEN) {
+    console.warn(
+      '⚠️  CONFLUENCE_API_TOKEN not set. Confluence endpoint will be unavailable.',
+    );
+  }
+
   return data;
 })();
+
+/**
+ * @function getAvailablePlatforms
+ * @description Returns which documentation platforms are configured and available
+ * @returns {{notion: boolean, confluence: boolean}}
+ * @example
+ *   const platforms = getAvailablePlatforms();
+ *   // { notion: true, confluence: false }
+ */
+export function getAvailablePlatforms() {
+  return {
+    notion: Boolean(env.NOTION_API_KEY),
+    confluence: Boolean(
+      env.CONFLUENCE_API_TOKEN &&
+        env.CONFLUENCE_DOMAIN &&
+        env.CONFLUENCE_USER_EMAIL,
+    ),
+  };
+}
