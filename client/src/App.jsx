@@ -8,7 +8,10 @@ import { useAnnouncer } from './hooks/useAnnouncer';
 import {
   generateDocumentation,
   sendToNotion,
+  sendToConfluence,
   getNotionPages,
+  getConfluencePages,
+  getAvailablePlatforms,
 } from './utils/api';
 import { FileText, Clock, HelpCircle, X } from 'lucide-react';
 import { Guide } from './components/Guide';
@@ -49,7 +52,13 @@ function App() {
   const [isSending, setIsSending] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
 
+  const [availablePlatforms, setAvailablePlatforms] = useState({
+    notion: false,
+    confluence: false,
+  });
+  const [selectedPlatform, setSelectedPlatform] = useState('notion');
   const [notionPages, setNotionPages] = useState([]);
+  const [confluencePages, setConfluencePages] = useState([]);
   const [selectedPageId, setSelectedPageId] = useState('');
   const [pagesError, setPagesError] = useState(null);
   const [isLoadingPages, setIsLoadingPages] = useState(false);
@@ -109,32 +118,74 @@ function App() {
   }, [mode]);
 
   useEffect(() => {
+    const fetchPlatforms = async () => {
+      try {
+        const platforms = await getAvailablePlatforms();
+        setAvailablePlatforms(platforms);
+
+        if (!platforms.notion && platforms.confluence) {
+          setSelectedPlatform('confluence');
+        } else {
+          setSelectedPlatform('notion');
+        }
+      } catch (err) {
+        console.error('Error fetching available platforms:', err);
+      }
+    };
+
+    fetchPlatforms();
+  }, []);
+
+  useEffect(() => {
     const fetchPages = async () => {
+      if (!availablePlatforms.notion && !availablePlatforms.confluence) {
+        return;
+      }
+
       setIsLoadingPages(true);
       setPagesError(null);
 
       try {
-        const pages = await getNotionPages();
-        setNotionPages(pages);
+        if (selectedPlatform === 'notion' && availablePlatforms.notion) {
+          const pages = await getNotionPages();
+          setNotionPages(pages);
 
-        const savedPageId = localStorage.getItem(
-          'de-task-journal:selected-notion-page',
-        );
-        if (savedPageId && pages.some((p) => p.id === savedPageId)) {
-          setSelectedPageId(savedPageId);
-        } else if (pages.length > 0) {
-          setSelectedPageId(pages[0].id);
+          const savedPageId = localStorage.getItem(
+            'de-task-journal:selected-notion-page',
+          );
+          if (savedPageId && pages.some((p) => p.id === savedPageId)) {
+            setSelectedPageId(savedPageId);
+          } else if (pages.length > 0) {
+            setSelectedPageId(pages[0].id);
+          }
+        } else if (
+          selectedPlatform === 'confluence' &&
+          availablePlatforms.confluence
+        ) {
+          const pages = await getConfluencePages();
+          setConfluencePages(pages);
+
+          const savedPageId = localStorage.getItem(
+            'de-task-journal:selected-confluence-page',
+          );
+          if (savedPageId && pages.some((p) => p.id === savedPageId)) {
+            setSelectedPageId(savedPageId);
+          } else if (pages.length > 0) {
+            setSelectedPageId(pages[0].id);
+          }
         }
       } catch (err) {
-        console.error('Error fetching Notion pages:', err);
-        setPagesError(err.message || 'Failed to load Notion pages');
+        console.error(`Error fetching ${selectedPlatform} pages:`, err);
+        setPagesError(
+          err.message || `Failed to load ${selectedPlatform} pages`,
+        );
       } finally {
         setIsLoadingPages(false);
       }
     };
 
     fetchPages();
-  }, []);
+  }, [selectedPlatform, availablePlatforms]);
 
   const handleGenerate = async (formData) => {
     const signal = abortController.start();
@@ -179,14 +230,16 @@ function App() {
     }
   };
 
-  const handleSendToNotion = async (content) => {
+  const handleSendToPlatform = async (content) => {
     if (isSending) {
       return false;
     }
 
     if (!selectedPageId) {
-      showError('Please select a Notion page before sending');
-      announcer.announceAssertive('Please select a Notion page before sending');
+      showError(`Please select a ${selectedPlatform} page before sending`);
+      announcer.announceAssertive(
+        `Please select a ${selectedPlatform} page before sending`,
+      );
       return false;
     }
 
@@ -194,22 +247,30 @@ function App() {
     setIsSending(true);
 
     try {
-      await sendToNotion(content, mode, selectedPageId, signal);
-      showSuccess('Documentation sent to Notion successfully!');
-      announcer.announcePolite('Documentation sent to Notion successfully.');
+      if (selectedPlatform === 'notion') {
+        await sendToNotion(content, mode, selectedPageId, signal);
+        showSuccess('Documentation sent to Notion successfully!');
+        announcer.announcePolite('Documentation sent to Notion successfully.');
+      } else if (selectedPlatform === 'confluence') {
+        await sendToConfluence(content, mode, selectedPageId, signal);
+        showSuccess('Documentation sent to Confluence successfully!');
+        announcer.announcePolite(
+          'Documentation sent to Confluence successfully.',
+        );
+      }
       return true;
     } catch (err) {
       if (err.name === 'AbortError') {
         return false;
       }
-      console.error('Error sending to Notion:', err);
+      console.error(`Error sending to ${selectedPlatform}:`, err);
       showError(
         err.message ||
-          'Failed to send to Notion. Please check your configuration.',
+          `Failed to send to ${selectedPlatform}. Please check your configuration.`,
       );
       announcer.announceAssertive(
         err.message ||
-          'Failed to send to Notion. Please check your configuration.',
+          `Failed to send to ${selectedPlatform}. Please check your configuration.`,
       );
       return false;
     } finally {
@@ -227,9 +288,18 @@ function App() {
     setDocumentation('');
   };
 
+  const handlePlatformChange = (platform) => {
+    setSelectedPlatform(platform);
+    setSelectedPageId('');
+  };
+
   const handlePageChange = (pageId) => {
     setSelectedPageId(pageId);
-    localStorage.setItem('de-task-journal:selected-notion-page', pageId);
+    const storageKey =
+      selectedPlatform === 'notion'
+        ? 'de-task-journal:selected-notion-page'
+        : 'de-task-journal:selected-confluence-page';
+    localStorage.setItem(storageKey, pageId);
   };
 
   /**
@@ -501,10 +571,14 @@ function App() {
                     onGenerate={handleGenerate}
                     isLoading={isGenerating}
                     notionPages={notionPages}
+                    confluencePages={confluencePages}
                     selectedPageId={selectedPageId}
                     onPageChange={handlePageChange}
                     isLoadingPages={isLoadingPages}
                     pagesError={pagesError}
+                    availablePlatforms={availablePlatforms}
+                    selectedPlatform={selectedPlatform}
+                    onPlatformChange={handlePlatformChange}
                   />
                 </div>
 
@@ -527,11 +601,12 @@ function App() {
                     >
                       <GeneratedContent
                         content={documentation}
-                        onSendToNotion={handleSendToNotion}
+                        onSend={handleSendToPlatform}
                         isSending={isSending}
                         isEditing={isEditing}
                         onToggleEditing={toggleEditing}
                         onDocumentationChange={handleDocumentationChange}
+                        platform={selectedPlatform}
                       />
                     </Suspense>
                   )}
