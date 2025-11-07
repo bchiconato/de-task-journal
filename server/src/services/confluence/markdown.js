@@ -12,6 +12,10 @@
  *   const xhtml = markdownToConfluenceStorage('# Title\n\nParagraph');
  */
 export function markdownToConfluenceStorage(markdown) {
+  if (!markdown) {
+    return '';
+  }
+
   const lines = markdown.split('\n');
   const result = [];
   let inCodeBlock = false;
@@ -39,7 +43,7 @@ export function markdownToConfluenceStorage(markdown) {
     }
 
     if (inCodeBlock) {
-      codeBlockLines.push(escapeXml(line));
+      codeBlockLines.push(line);
       continue;
     }
 
