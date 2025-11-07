@@ -10,8 +10,7 @@ import {
   markdownToConfluenceStorage,
 } from '../src/services/confluence/index.js';
 import { validate } from '../src/middleware/validate.js';
-import { NotionExportSchema } from '../src/schemas/notion.js';
-import { env } from '../src/config/index.js';
+import { ConfluenceExportSchema } from '../src/schemas/confluence.js';
 
 const router = express.Router();
 
@@ -31,9 +30,9 @@ const router = express.Router();
 async function listPagesHandler(req, res, next) {
   try {
     if (
-      !env.CONFLUENCE_API_TOKEN ||
-      !env.CONFLUENCE_DOMAIN ||
-      !env.CONFLUENCE_USER_EMAIL
+      !process.env.CONFLUENCE_API_TOKEN ||
+      !process.env.CONFLUENCE_DOMAIN ||
+      !process.env.CONFLUENCE_USER_EMAIL
     ) {
       return res.status(503).json({
         success: false,
@@ -44,9 +43,9 @@ async function listPagesHandler(req, res, next) {
     }
 
     const pages = await listConfluencePages({
-      domain: env.CONFLUENCE_DOMAIN,
-      email: env.CONFLUENCE_USER_EMAIL,
-      token: env.CONFLUENCE_API_TOKEN,
+      domain: process.env.CONFLUENCE_DOMAIN,
+      email: process.env.CONFLUENCE_USER_EMAIL,
+      token: process.env.CONFLUENCE_API_TOKEN,
     });
 
     res.json({
@@ -74,9 +73,9 @@ async function listPagesHandler(req, res, next) {
 async function confluenceHandler(req, res, next) {
   try {
     if (
-      !env.CONFLUENCE_API_TOKEN ||
-      !env.CONFLUENCE_DOMAIN ||
-      !env.CONFLUENCE_USER_EMAIL
+      !process.env.CONFLUENCE_API_TOKEN ||
+      !process.env.CONFLUENCE_DOMAIN ||
+      !process.env.CONFLUENCE_USER_EMAIL
     ) {
       return res.status(503).json({
         success: false,
@@ -111,9 +110,9 @@ async function confluenceHandler(req, res, next) {
     const confluenceStorage = markdownToConfluenceStorage(finalContent);
 
     const response = await appendToConfluencePage({
-      domain: env.CONFLUENCE_DOMAIN,
-      email: env.CONFLUENCE_USER_EMAIL,
-      token: env.CONFLUENCE_API_TOKEN,
+      domain: process.env.CONFLUENCE_DOMAIN,
+      email: process.env.CONFLUENCE_USER_EMAIL,
+      token: process.env.CONFLUENCE_API_TOKEN,
       pageId,
       content: confluenceStorage,
     });
@@ -132,6 +131,6 @@ async function confluenceHandler(req, res, next) {
 }
 
 router.get('/pages', listPagesHandler);
-router.post('/', validate(NotionExportSchema), confluenceHandler);
+router.post('/', validate(ConfluenceExportSchema), confluenceHandler);
 
 export { router as confluenceRouter, confluenceHandler, listPagesHandler };
