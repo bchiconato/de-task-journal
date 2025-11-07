@@ -77,11 +77,11 @@ export const env = (() => {
  */
 export function getAvailablePlatforms() {
   return {
-    notion: Boolean(env.NOTION_API_KEY),
+    notion: Boolean(process.env.NOTION_API_KEY),
     confluence: Boolean(
-      env.CONFLUENCE_API_TOKEN &&
-        env.CONFLUENCE_DOMAIN &&
-        env.CONFLUENCE_USER_EMAIL,
+      process.env.CONFLUENCE_API_TOKEN &&
+        process.env.CONFLUENCE_DOMAIN &&
+        process.env.CONFLUENCE_USER_EMAIL,
     ),
   };
 }
