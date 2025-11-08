@@ -10,7 +10,6 @@ import {
   sendToNotion,
   sendToConfluence,
   getNotionPages,
-  getConfluencePages,
   getAvailablePlatforms,
 } from './utils/api';
 import { FileText, Clock, HelpCircle, X } from 'lucide-react';
@@ -58,10 +57,7 @@ function App() {
   });
   const [selectedPlatform, setSelectedPlatform] = useState('notion');
   const [notionPages, setNotionPages] = useState([]);
-  const [confluencePages, setConfluencePages] = useState([]);
   const [selectedPageId, setSelectedPageId] = useState('');
-  const [pagesError, setPagesError] = useState(null);
-  const [isLoadingPages, setIsLoadingPages] = useState(false);
 
   const [history, setHistory] = useState(() => {
     try {
@@ -142,11 +138,8 @@ function App() {
         return;
       }
 
-      setIsLoadingPages(true);
-      setPagesError(null);
-
-      try {
-        if (selectedPlatform === 'notion' && availablePlatforms.notion) {
+      if (selectedPlatform === 'notion' && availablePlatforms.notion) {
+        try {
           const pages = await getNotionPages();
           setNotionPages(pages);
 
@@ -158,29 +151,19 @@ function App() {
           } else if (pages.length > 0) {
             setSelectedPageId(pages[0].id);
           }
-        } else if (
-          selectedPlatform === 'confluence' &&
-          availablePlatforms.confluence
-        ) {
-          const pages = await getConfluencePages();
-          setConfluencePages(pages);
-
-          const savedPageId = localStorage.getItem(
-            'de-task-journal:selected-confluence-page',
-          );
-          if (savedPageId && pages.some((p) => p.id === savedPageId)) {
-            setSelectedPageId(savedPageId);
-          } else if (pages.length > 0) {
-            setSelectedPageId(pages[0].id);
-          }
+        } catch (err) {
+          console.error('Error fetching Notion pages:', err);
         }
-      } catch (err) {
-        console.error(`Error fetching ${selectedPlatform} pages:`, err);
-        setPagesError(
-          err.message || `Failed to load ${selectedPlatform} pages`,
+      } else if (
+        selectedPlatform === 'confluence' &&
+        availablePlatforms.confluence
+      ) {
+        const savedPageId = localStorage.getItem(
+          'de-task-journal:selected-confluence-page',
         );
-      } finally {
-        setIsLoadingPages(false);
+        if (savedPageId) {
+          setSelectedPageId(savedPageId);
+        }
       }
     };
 
@@ -571,11 +554,8 @@ function App() {
                     onGenerate={handleGenerate}
                     isLoading={isGenerating}
                     notionPages={notionPages}
-                    confluencePages={confluencePages}
                     selectedPageId={selectedPageId}
                     onPageChange={handlePageChange}
-                    isLoadingPages={isLoadingPages}
-                    pagesError={pagesError}
                     availablePlatforms={availablePlatforms}
                     selectedPlatform={selectedPlatform}
                     onPlatformChange={handlePlatformChange}
