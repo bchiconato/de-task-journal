@@ -5,6 +5,8 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import { validateForm, hasErrors, getErrorCount } from '../utils/validation';
 import { CharacterCounter } from './CharacterCounter';
 import { PlatformSelector } from './PlatformSelector';
+import { PageSearchSelector } from './PageSearchSelector';
+import { getConfluencePages, getNotionPages } from '../utils/api';
 
 const CONTEXT_COPY = {
   task: {
@@ -113,12 +115,8 @@ function mapLegacyDraftToContext(draftData, mode) {
  * @param {('task'|'architecture'|'meeting')} props.mode - Documentation mode
  * @param {Function} props.onGenerate - Form submission handler
  * @param {boolean} props.isLoading - Whether generation is in progress
- * @param {Array<{id: string, title: string}>} props.notionPages - Available Notion pages
- * @param {Array<{id: string, title: string, spaceKey: string}>} props.confluencePages - Available Confluence pages
  * @param {string} props.selectedPageId - Currently selected page ID
  * @param {Function} props.onPageChange - Page selection change handler
- * @param {boolean} props.isLoadingPages - Whether pages are being loaded
- * @param {string|null} props.pagesError - Error message from page loading
  * @param {{notion: boolean, confluence: boolean}} props.availablePlatforms - Which platforms are configured
  * @param {'notion'|'confluence'} props.selectedPlatform - Currently selected platform
  * @param {Function} props.onPlatformChange - Platform selection change handler
@@ -128,12 +126,8 @@ export function InputForm({
   mode = 'task',
   onGenerate,
   isLoading = false,
-  notionPages = [],
-  confluencePages = [],
   selectedPageId = '',
   onPageChange = () => {},
-  isLoadingPages = false,
-  pagesError = null,
   availablePlatforms = { notion: false, confluence: false },
   selectedPlatform = 'notion',
   onPlatformChange = () => {},
@@ -247,10 +241,11 @@ export function InputForm({
     onGenerate({ ...formData, mode });
   };
 
+  const handlePageSelect = (pageId) => {
+    onPageChange(pageId);
+  };
+
   const copy = CONTEXT_COPY[mode] ?? CONTEXT_COPY.task;
-  const currentPages =
-    selectedPlatform === 'notion' ? notionPages : confluencePages;
-  const platformLabel = selectedPlatform === 'notion' ? 'Notion' : 'Confluence';
 
   return (
     <form
@@ -261,61 +256,40 @@ export function InputForm({
     >
       <section className="rounded-2xl border border-slate-200 bg-white p-6 md:p-8">
         <div className="space-y-4">
+          <div>
+            <h3 className="text-base font-semibold text-slate-900">
+              Target Page
+            </h3>
+            <p className="text-sm text-slate-500 mt-1 leading-relaxed">
+              Select the platform and page where documentation will be sent
+            </p>
+          </div>
+
           <PlatformSelector
             selected={selectedPlatform}
             onChange={onPlatformChange}
             availablePlatforms={availablePlatforms}
           />
 
-          <div>
-            <h3 className="text-base font-semibold text-slate-900">
-              {platformLabel} Target
-            </h3>
-            <p className="text-sm text-slate-500 mt-1 leading-relaxed">
-              Select the {platformLabel} page where documentation will be sent
-            </p>
-          </div>
-
-          <div>
-            <label htmlFor="target-page" className="sr-only">
-              {platformLabel} page
-            </label>
-            <select
-              id="target-page"
-              name="targetPage"
-              value={selectedPageId}
-              onChange={(e) => onPageChange(e.target.value)}
-              disabled={isLoadingPages || isLoading}
-              className="w-full px-4 py-2.5 rounded-lg border border-slate-200 bg-white text-sm text-slate-900 hover:bg-slate-50 focus-visible:ring-2 focus-visible:ring-[#003B44] focus-visible:ring-offset-1 focus-visible:outline-none disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-            >
-              {isLoadingPages ? (
-                <option value="">Loading pages...</option>
-              ) : pagesError ? (
-                <option value="">Failed to load pages</option>
-              ) : currentPages.length === 0 ? (
-                <option value="">No pages available</option>
-              ) : (
-                <>
-                  {!selectedPageId && (
-                    <option value="">Select a page...</option>
-                  )}
-                  {currentPages.map((page) => (
-                    <option key={page.id} value={page.id}>
-                      {page.title}
-                      {selectedPlatform === 'confluence' && page.spaceKey
-                        ? ` (${page.spaceKey})`
-                        : ''}
-                    </option>
-                  ))}
-                </>
-              )}
-            </select>
-            {pagesError && (
-              <p className="text-sm text-red-600 mt-1.5 leading-relaxed">
-                {pagesError}
-              </p>
-            )}
-          </div>
+          {selectedPlatform === 'confluence' ? (
+            <PageSearchSelector
+              fetchPages={getConfluencePages}
+              selectedPageId={selectedPageId}
+              onPageSelect={handlePageSelect}
+              platform="Confluence"
+              placeholder="Search Confluence pages..."
+              limit={50}
+            />
+          ) : (
+            <PageSearchSelector
+              fetchPages={getNotionPages}
+              selectedPageId={selectedPageId}
+              onPageSelect={handlePageSelect}
+              platform="Notion"
+              placeholder="Search Notion pages..."
+              limit={50}
+            />
+          )}
         </div>
       </section>
 
