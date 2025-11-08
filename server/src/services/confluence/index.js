@@ -1,9 +1,8 @@
 /**
- * @fileoverview Confluence service centralized exports
+ * @fileoverview Confluence service public API
  * @module services/confluence
  */
 
+export { searchConfluencePages, listConfluencePages } from './search.js';
+export { appendToConfluencePage } from './client.js';
 export { markdownToConfluenceStorage } from './markdown.js';
-export { appendToConfluencePage, checkConfluencePageAccess } from './client.js';
-export { listConfluencePages } from './search.js';
-export { getConfluenceUrl, getConfluenceHeaders } from './config.js';

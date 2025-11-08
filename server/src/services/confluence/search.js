@@ -8,28 +8,38 @@ import { getConfluenceUrl, getConfluenceHeaders } from './config.js';
 
 /**
  * @async
- * @function listConfluencePages
- * @description Lists all accessible Confluence pages
+ * @function searchConfluencePages
+ * @description Searches Confluence pages by title with pagination and limit
  * @param {Object} params - Parameters
  * @param {string} params.domain - Confluence domain
  * @param {string} params.email - User email
  * @param {string} params.token - API token
+ * @param {string} [params.searchQuery=''] - Search query to filter by title
+ * @param {number} [params.limit=50] - Maximum number of results to return
  * @returns {Promise<Array<{id: string, title: string, spaceKey: string}>>} Array of pages
  * @throws {Error} When API request fails
  */
-export async function listConfluencePages({ domain, email, token }) {
+export async function searchConfluencePages({
+  domain,
+  email,
+  token,
+  searchQuery = '',
+  limit = 50,
+}) {
   if (!domain || !email || !token) {
     throw new Error('Confluence credentials are required');
   }
 
-  const allPages = [];
+  const normalizedQuery = searchQuery.toLowerCase().trim();
+  const pages = [];
   let cursor = null;
   let hasMore = true;
+  const pageSize = 250;
 
-  while (hasMore) {
+  while (hasMore && pages.length < limit) {
     const url = cursor
-      ? getConfluenceUrl(domain, `/pages?limit=250&cursor=${cursor}`)
-      : getConfluenceUrl(domain, '/pages?limit=250');
+      ? getConfluenceUrl(domain, `/pages?limit=${pageSize}&cursor=${cursor}`)
+      : getConfluenceUrl(domain, `/pages?limit=${pageSize}`);
 
     const response = await fetchWithRetry(url, {
       method: 'GET',
@@ -55,18 +65,48 @@ export async function listConfluencePages({ domain, email, token }) {
     const data = await response.json();
 
     for (const page of data.results || []) {
-      allPages.push({
-        id: page.id,
-        title: page.title || 'Untitled',
-        spaceKey: page.spaceId || '',
-      });
+      const pageTitle = (page.title || 'Untitled').toLowerCase();
+
+      if (!normalizedQuery || pageTitle.includes(normalizedQuery)) {
+        pages.push({
+          id: page.id,
+          title: page.title || 'Untitled',
+          spaceKey: page.spaceId || '',
+        });
+
+        if (pages.length >= limit) {
+          break;
+        }
+      }
     }
 
     cursor = data._links?.next ? extractCursor(data._links.next) : null;
     hasMore = Boolean(cursor);
   }
 
-  return allPages;
+  return pages;
+}
+
+/**
+ * @async
+ * @function listConfluencePages
+ * @description Lists all accessible Confluence pages (legacy - use searchConfluencePages instead)
+ * @deprecated Use searchConfluencePages with limit parameter
+ * @param {Object} params - Parameters
+ * @param {string} params.domain - Confluence domain
+ * @param {string} params.email - User email
+ * @param {string} params.token - API token
+ * @returns {Promise<Array<{id: string, title: string, spaceKey: string}>>} Array of pages
+ * @throws {Error} When API request fails
+ */
+export async function listConfluencePages({ domain, email, token }) {
+  return searchConfluencePages({
+    domain,
+    email,
+    token,
+    searchQuery: '',
+    limit: 50,
+  });
 }
 
 /**
