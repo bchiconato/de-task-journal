@@ -59,12 +59,20 @@ export async function getAvailablePlatforms(signal) {
 /**
  * @async
  * @function getNotionPages
- * @description Retrieves all Notion pages shared with the integration token
+ * @description Retrieves Notion pages (search parameters ignored - loads all pages)
+ * @param {string} [searchQuery=''] - Search query (unused - kept for API compatibility)
+ * @param {number} [limit=50] - Maximum number of results (unused - kept for API compatibility)
  * @param {AbortSignal} [signal] - Optional AbortSignal for request cancellation
- * @returns {Promise<Array<{id: string, title: string}>>} Array of pages with id and title
+ * @returns {Promise<Array<{id: string, title: string}>>} Array of pages
  * @throws {Error} When the request fails or response is malformed
  */
-export async function getNotionPages(signal) {
+export async function getNotionPages(
+  // eslint-disable-next-line no-unused-vars
+  searchQuery = '',
+  // eslint-disable-next-line no-unused-vars
+  limit = 50,
+  signal,
+) {
   const response = await fetch(`${API_BASE_URL}/notion/pages`, {
     method: 'GET',
     headers: {
@@ -93,13 +101,21 @@ export async function getNotionPages(signal) {
 /**
  * @async
  * @function getConfluencePages
- * @description Retrieves all accessible Confluence pages
+ * @description Retrieves Confluence pages with optional search and limit
+ * @param {string} [searchQuery=''] - Search query to filter pages by title
+ * @param {number} [limit=50] - Maximum number of results
  * @param {AbortSignal} [signal] - Optional AbortSignal for request cancellation
  * @returns {Promise<Array<{id: string, title: string, spaceKey: string}>>} Array of pages
  * @throws {Error} When the request fails or response is malformed
  */
-export async function getConfluencePages(signal) {
-  const response = await fetch(`${API_BASE_URL}/confluence/pages`, {
+export async function getConfluencePages(searchQuery = '', limit = 50, signal) {
+  const params = new URLSearchParams();
+  if (searchQuery) params.append('search', searchQuery);
+  params.append('limit', limit.toString());
+
+  const url = `${API_BASE_URL}/confluence/pages?${params.toString()}`;
+
+  const response = await fetch(url, {
     method: 'GET',
     headers: {
       'Content-Type': 'application/json',
