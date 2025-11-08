@@ -53,7 +53,7 @@ async function listPagesHandler(req, res, next) {
  * @example
  *
  *   POST /api/notion
- *   Body: { content: "More content", pageId: "abc-123", mode: "architecture" }  // Appends with header
+ *   Body: { content: "More content", pageId: "abc-123", mode: "task" }
  */
 async function notionHandler(req, res, next) {
   try {
@@ -69,22 +69,7 @@ async function notionHandler(req, res, next) {
       });
     }
 
-    let finalContent = content;
-
-    if (mode === 'architecture') {
-      finalContent = `${content}\n\n---\n`;
-    }
-
-    if (mode === 'meeting') {
-      const today = new Date().toLocaleDateString('en-US', {
-        year: 'numeric',
-        month: 'short',
-        day: 'numeric',
-      });
-      finalContent = `📅 # [MEETING] - ${today}\n\n${content}\n\n---\n`;
-    }
-
-    const blocks = markdownToNotionBlocks(finalContent);
+    const blocks = markdownToNotionBlocks(content);
     console.log(`Generated ${blocks.length} Notion blocks (mode: ${mode})`);
 
     const response = await appendBlocksChunked({

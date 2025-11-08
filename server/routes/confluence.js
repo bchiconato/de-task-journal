@@ -5,7 +5,7 @@
 
 import express from 'express';
 import {
-  listConfluencePages,
+  searchConfluencePages,
   appendToConfluencePage,
   markdownToConfluenceStorage,
 } from '../src/services/confluence/index.js';
@@ -17,15 +17,15 @@ const router = express.Router();
 /**
  * @async
  * @function listPagesHandler
- * @description Handles GET /api/confluence/pages - returns list of accessible pages
- * @param {import('express').Request} req - Express request
+ * @description Handles GET /api/confluence/pages - returns filtered list of accessible pages
+ * @param {import('express').Request} req - Express request with optional query params: search, limit
  * @param {import('express').Response} res - Express response
  * @param {import('express').NextFunction} next - Express next function
  * @returns {Promise<void>}
  * @throws {Error} When Confluence API request fails
  * @example
- *   GET /api/confluence/pages
- *   Response: { success: true, pages: [{ id: "123", title: "My Page", spaceKey: "DEV" }] }
+ *   GET /api/confluence/pages?search=meeting&limit=20
+ *   Response: { success: true, pages: [{ id: "123", title: "Meeting Notes", spaceKey: "DEV" }], count: 1 }
  */
 async function listPagesHandler(req, res, next) {
   try {
@@ -42,15 +42,23 @@ async function listPagesHandler(req, res, next) {
       });
     }
 
-    const pages = await listConfluencePages({
+    const searchQuery = req.query.search || '';
+    const limit = Math.min(parseInt(req.query.limit, 10) || 50, 200);
+
+    const pages = await searchConfluencePages({
       domain: process.env.CONFLUENCE_DOMAIN,
       email: process.env.CONFLUENCE_USER_EMAIL,
       token: process.env.CONFLUENCE_API_TOKEN,
+      searchQuery,
+      limit,
     });
 
     res.json({
       success: true,
       pages,
+      count: pages.length,
+      query: searchQuery,
+      limit,
     });
   } catch (error) {
     next(error);
@@ -85,29 +93,9 @@ async function confluenceHandler(req, res, next) {
       });
     }
 
-    const { content, pageId, mode } = req.valid;
+    const { content, pageId } = req.valid;
 
-    let finalContent = content;
-
-    if (mode === 'architecture') {
-      const today = new Date().toLocaleDateString('en-US', {
-        year: 'numeric',
-        month: 'short',
-        day: 'numeric',
-      });
-      finalContent = `🏗️ # [ARCHITECTURE] - ${today}\n\n${content}\n\n---\n`;
-    }
-
-    if (mode === 'meeting') {
-      const today = new Date().toLocaleDateString('en-US', {
-        year: 'numeric',
-        month: 'short',
-        day: 'numeric',
-      });
-      finalContent = `📅 # [MEETING] - ${today}\n\n${content}\n\n---\n`;
-    }
-
-    const confluenceStorage = markdownToConfluenceStorage(finalContent);
+    const confluenceStorage = markdownToConfluenceStorage(content);
 
     const response = await appendToConfluencePage({
       domain: process.env.CONFLUENCE_DOMAIN,
@@ -120,7 +108,6 @@ async function confluenceHandler(req, res, next) {
     res.json({
       success: true,
       platform: 'confluence',
-      docMode: mode,
       message: 'Content successfully appended to Confluence page',
       pageId,
       version: response.version,
