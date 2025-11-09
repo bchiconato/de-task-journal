@@ -6,6 +6,7 @@ import { validateForm, hasErrors, getErrorCount } from '../utils/validation';
 import { CharacterCounter } from './CharacterCounter';
 import { PlatformSelector } from './PlatformSelector';
 import { PageSearchSelector } from './PageSearchSelector';
+import { WriteModeSelector } from './WriteModeSelector';
 import { getConfluencePages, getNotionPages } from '../utils/api';
 
 const CONTEXT_COPY = {
@@ -120,6 +121,8 @@ function mapLegacyDraftToContext(draftData, mode) {
  * @param {{notion: boolean, confluence: boolean}} props.availablePlatforms - Which platforms are configured
  * @param {'notion'|'confluence'} props.selectedPlatform - Currently selected platform
  * @param {Function} props.onPlatformChange - Platform selection change handler
+ * @param {('append'|'overwrite')} props.writeMode - Write mode for Confluence
+ * @param {Function} props.onWriteModeChange - Write mode change handler
  * @returns {JSX.Element} Form with mode-specific fields
  */
 export function InputForm({
@@ -131,6 +134,8 @@ export function InputForm({
   availablePlatforms = { notion: false, confluence: false },
   selectedPlatform = 'notion',
   onPlatformChange = () => {},
+  writeMode = 'append',
+  onWriteModeChange = () => {},
 }) {
   const getInitialFormData = useCallback(
     () => ({
@@ -272,14 +277,20 @@ export function InputForm({
           />
 
           {selectedPlatform === 'confluence' ? (
-            <PageSearchSelector
-              fetchPages={getConfluencePages}
-              selectedPageId={selectedPageId}
-              onPageSelect={handlePageSelect}
-              platform="Confluence"
-              placeholder="Search Confluence pages..."
-              limit={50}
-            />
+            <>
+              <PageSearchSelector
+                fetchPages={getConfluencePages}
+                selectedPageId={selectedPageId}
+                onPageSelect={handlePageSelect}
+                platform="Confluence"
+                placeholder="Search Confluence pages..."
+                limit={50}
+              />
+              <WriteModeSelector
+                selected={writeMode}
+                onChange={onWriteModeChange}
+              />
+            </>
           ) : (
             <PageSearchSelector
               fetchPages={getNotionPages}
