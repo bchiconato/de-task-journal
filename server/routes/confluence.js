@@ -7,6 +7,7 @@ import express from 'express';
 import {
   searchConfluencePages,
   appendToConfluencePage,
+  overwriteConfluencePage,
   markdownToConfluenceStorage,
 } from '../src/services/confluence/index.js';
 import { validate } from '../src/middleware/validate.js';
@@ -68,15 +69,15 @@ async function listPagesHandler(req, res, next) {
 /**
  * @async
  * @function confluenceHandler
- * @description Handles POST /api/confluence - appends content to Confluence page
- * @param {import('express').Request} req - Express request with validated content, pageId, mode
+ * @description Handles POST /api/confluence - appends or overwrites content in Confluence page
+ * @param {import('express').Request} req - Express request with validated content, pageId, mode, writeMode
  * @param {import('express').Response} res - Express response
  * @param {import('express').NextFunction} next - Express next function
  * @returns {Promise<void>}
  * @throws {Error} When Confluence API request fails
  * @example
  *   POST /api/confluence
- *   Body: { content: "# Documentation\n\nContent here", pageId: "123456", mode: "task" }
+ *   Body: { content: "# Documentation\n\nContent here", pageId: "123456", mode: "task", writeMode: "append" }
  */
 async function confluenceHandler(req, res, next) {
   try {
@@ -93,22 +94,37 @@ async function confluenceHandler(req, res, next) {
       });
     }
 
-    const { content, pageId } = req.valid;
+    const { content, pageId, writeMode } = req.valid;
 
     const confluenceStorage = markdownToConfluenceStorage(content);
 
-    const response = await appendToConfluencePage({
-      domain: process.env.CONFLUENCE_DOMAIN,
-      email: process.env.CONFLUENCE_USER_EMAIL,
-      token: process.env.CONFLUENCE_API_TOKEN,
-      pageId,
-      content: confluenceStorage,
-    });
+    let response;
+    if (writeMode === 'overwrite') {
+      response = await overwriteConfluencePage({
+        domain: process.env.CONFLUENCE_DOMAIN,
+        email: process.env.CONFLUENCE_USER_EMAIL,
+        token: process.env.CONFLUENCE_API_TOKEN,
+        pageId,
+        content: confluenceStorage,
+      });
+    } else {
+      response = await appendToConfluencePage({
+        domain: process.env.CONFLUENCE_DOMAIN,
+        email: process.env.CONFLUENCE_USER_EMAIL,
+        token: process.env.CONFLUENCE_API_TOKEN,
+        pageId,
+        content: confluenceStorage,
+      });
+    }
+
+    const actionVerb =
+      writeMode === 'overwrite' ? 'replaced in' : 'appended to';
 
     res.json({
       success: true,
       platform: 'confluence',
-      message: 'Content successfully appended to Confluence page',
+      writeMode,
+      message: `Content successfully ${actionVerb} Confluence page`,
       pageId,
       version: response.version,
     });
