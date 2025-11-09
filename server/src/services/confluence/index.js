@@ -4,5 +4,5 @@
  */
 
 export { searchConfluencePages, listConfluencePages } from './search.js';
-export { appendToConfluencePage } from './client.js';
+export { appendToConfluencePage, overwriteConfluencePage } from './client.js';
 export { markdownToConfluenceStorage } from './markdown.js';

@@ -26,7 +26,10 @@ export async function appendToConfluencePage({
   pageId,
   content,
 }) {
-  const pageUrl = getConfluenceUrl(domain, `/pages/${pageId}`);
+  const pageUrl = getConfluenceUrl(
+    domain,
+    `/pages/${pageId}?body-format=storage`,
+  );
 
   const pageResponse = await fetchWithRetry(pageUrl, {
     method: 'GET',
@@ -57,6 +60,78 @@ export async function appendToConfluencePage({
       body: {
         representation: 'storage',
         value: newBody,
+      },
+      version: {
+        number: currentVersion + 1,
+      },
+    }),
+  });
+
+  if (!updateResponse.ok) {
+    const errorData = await updateResponse.json().catch(() => ({}));
+    throw new Error(
+      `Failed to update page: ${errorData.message || updateResponse.status}`,
+    );
+  }
+
+  return {
+    success: true,
+    pageId,
+    version: currentVersion + 1,
+  };
+}
+
+/**
+ * @async
+ * @function overwriteConfluencePage
+ * @description Overwrites all content in a Confluence page
+ * @param {Object} params - Parameters
+ * @param {string} params.domain - Confluence domain
+ * @param {string} params.email - User email
+ * @param {string} params.token - API token
+ * @param {string} params.pageId - Target page ID
+ * @param {string} params.content - Content in Confluence Storage Format
+ * @returns {Promise<Object>} Response with success status
+ * @throws {Error} When API request fails
+ */
+export async function overwriteConfluencePage({
+  domain,
+  email,
+  token,
+  pageId,
+  content,
+}) {
+  const pageUrl = getConfluenceUrl(
+    domain,
+    `/pages/${pageId}?body-format=storage`,
+  );
+
+  const pageResponse = await fetchWithRetry(pageUrl, {
+    method: 'GET',
+    headers: getConfluenceHeaders(email, token),
+  });
+
+  if (!pageResponse.ok) {
+    const errorData = await pageResponse.json().catch(() => ({}));
+    throw new Error(
+      `Failed to fetch page: ${errorData.message || pageResponse.status}`,
+    );
+  }
+
+  const pageData = await pageResponse.json();
+  const currentVersion = pageData.version.number;
+
+  const updateUrl = getConfluenceUrl(domain, `/pages/${pageId}`);
+  const updateResponse = await fetchWithRetry(updateUrl, {
+    method: 'PUT',
+    headers: getConfluenceHeaders(email, token),
+    body: JSON.stringify({
+      id: pageId,
+      status: 'current',
+      title: pageData.title,
+      body: {
+        representation: 'storage',
+        value: content,
       },
       version: {
         number: currentVersion + 1,
