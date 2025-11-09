@@ -36,7 +36,13 @@ describe('WriteModeSelector', () => {
   it('calls onChange when append is selected', async () => {
     const user = userEvent.setup();
     const onChange = vi.fn();
-    render(<WriteModeSelector {...defaultProps} selected="overwrite" onChange={onChange} />);
+    render(
+      <WriteModeSelector
+        {...defaultProps}
+        selected="overwrite"
+        onChange={onChange}
+      />,
+    );
 
     const appendInput = screen.getByLabelText(/Append \(Add to end\)/i);
     await user.click(appendInput);
@@ -59,7 +65,9 @@ describe('WriteModeSelector', () => {
     render(<WriteModeSelector {...defaultProps} selected="overwrite" />);
 
     expect(
-      screen.getByText(/You will be asked to confirm before replacing content/i),
+      screen.getByText(
+        /You will be asked to confirm before replacing content/i,
+      ),
     ).toBeInTheDocument();
   });
 
@@ -67,7 +75,9 @@ describe('WriteModeSelector', () => {
     render(<WriteModeSelector {...defaultProps} selected="append" />);
 
     expect(
-      screen.queryByText(/You will be asked to confirm before replacing content/i),
+      screen.queryByText(
+        /You will be asked to confirm before replacing content/i,
+      ),
     ).not.toBeInTheDocument();
   });
 
@@ -89,9 +99,13 @@ describe('WriteModeSelector', () => {
   });
 
   it('applies correct border color for selected append', () => {
-    const { container } = render(<WriteModeSelector {...defaultProps} selected="append" />);
+    const { container } = render(
+      <WriteModeSelector {...defaultProps} selected="append" />,
+    );
 
-    const appendDiv = container.querySelector('#writeMode-append')?.closest('div');
+    const appendDiv = container
+      .querySelector('#writeMode-append')
+      ?.closest('div');
     expect(appendDiv).toHaveClass('border-[#003B44]');
   });
 
@@ -100,7 +114,9 @@ describe('WriteModeSelector', () => {
       <WriteModeSelector {...defaultProps} selected="overwrite" />,
     );
 
-    const overwriteDiv = container.querySelector('#writeMode-overwrite')?.closest('div');
+    const overwriteDiv = container
+      .querySelector('#writeMode-overwrite')
+      ?.closest('div');
     expect(overwriteDiv).toHaveClass('border-amber-600');
   });
 

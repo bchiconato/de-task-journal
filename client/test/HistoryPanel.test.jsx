@@ -81,8 +81,12 @@ describe('HistoryPanel', () => {
 
     await waitFor(() => {
       expect(screen.getByText('System Architecture')).toBeInTheDocument();
-      expect(screen.queryByText('Test Task Documentation')).not.toBeInTheDocument();
-      expect(screen.queryByText('Sprint Planning Meeting')).not.toBeInTheDocument();
+      expect(
+        screen.queryByText('Test Task Documentation'),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByText('Sprint Planning Meeting'),
+      ).not.toBeInTheDocument();
     });
   });
 
@@ -102,7 +106,9 @@ describe('HistoryPanel', () => {
     await waitFor(() => {
       expect(screen.getByText('Test Task Documentation')).toBeInTheDocument();
       expect(screen.queryByText('System Architecture')).not.toBeInTheDocument();
-      expect(screen.queryByText('Sprint Planning Meeting')).not.toBeInTheDocument();
+      expect(
+        screen.queryByText('Sprint Planning Meeting'),
+      ).not.toBeInTheDocument();
     });
   });
 
@@ -121,8 +127,12 @@ describe('HistoryPanel', () => {
 
     await waitFor(() => {
       expect(screen.getByText('System Architecture')).toBeInTheDocument();
-      expect(screen.queryByText('Test Task Documentation')).not.toBeInTheDocument();
-      expect(screen.queryByText('Sprint Planning Meeting')).not.toBeInTheDocument();
+      expect(
+        screen.queryByText('Test Task Documentation'),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByText('Sprint Planning Meeting'),
+      ).not.toBeInTheDocument();
     });
   });
 
@@ -144,7 +154,9 @@ describe('HistoryPanel', () => {
 
     await waitFor(() => {
       expect(screen.getByText('Sprint Planning Meeting')).toBeInTheDocument();
-      expect(screen.queryByText('Test Task Documentation')).not.toBeInTheDocument();
+      expect(
+        screen.queryByText('Test Task Documentation'),
+      ).not.toBeInTheDocument();
       expect(screen.queryByText('System Architecture')).not.toBeInTheDocument();
     });
   });
