@@ -65,21 +65,22 @@ function generateMockDocumentation(data) {
     return `# Architecture Documentation (mock mode)
 
 ## Overview
-Mock architecture documentation generated without API key.
+Mock architecture documentation generated without API key. This system provides a comprehensive solution for data engineering tasks.
 
 ## Context Snapshot
 ${preview}...
 
 ## Primary Components
-- Component A
-- Component B
+- Component A: Handles data ingestion and validation
+- Component B: Manages data transformation and processing
+- Component C: Ensures data quality and monitoring
 
 ## Flow & Stack
-Describe the runtime flow and technology choices. (Mock)
+Describe the runtime flow and technology choices. Data flows from source systems through validation layers into the data warehouse.
 
 ## Decisions & Trade-offs
-- Mock decision 1
-- Mock decision 2
+- Mock decision 1: Using cloud-native architecture for scalability
+- Mock decision 2: Implementing event-driven patterns for real-time processing
 
 *Note: Set GEMINI_API_KEY in server/.env to use real AI generation.*`;
   }
@@ -88,42 +89,51 @@ Describe the runtime flow and technology choices. (Mock)
     return `# Meeting Record: Project Sync (mock mode)
 
 ## Executive Summary
-Mock meeting documentation generated without API key. This would normally contain a summary of the meeting's primary objective, key outcomes, and overall sentiment.
+Mock meeting documentation generated without API key. This would normally contain a summary of the meeting's primary objective, key outcomes, and overall sentiment based on the full transcript provided.
 
 ## Context Snapshot
 ${preview}...
 
 ## Key Decisions & Definitions
-* **Mock Decision 1:** Example decision made during the meeting
-* **Mock Decision 2:** Another important agreement
+* **Mock Decision 1:** Team agreed to proceed with the proposed architecture changes
+* **Mock Decision 2:** Important agreement on timeline and resource allocation for the next quarter
 
 ## Technical Context Extracted
-* *Technologies mentioned:* GCP, Snowflake, Airflow
-* *Architectural changes:* Gold Layer migration
-* *Data points:* Mock tables and fields
+* *Technologies mentioned:* GCP, Snowflake, Airflow, dbt, Python
+* *Architectural changes:* Gold Layer migration to cloud infrastructure
+* *Data points:* Mock tables, fields, and data quality metrics discussed
 
 ## Action Items & Next Steps
-* [ ] **Team Member 1**: Complete mock task 1 (deadline: TBD)
-* [ ] **Team Member 2**: Complete mock task 2 (deadline: TBD)
+* [ ] **Team Member 1**: Complete mock task 1 and prepare documentation (deadline: TBD)
+* [ ] **Team Member 2**: Complete mock task 2 and coordinate with stakeholders (deadline: TBD)
 
 ## Open Questions & Risks
-* Mock open question 1
-* Mock risk or concern 2
+* Mock open question 1: How to handle data migration without downtime?
+* Mock risk or concern 2: Potential impact on downstream systems during transition
 
 *Note: Set GEMINI_API_KEY in server/.env to use real AI generation.*`;
   }
 
-  return `# Documentation (mock mode)
+  return `# Task Documentation (mock mode)
 
 ## Summary
-Mock documentation generated without API key.
+Mock documentation generated without API key. This task involves implementing a comprehensive solution for the documented requirements.
 
 ## Context Dump Snapshot
 ${preview}...
 
-## Next Steps
-- Configure GEMINI_API_KEY for real responses
-- Re-submit the full context
+## Problem Solved
+The task addresses a critical need in the data engineering workflow by providing automated documentation generation capabilities.
+
+## Solution Implemented
+Implemented a mock documentation system that generates structured output following industry best practices and standards.
+
+## Code Highlights
+No code provided in the context. In a real scenario, this section would highlight the most important code changes.
+
+## Challenges & Learnings
+- Configure GEMINI_API_KEY for real AI-powered responses
+- Re-submit the full context for comprehensive documentation
 
 *Note: Set GEMINI_API_KEY in server/.env to use real AI generation.*`;
 }
