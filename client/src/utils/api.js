@@ -183,17 +183,24 @@ export async function sendToNotion(content, mode, pageId, signal) {
  * @param {string} content - Markdown documentation content
  * @param {'task'|'architecture'|'meeting'} mode - Selected documentation mode
  * @param {string} pageId - Target Confluence page ID
+ * @param {('append'|'overwrite')} writeMode - Write mode (append or overwrite)
  * @param {AbortSignal} [signal] - Optional AbortSignal for request cancellation
  * @returns {Promise<Record<string, unknown>>} JSON response from backend
  * @throws {Error} When the request fails or response is not ok
  */
-export async function sendToConfluence(content, mode, pageId, signal) {
+export async function sendToConfluence(
+  content,
+  mode,
+  pageId,
+  writeMode = 'append',
+  signal,
+) {
   const response = await fetch(`${API_BASE_URL}/confluence`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({ content, mode, pageId }),
+    body: JSON.stringify({ content, mode, pageId, writeMode }),
     signal,
   });
 
