@@ -58,6 +58,7 @@ function App() {
   const [selectedPlatform, setSelectedPlatform] = useState('notion');
   const [notionPages, setNotionPages] = useState([]);
   const [selectedPageId, setSelectedPageId] = useState('');
+  const [writeMode, setWriteMode] = useState('append');
 
   const [history, setHistory] = useState(() => {
     try {
@@ -235,10 +236,18 @@ function App() {
         showSuccess('Documentation sent to Notion successfully!');
         announcer.announcePolite('Documentation sent to Notion successfully.');
       } else if (selectedPlatform === 'confluence') {
-        await sendToConfluence(content, mode, selectedPageId, signal);
-        showSuccess('Documentation sent to Confluence successfully!');
+        await sendToConfluence(
+          content,
+          mode,
+          selectedPageId,
+          writeMode,
+          signal,
+        );
+        const actionVerb =
+          writeMode === 'overwrite' ? 'replaced in' : 'appended to';
+        showSuccess(`Documentation ${actionVerb} Confluence successfully!`);
         announcer.announcePolite(
-          'Documentation sent to Confluence successfully.',
+          `Documentation ${actionVerb} Confluence successfully.`,
         );
       }
       return true;
@@ -283,6 +292,10 @@ function App() {
         ? 'de-task-journal:selected-notion-page'
         : 'de-task-journal:selected-confluence-page';
     localStorage.setItem(storageKey, pageId);
+  };
+
+  const handleWriteModeChange = (mode) => {
+    setWriteMode(mode);
   };
 
   /**
@@ -559,6 +572,8 @@ function App() {
                     availablePlatforms={availablePlatforms}
                     selectedPlatform={selectedPlatform}
                     onPlatformChange={handlePlatformChange}
+                    writeMode={writeMode}
+                    onWriteModeChange={handleWriteModeChange}
                   />
                 </div>
 
