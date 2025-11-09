@@ -1,7 +1,17 @@
 /**
  * @fileoverview In-app guide outlining documentation workflow and troubleshooting tips
  */
-import { FileText, Edit, Send, Clock, AlertTriangle } from 'lucide-react';
+import {
+  FileText,
+  Edit,
+  Send,
+  Clock,
+  AlertTriangle,
+  Plus,
+  RefreshCw,
+  Search,
+  Filter,
+} from 'lucide-react';
 
 const FeatureCard = ({ icon, title, children }) => (
   <div className="bg-slate-50 rounded-lg p-6 flex items-start gap-4">
@@ -89,7 +99,43 @@ export function Guide({ onBack }) {
               automatically saved as a draft in your browser. If you refresh the
               page, your input will be restored.
             </li>
+            <li>
+              <strong>Content Validation:</strong> The system validates that
+              your documentation has at least 100 characters before allowing you
+              to send it to a platform.
+            </li>
           </ul>
+        </FeatureCard>
+
+        <FeatureCard
+          icon={
+            <div className="flex">
+              <Plus size={16} />
+              <RefreshCw size={16} />
+            </div>
+          }
+          title="Confluence Write Modes"
+        >
+          <p>
+            When using Confluence as your platform, you can choose how to write
+            documentation to your pages:
+          </p>
+          <ul className="list-disc pl-5 space-y-1">
+            <li>
+              <strong>Append Mode (default):</strong> Keeps existing content and
+              adds new documentation at the end. Perfect for ongoing project
+              logs or cumulative documentation.
+            </li>
+            <li>
+              <strong>Overwrite Mode:</strong> Replaces all existing content
+              with new documentation. A confirmation dialog will appear before
+              overwriting to prevent accidental data loss.
+            </li>
+          </ul>
+          <p className="mt-2">
+            <strong>Note:</strong> Notion always appends content and does not
+            support overwrite mode.
+          </p>
         </FeatureCard>
 
         <FeatureCard icon={<Send size={20} />} title="Generating & Sending">
@@ -102,7 +148,7 @@ export function Guide({ onBack }) {
             </li>
             <li>
               <strong>Edit:</strong> After generation, you can click 'Edit' to
-              modify the markdown content directly.
+              modify the markdown content directly before sending.
             </li>
             <li>
               <strong>Copy All:</strong> Copies the entire generated markdown to
@@ -119,17 +165,30 @@ export function Guide({ onBack }) {
                 </li>
                 <li>
                   <strong>Confluence:</strong> Markdown is converted to
-                  Confluence Storage Format (XHTML) and appended to the page.
+                  Confluence Storage Format (XHTML) and appended or overwrites
+                  based on your selected write mode.
                 </li>
               </ul>
+            </li>
+            <li>
+              <strong>Retry Failed Operations:</strong> If sending fails, a
+              retry banner appears with an option to try again without
+              regenerating the documentation.
             </li>
           </ul>
         </FeatureCard>
 
-        <FeatureCard icon={<Clock size={20} />} title="History">
+        <FeatureCard
+          icon={
+            <div className="flex gap-1">
+              <Clock size={16} />
+            </div>
+          }
+          title="Enhanced History"
+        >
           <p>
             The application keeps a log of your 50 most recent generated
-            documents.
+            documents with powerful search and filtering capabilities.
           </p>
           <ul className="list-disc pl-5 space-y-1">
             <li>
@@ -137,8 +196,29 @@ export function Guide({ onBack }) {
               the header.
             </li>
             <li>
-              Clicking an item from the history list will load its inputs and
-              final documentation back into the app.
+              <strong>Search:</strong> Find documents by searching in titles or
+              content. The search works in real-time as you type.
+            </li>
+            <li>
+              <strong>Filter by Mode:</strong> Show only Task, Architecture, or
+              Meeting documentation. Great for focusing on specific types of
+              work.
+            </li>
+            <li>
+              <strong>Filter by Platform:</strong> View only documents intended
+              for Notion or Confluence.
+            </li>
+            <li>
+              <strong>Combined Filters:</strong> Use search and filters together
+              for precise results. The filter icon turns green when active.
+            </li>
+            <li>
+              <strong>Load from History:</strong> Click any item to restore both
+              the inputs and final documentation back into the app.
+            </li>
+            <li>
+              <strong>Remove Items:</strong> Hover over a history item to reveal
+              a delete button for removing individual entries.
             </li>
             <li>
               Your history is stored locally in your browser and is not shared.
@@ -208,6 +288,15 @@ export function Guide({ onBack }) {
           </ul>
 
           <p className="mt-4">
+            <strong>What happens when I click Overwrite?</strong>
+          </p>
+          <p>
+            A confirmation dialog appears to prevent accidental data loss. You
+            must explicitly confirm before any content is replaced. This safety
+            feature only applies to Confluence overwrite mode.
+          </p>
+
+          <p className="mt-4">
             <strong>How do I configure both Notion and Confluence?</strong>
           </p>
           <p>
@@ -217,6 +306,16 @@ export function Guide({ onBack }) {
             </code>{' '}
             file. If both are set up, you'll see a platform selector at the top
             of the form allowing you to choose where to send each document.
+          </p>
+
+          <p className="mt-4">
+            <strong>Can I recover deleted history items?</strong>
+          </p>
+          <p>
+            No, history is stored only in your browser's local storage. Once you
+            remove an item or clear history, it cannot be recovered. Always
+            ensure important documentation has been sent to your platform before
+            removing it from history.
           </p>
         </FeatureCard>
       </div>
