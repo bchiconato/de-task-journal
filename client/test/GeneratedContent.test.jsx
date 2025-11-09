@@ -8,7 +8,7 @@ import { render, screen, fireEvent, act } from '@testing-library/react';
 import { GeneratedContent } from '../src/components/GeneratedContent.jsx';
 
 describe('GeneratedContent', () => {
-  const mockContent = '# Test Title\n\nThis is a test paragraph.';
+  const mockContent = '# Test Title\n\nThis is a test paragraph with enough content to pass the minimum character validation requirement. It needs to be at least 100 characters long to ensure the Send button is enabled without showing validation warnings.';
   let mockWriteText;
 
   beforeEach(() => {
@@ -60,7 +60,7 @@ describe('GeneratedContent', () => {
 
     expect(screen.getByText('Generated documentation')).toBeInTheDocument();
     expect(screen.getByText('Test Title')).toBeInTheDocument();
-    expect(screen.getByText('This is a test paragraph.')).toBeInTheDocument();
+    expect(screen.getByText(/This is a test paragraph with enough content/)).toBeInTheDocument();
   });
 
   it('renders Copy all button', () => {
@@ -261,7 +261,7 @@ describe('GeneratedContent', () => {
   });
 
   it('renders markdown with code blocks', () => {
-    const contentWithCode = '```javascript\nconsole.log("test");\n```';
+    const contentWithCode = '```javascript\nconsole.log("test");\n```\n\nThis is additional content to meet the minimum character requirement for validation. It needs to be at least 100 characters long.';
 
     const { container } = render(
       <GeneratedContent

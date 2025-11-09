@@ -15,7 +15,7 @@ describe('InputForm', () => {
     expect(
       screen.getByLabelText(/documentation context/i, { exact: false }),
     ).toBeInTheDocument();
-    expect(screen.getByText('Notion Target')).toBeInTheDocument();
+    expect(screen.getByText('Target Page')).toBeInTheDocument();
   });
 
   it('shows validation error when context is too short', async () => {
