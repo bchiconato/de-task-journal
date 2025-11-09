@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Data Engineering Documentation Generator — A full‑stack app with **triple documentation modes** that generates English technical documentation using Google Gemini AI and sends it to Notion with automatic block chunking.
+Data Engineering Documentation Generator — A full‑stack app with **triple documentation modes** that generates English technical documentation using Google Gemini AI and sends it to **Notion or Confluence** with automatic block chunking.
 
 **Three Documentation Modes:**
 
@@ -14,7 +14,9 @@ Data Engineering Documentation Generator — A full‑stack app with **triple do
 2. **Architecture Documentation Mode** — Documents system architecture and design decisions with 5-section structure (Overview, Key Components, Data & Service Flow, Technology Stack, Migration Guide & Developer Workflow)
 3. **Meeting Documentation Mode** — Synthesizes meeting transcripts (multilingual PT/EN) into actionable documentation with 6-section structure (Executive Summary, Key Decisions & Definitions, Technical Context Extracted, Action Items & Next Steps, Open Questions & Risks, Meeting Record)
 
-Users can switch between modes via tab-based UI and dynamically select target Notion pages from a dropdown of all shared pages.
+**Two Platform Support:**
+
+Users can send documentation to either **Notion** or **Confluence** (platform selection is dynamic based on configuration). Confluence supports two write modes: **Append** (add to end) or **Overwrite** (replace all content with confirmation).
 
 ---
 
@@ -34,6 +36,43 @@ cd client
 npm run dev
 ```
 
+### Testing
+
+```bash
+# Run all tests (unit + E2E)
+npm test
+
+# Run unit tests only
+npm run test:run
+
+# Run E2E tests only
+npx playwright test
+
+# Run tests in watch mode
+npm run test:watch
+
+# Run with coverage
+npm run test:coverage
+```
+
+### Linting and Formatting
+
+```bash
+# Lint client
+npm run lint --prefix ./client
+
+# Lint server
+npm run lint --prefix ./server
+
+# Format check (CI mode)
+npm run format:check --prefix ./client
+npm run format:check --prefix ./server
+
+# Auto-fix formatting
+npm run format --prefix ./client
+npm run format --prefix ./server
+```
+
 ### Building for Production
 
 ```bash
@@ -44,11 +83,14 @@ npm run build  # Output: client/dist/
 ### Installing Dependencies
 
 ```bash
-# Backend
+# Install all (root + client + server)
+npm install
+
+# Backend only
 cd server
 npm install
 
-# Frontend
+# Frontend only
 cd client
 npm install
 ```
@@ -61,64 +103,72 @@ npm install
 
 **Backend (Express)** → **Frontend (React)**
 
-* Backend runs on port 3001, exposes three API endpoints:
-  * `POST /api/generate` — Generate documentation (task or architecture mode)
-  * `POST /api/notion` — Export documentation to Notion page
+* Backend runs on port 3001, exposes API endpoints:
+  * `GET /api/config` — Get available platforms (Notion/Confluence)
+  * `POST /api/generate` — Generate documentation (task/architecture/meeting mode)
   * `GET /api/notion/pages` — List all Notion pages shared with integration
+  * `POST /api/notion` — Export documentation to Notion page
+  * `GET /api/confluence/pages` — Search Confluence pages (with query params)
+  * `POST /api/confluence` — Export documentation to Confluence page (append or overwrite)
 * Frontend runs on port 5173, makes fetch calls to backend
 * All API keys stay server‑side only
 
 ### Critical Data Flow
 
+**Platform Configuration Flow:**
+
+1. **Configuration Check** → On app mount, `App.jsx` calls `GET /api/config`
+2. **Backend Check** → `server/routes/config.js` calls `getAvailablePlatforms()`
+3. **Environment Validation** → Checks which platforms have required environment variables configured
+4. **Dynamic UI** → `PlatformSelector` renders only if both platforms are available
+5. **Auto-selection** → If only one platform is configured, auto-selects it (no selector shown)
+
 **Documentation Generation Flow:**
 
-1. **Mode Selection** → User selects mode via `ModeToggle.jsx` (task or architecture)
-   * Mode synced to URL query parameter (`?mode=architecture`)
-2. **User Input** → `InputForm.jsx` collects inputs based on mode:
-   * **Both Modes:** Single unified `context` field (accepts any input format)
+1. **Mode Selection** → User selects mode via `ModeToggle.jsx` (task/architecture/meeting)
+   * Mode synced to URL query parameter (`?mode=architecture` or `?mode=meeting`)
+2. **Platform Selection** → User selects platform via `PlatformSelector.jsx` (if both configured)
+   * Notion or Confluence
+   * Selection persisted to localStorage
+3. **User Input** → `InputForm.jsx` collects inputs based on mode:
+   * **All Modes:** Single unified `context` field (accepts any input format)
    * **Form Draft Auto-save:** Inputs saved to localStorage every 500ms
-   * **Legacy Support:** Migrates old multi-field drafts (context/code/challenges) to unified context
-3. **Generate Request** → `client/src/utils/api.js` → `POST /api/generate` with `mode` field
-4. **Request Validation** → `validate(GenerateSchema)` middleware validates using discriminated union:
-   * TaskSchema validates task mode fields
-   * ArchitectureSchema validates architecture mode fields
-5. **Route Handler** → `server/routes/generate.js` processes validated request
-   * Calls `generateDocumentation()` for task mode
-   * Calls `generateArchitectureDocumentation()` for architecture mode
-6. **Gemini Service** → `server/services/geminiService.js` calls Google Gemini REST API
+   * **Legacy Support:** Migrates old multi-field drafts to unified context
+4. **Generate Request** → `client/src/utils/api.js` → `POST /api/generate` with `mode` field
+5. **Request Validation** → `validate(GenerateSchema)` middleware validates using discriminated union
+6. **Route Handler** → `server/routes/generate.js` processes validated request
+7. **Gemini Service** → `server/services/geminiService.js` calls Google Gemini REST API
    * Uses `fetchWithRetry()` from `server/src/lib/http.js` for resilient calls (12s timeout, 3 retries)
    * Generation config: temperature 0.3, maxTokens 4096, topP 0.8, topK 40
-7. **Response** → Markdown docs in English:
-   * **Task Mode:** 5 sections (Summary, Problem Solved, Solution Implemented, Code Highlights, Challenges & Learnings)
-   * **Architecture Mode:** 5 sections (Overview, Key Components, Data & Service Flow, Technology Stack, Migration Guide & Developer Workflow)
-8. **Display** → `GeneratedContent.jsx` lazy-loaded with React.lazy(), renders markdown with copy/send buttons
-   * **Edit Mode:** Toggle between preview and editor for markdown editing before sending to Notion
-   * **History:** Save to history (last 50 documentations stored in localStorage)
+8. **Response** → Markdown docs in English (5 or 6 sections depending on mode)
+9. **Display** → `GeneratedContent.jsx` lazy-loaded with React.lazy(), renders markdown
+   * **Edit Mode:** Toggle between preview and editor for markdown editing
+   * **History:** Save to history (last 50 documentations stored in localStorage with filters)
 
-**Notion Page Selection Flow:**
+**Page Selection Flow:**
 
-9. **Page List Request** → On mount, `App.jsx` calls `GET /api/notion/pages`
-10. **Page Search** → `server/src/services/notion/search.js` calls `listSharedPages()`
-    * Paginates through all shared pages (100 results per page)
-    * Extracts page titles and IDs
-11. **Dropdown Rendering** → `InputForm.jsx` displays page selector with all available pages
-12. **Persistence** → Selected page ID saved to localStorage (`de-task-journal:selected-notion-page`)
+10. **Page List Request** → Based on selected platform:
+    * Notion: `GET /api/notion/pages` (loads all shared pages)
+    * Confluence: Uses `PageSearchSelector` with search/debounce → `GET /api/confluence/pages?search=...&limit=50`
+11. **Page Search** → `usePageSearch` hook provides debounced search with caching
+12. **Dropdown Rendering** → `PageSearchSelector` displays searchable dropdown with results
+13. **Persistence** → Selected page ID saved to localStorage (`de-task-journal:selected-{platform}-page`)
 
-**Notion Export Flow:**
+**Export Flow:**
 
-13. **Send to Notion** → User clicks "Send to Notion" → `POST /api/notion` with `mode` parameter
-14. **Request Validation** → `validate(NotionExportSchema)` middleware validates content & pageId
-15. **Route Handler** → `server/routes/notion.js` processes validated request
-    * Extracts first H1 heading with `extractTitleFromMarkdown()`
-    * For architecture mode: prepends `🏗️ # [ARCHITECTURE] - {title} ({date})`
-16. **Markdown Conversion** → `markdownToNotionBlocks()` from `server/src/services/notion/markdown.js`
-    * Parses inline formatting via `parseInlineMarkdown()`
-    * Converts markdown to Notion block JSON structures
-17. **Block Append** → `appendBlocksChunked()` from `server/src/services/notion/client.js`
-    * Automatically chunks documents into ≤100 blocks per request
-    * Sends chunks sequentially with **100ms delay** between requests (consistent with config.js)
-    * Uses `notionCall()` retry wrapper for 429/5xx errors
-    * Returns `{ blocksAdded, chunks, responses }` with full API responses
+14. **Write Mode Selection** (Confluence only) → User selects append or overwrite via `WriteModeSelector`
+15. **Confirmation Dialog** (Confluence overwrite only) → `ConfirmDialog` prompts user to confirm destructive action
+16. **Send Request** → Based on platform:
+    * Notion: `POST /api/notion` with `content`, `mode`, `pageId`
+    * Confluence: `POST /api/confluence` with `content`, `mode`, `pageId`, `writeMode`
+17. **Request Validation** → Validates via `NotionExportSchema` or `ConfluenceExportSchema`
+18. **Route Handler** → Processes request in `server/routes/notion.js` or `server/routes/confluence.js`
+19. **Markdown Conversion:**
+    * Notion: `markdownToNotionBlocks()` → Notion block JSON
+    * Confluence: `markdownToConfluenceStorage()` → Confluence Storage Format
+20. **Content Append/Overwrite:**
+    * Notion: Always appends blocks via `appendBlocksChunked()` (100 blocks per request, 100ms throttle)
+    * Confluence: Appends or overwrites based on `writeMode` parameter
 
 ### Key Service Responsibilities
 
@@ -127,15 +177,16 @@ npm install
 * Direct REST API calls to Google Gemini (no SDK)
 * **Unified input interface:**
   * `generateDocumentation(input)` — Accepts single context object with `mode` field
-  * Supports both task and architecture modes with mode-specific prompts
+  * Supports task, architecture, and meeting modes with mode-specific prompts
 * Uses mode-aware system instructions:
-  * `getSystemInstruction(mode)` — Returns task or architecture-specific instructions
-  * Task mode: 5 sections (Summary, Problem Solved, Solution Implemented, Code Highlights, Challenges & Learnings)
-  * Architecture mode: 5 sections (Overview, Key Components, Data & Service Flow, Technology Stack, Migration Guide & Developer Workflow)
-* Both modes generate English output (accepts input in any language)
+  * `getSystemInstruction(mode)` — Returns mode-specific instructions
+  * Task mode: 5 sections
+  * Architecture mode: 5 sections
+  * Meeting mode: 6 sections
+* All modes generate English output (accepts input in any language)
 * Model configurable via `GEMINI_MODEL` env var (default: `gemini-2.0-flash-exp`)
 * Generation config: temperature 0.3, maxOutputTokens 4096, topP 0.8, topK 40
-* **Mock mode:** Returns placeholder documentation when `GEMINI_API_KEY` is missing (supports both modes)
+* **Mock mode:** Returns placeholder documentation when `GEMINI_API_KEY` is missing (supports all modes)
 
 **Notion Service** (`server/src/services/notion/`)
 
@@ -171,6 +222,36 @@ The Notion integration is organized as a **modular service** with 5 specialized 
   * Pagination support for 100+ pages
   * Used by `GET /api/notion/pages` endpoint
 
+**Confluence Service** (`server/src/services/confluence/`)
+
+The Confluence integration mirrors Notion structure with 5 specialized files:
+
+* **`markdown.js`** — Markdown to Confluence Storage Format conversion
+  * `markdownToConfluenceStorage(markdown)` converts markdown to Confluence Storage Format (XHTML-like)
+  * `parseInlineMarkdown(text)` parses inline formatting to Confluence rich text
+  * Supports headings, code blocks, lists, paragraphs, quotes, panels
+  * Maps markdown syntax to Confluence storage format tags
+
+* **`client.js`** — Confluence REST API operations
+  * `appendToConfluencePage()` appends content to existing page
+  * `overwriteConfluencePage()` replaces entire page content
+  * `getPageContent()` retrieves current page content and version
+  * Uses Basic Auth (email + API token)
+
+* **`index.js`** — Core client and exports
+  * Exports main functions: `searchConfluencePages`, `appendToConfluencePage`, `overwriteConfluencePage`
+  * `markdownToConfluenceStorage` re-exported from markdown.js
+
+* **`config.js`** — Centralized constants
+  * API version: `CONFLUENCE.apiVersion = 'v2'` (Cloud REST API v2)
+  * Confluence base URL construction from domain
+
+* **`search.js`** — Page search functionality
+  * `searchConfluencePages()` searches pages with optional query
+  * Supports search filtering by title
+  * Returns page id, title, and spaceKey
+  * Used by `GET /api/confluence/pages` endpoint
+
 ### Server Application Structure
 
 The backend follows a clean, layered architecture for maintainability and testability:
@@ -183,14 +264,14 @@ The backend follows a clean, layered architecture for maintainability and testab
 **`server/src/app.js`** — Express application configuration
 * Exports configured Express app (enables testing without starting server)
 * Applies security middleware (Helmet with CSP disabled for development)
-* Configures rate limiting (100 requests per 15 minutes per IP)
+* Configures rate limiting (200 requests per 15 minutes per IP)
 * Sets up CORS, JSON parsing, and static file serving
 * Mounts all API routes via `server/src/routes.js`
 * Adds terminal error‑handling middleware (`notFound`, `errorHandler`)
 
 **`server/src/routes.js`** — Centralized route aggregator
 * Imports and mounts all API route modules under `/api`
-* Routes: `/api/generate` (generateRouter), `/api/notion` (notionRouter)
+* Routes: `/api/config`, `/api/generate`, `/api/notion`, `/api/confluence`
 * Clean separation: all route wiring in one place
 
 ### Middleware Layer
@@ -220,16 +301,26 @@ The API uses **Zod** for type‑safe request validation. Schemas define expected
 
 * `GenerateSchema` — Validates `POST /api/generate` requests
 * Fields:
-  * `mode` (enum: 'task' | 'architecture', required)
-  * `context` (string, min 10 chars, required) — Unified input field for both modes
-* **Single context dump approach:** Both task and architecture modes accept the same unified context field
+  * `mode` (enum: 'task' | 'architecture' | 'meeting', required)
+  * `context` (string, min 10 chars, required) — Unified input field for all modes
+* **Single context dump approach:** All three modes accept the same unified context field
 * Returns detailed validation errors for invalid requests
 
 **`server/src/schemas/notion.js`** — Notion endpoint schema
 
 * `NotionExportSchema` — Validates `POST /api/notion` requests
 * Required fields: `content` (string, 100-50000 chars), `pageId` (string, 32 chars, UUID format)
+* Optional: `mode` (enum: 'task' | 'architecture' | 'meeting', default 'task')
 * Ensures content and page ID meet Notion API requirements
+
+**`server/src/schemas/confluence.js`** — Confluence endpoint schema
+
+* `ConfluenceExportSchema` — Validates `POST /api/confluence` requests
+* Required fields: `content` (string, 100-50000 chars), `pageId` (string, max 100 chars)
+* Optional:
+  * `mode` (enum: 'task' | 'architecture' | 'meeting', default 'task')
+  * `writeMode` (enum: 'append' | 'overwrite', default 'append')
+* Ensures content, page ID, and write mode meet Confluence API requirements
 
 **Usage in routes**:
 ```javascript
@@ -250,20 +341,7 @@ router.post('/generate', validate(GenerateSchema), generateHandler);
   * **Status code handling**: Retries on 429 (rate limit) and 5xx (server errors), configurable via `config.retryOn(response)` function
   * **AbortSignal.timeout()**: Uses modern API for request timeout cancellation
   * **Error structure**: Returns `{ code: 'upstream_unavailable', status: 502, ... }` on failure
-  * Used by both Gemini and Notion services for reliable external API calls
-
-**Usage**:
-```javascript
-import { fetchWithRetry } from '../lib/http.js';
-
-const response = await fetchWithRetry(url, {
-  method: 'POST',
-  body: JSON.stringify(data),
-}, {
-  timeout: 60000,  // 60s
-  retries: 5
-});
-```
+  * Used by Gemini, Notion, and Confluence services for reliable external API calls
 
 ### Client Application Structure
 
@@ -272,39 +350,77 @@ The frontend follows React best practices with reusable components, custom hooks
 **React Components** (`client/src/components/`)
 
 Core UI components:
-* **`ModeToggle.jsx`** — Tab-based mode switcher (NEW)
-  * Toggles between 'task' and 'architecture' documentation modes
-  * ARIA-compliant tab navigation
+* **`ModeToggle.jsx`** — Three-tab mode switcher (Task/Architecture/Meeting)
+  * ARIA-compliant tab navigation with keyboard support (Arrow keys, Home, End)
   * Updates URL query parameter on mode change
+  * Supports onSelect callback for analytics/tracking
+
+* **`PlatformSelector.jsx`** — Platform selector (Notion/Confluence)
+  * Radio button group for platform selection
+  * Only renders if both platforms are configured
+  * Returns null if only one platform available (auto-selected)
+  * Persists selection to localStorage
 
 * **`InputForm.jsx`** — Main form for collecting documentation inputs
-  * **Unified input:** Single context field for both task and architecture modes
+  * **Unified input:** Single context field for all modes (task/architecture/meeting)
   * **Form draft auto-save:** Saves inputs to localStorage every 500ms (`de-task-journal:formDraft`)
-  * **Legacy migration:** Converts old multi-field drafts (context/code/challenges) to unified format
-  * **Notion page selector:** Dropdown with all shared Notion pages (loaded from `GET /api/notion/pages`)
-  * **Persistence:** Selected page ID saved to localStorage (`de-task-journal:selected-notion-page`)
+  * **Legacy migration:** Converts old multi-field drafts to unified format
+  * **Dynamic page selector:** Shows Notion or Confluence page selector based on selected platform
+  * **Persistence:** Selected page ID saved to localStorage (`de-task-journal:selected-{platform}-page`)
   * Character counters for text fields
   * Auto-focus on first invalid field on validation error
-  * Collapsible on mobile with "Edit inputs" button for better UX after generation
+  * Collapsible on mobile with "Edit inputs" button
+
+* **`PageSearchSelector.jsx`** — Searchable page dropdown with debounce
+  * Uses `usePageSearch` hook for debounced search (500ms default)
+  * Displays loading spinner during search
+  * Error handling with user-friendly messages
+  * Lazy loading: searches only when input is clicked or user types
+  * Caching: prevents redundant API calls for same query
+  * Shows selected page with "Change" button
+  * Limit indicator when results are capped
+
+* **`WriteModeSelector.jsx`** — Write mode selector (Append/Overwrite)
+  * Only shown for Confluence platform
+  * Radio button group with visual indicators (icons from lucide-react)
+  * Append mode: Adds content to end of page
+  * Overwrite mode: Replaces entire page content
+  * Warning message when overwrite is selected
+  * Styled differently based on selection (green for append, amber for overwrite)
 
 * **`GeneratedContent.jsx`** — Displays generated markdown documentation
   * **Lazy-loaded** with React.lazy() for performance
   * **Edit mode:** Toggle between markdown preview and editor for pre-send modifications
+  * **Confluence overwrite confirmation:** Shows `ConfirmDialog` before overwrite operation
   * Renders markdown with syntax highlighting (react-markdown + Prism.js)
   * Copy to clipboard button
-  * Send to Notion button
+  * Send to platform button (dynamic label based on selected platform)
   * Accessible with ARIA labels
   * Suspense fallback with loading spinner
+
+* **`ConfirmDialog.jsx`** — Confirmation dialog for destructive actions
+  * Modal overlay with backdrop click-to-close
+  * Escape key to close
+  * Focus management (auto-focus confirm button)
+  * Variants: warning (amber) and danger (red)
+  * Used for Confluence overwrite confirmation
+  * Accessible with ARIA attributes (role="dialog", aria-modal, etc.)
+
+* **`HistoryPanel.jsx`** — Enhanced history panel with search and filters
+  * Dropdown panel triggered by Clock icon button
+  * Search input with debounce (searches title and content)
+  * Filters by mode (task/architecture/meeting) and platform (notion/confluence)
+  * Shows filtered count in header
+  * Individual item removal with X button (shown on hover)
+  * Clear all history button
+  * Clear filters button when filters are active
+  * Click outside or Escape to close
+  * Displays timestamp, mode, and platform for each item
 
 * **`Guide.jsx`** — In-app help and onboarding component
   * Feature walkthrough and troubleshooting guide
   * Accessible via Help (?) icon in header
   * Shown at `view === 'guide'` state
-
-* **`CodeImplementationEditor.jsx`** — Code input with syntax highlighting
-  * Uses `@uiw/react-textarea-code-editor`
-  * Supports multiple languages (jsx, python, sql, etc.)
-  * Dark theme matching application style
 
 Support components:
 * **`AppErrorBoundary.jsx`** — React error boundary for graceful error handling
@@ -320,23 +436,35 @@ Support components:
 **State Management** (`client/src/App.jsx`)
 
 Uses React `useState` hooks for application state:
-* `mode` — Current documentation mode ('task' | 'architecture')
-  * **Synced to URL** query parameter (`?mode=architecture`) via useEffect
+* `mode` — Current documentation mode ('task' | 'architecture' | 'meeting')
+  * **Synced to URL** query parameter (`?mode=architecture` or `?mode=meeting`) via useEffect
   * Read from URL on mount for shareable links
+* `selectedPlatform` — Current platform ('notion' | 'confluence')
+  * **Persisted to localStorage**
+  * Auto-selected if only one platform is configured
+* `writeMode` — Confluence write mode ('append' | 'overwrite')
+  * Only used when selectedPlatform === 'confluence'
+  * Persisted to localStorage
 * `view` — Current view ('main' | 'guide') for switching between main app and help
 * `documentation` — Generated markdown string
 * `isGenerating` — Loading state for Gemini API
-* `isSending` — Loading state for Notion API
+* `isSending` — Loading state for platform API
 * `error` — Error message string
 * `formCollapsed` — Form collapse state (auto-collapses after successful generation)
-* `notionPages` — List of available Notion pages (loaded from API)
-* `isLoadingPages` — Loading state for Notion pages fetch
-* `docHistory` — Array of last 50 generated documentations with timestamps
+* `availablePlatforms` — Which platforms are configured (`{notion: boolean, confluence: boolean}`)
+* `isLoadingPlatforms` — Loading state for platform config fetch
+* `notionPages` — List of available Notion pages
+* `confluencePages` — List of Confluence pages (managed by PageSearchSelector)
+* `isLoadingPages` — Loading state for pages fetch
+* `docHistory` — Array of last 50 generated documentations with timestamps, mode, and platform
 * Toast notifications managed via `useToast()` hook
 * Screen reader announcements via `useAnnouncer()` hook
 
 **Persistence (localStorage):**
+* `de-task-journal:selected-platform` — Selected platform (notion/confluence)
 * `de-task-journal:selected-notion-page` — Selected Notion page ID
+* `de-task-journal:selected-confluence-page` — Selected Confluence page ID
+* `de-task-journal:writeMode` — Confluence write mode (append/overwrite)
 * `de-task-journal:formDraft` — Form inputs auto-saved every 500ms
 * `de-task-journal:docHistory` — Last 50 generated documentations with metadata
 
@@ -344,6 +472,8 @@ Uses React `useState` hooks for application state:
 * Skip link to main content for keyboard navigation
 * Live announcer context for screen reader updates
 * Form validation with auto-focus on first invalid field
+* Keyboard navigation for ModeToggle (Arrow keys, Home, End)
+* Dialog/modal focus trapping and management
 
 No global state management (Redux, Context) — component‑level state with Context API for cross-cutting concerns (toast, announcer) is sufficient for this application's scope.
 
@@ -369,12 +499,23 @@ No global state management (Redux, Context) — component‑level state with Con
   * Used in generate and send operations to prevent memory leaks
   * Integrates with fetch API's `signal` parameter
 
+* **`usePageSearch.js`** — Page search with debounce and caching
+  * Returns: `{ pages, isLoading, error, searchQuery, setSearchQuery, triggerSearch, clearSearch }`
+  * Debounces search input (default 500ms)
+  * Caches results to prevent redundant API calls
+  * Uses AbortController to cancel in-flight requests
+  * Lazy loading: only searches when triggered or query changes
+  * Used by `PageSearchSelector` component
+
 **Client Utilities** (`client/src/utils/`)
 
 * **`api.js`** — API client functions
-  * `generateDocumentation(data)` — Calls `POST /api/generate` with mode and fields
-  * `sendToNotion(content, pageId, mode)` — Calls `POST /api/notion` with mode parameter
-  * `getNotionPages()` — Calls `GET /api/notion/pages` to retrieve all shared pages
+  * `generateDocumentation(data, signal)` — Calls `POST /api/generate` with mode and context
+  * `getAvailablePlatforms(signal)` — Calls `GET /api/config` to check which platforms are configured
+  * `getNotionPages(searchQuery, limit, signal)` — Calls `GET /api/notion/pages` (ignores search/limit)
+  * `getConfluencePages(searchQuery, limit, signal)` — Calls `GET /api/confluence/pages?search=...&limit=...`
+  * `sendToNotion(content, mode, pageId, signal)` — Calls `POST /api/notion`
+  * `sendToConfluence(content, mode, pageId, writeMode, signal)` — Calls `POST /api/confluence`
   * Configurable API base via `VITE_API_BASE` env var (defaults to `/api`)
   * Returns JSON responses or throws on error
 
@@ -392,10 +533,11 @@ No global state management (Redux, Context) — component‑level state with Con
 ```
 GEMINI_API_KEY=        # From https://aistudio.google.com/app/apikey
 GEMINI_MODEL=gemini-2.0-flash-exp
-NOTION_API_KEY=        # From https://notion.so/my-integrations
-NOTION_PAGE_ID=        # Target Notion page UUID (optional if using page selector)
-NOTION_PARENT_PAGE_ID= # Parent page UUID for creating new pages (optional, unused in current implementation)
-ALLOWED_ORIGINS=       # Comma-separated list of allowed CORS origins (optional, for production)
+NOTION_API_KEY=        # From https://notion.so/my-integrations (optional)
+NOTION_PAGE_ID=        # Target Notion page UUID (optional, unused - app uses dynamic page selector)
+CONFLUENCE_DOMAIN=     # Confluence domain (e.g., mycompany.atlassian.net) (optional)
+CONFLUENCE_USER_EMAIL= # Confluence user email (optional)
+CONFLUENCE_API_TOKEN=  # Confluence API token from https://id.atlassian.com/manage-profile/security/api-tokens (optional)
 PORT=3001
 NODE_ENV=development
 ```
@@ -403,12 +545,13 @@ NODE_ENV=development
 **Important**:
 
 * `.env` is loaded by `server/src/config/index.js` using `dotenv/config`
-* Configuration module uses **Zod schema validation** to validate all required variables
-* Invalid or missing env vars trigger warnings (not hard exits) for flexibility
+* Configuration module uses **Zod schema validation** to validate all variables
+* Missing env vars trigger warnings (not hard exits) for flexibility
 * All services use the centralized config module (`import { env } from './src/config/index.js'`)
-* **CORS configuration**: `ALLOWED_ORIGINS` accepts comma-separated list (e.g., `http://localhost:5173,https://app.example.com`)
-  * Dynamic origin validation with fallback for development
-  * `credentials: true` enabled for cookie support
+* **Platform availability**: At least one platform (Notion or Confluence) must be configured
+  * Notion requires: `NOTION_API_KEY`
+  * Confluence requires: `CONFLUENCE_DOMAIN`, `CONFLUENCE_USER_EMAIL`, `CONFLUENCE_API_TOKEN`
+* **Dynamic platform detection**: `GET /api/config` returns which platforms are available
 * **Rate limiting**: 200 requests per 15 minutes per IP (configured in `server/src/app.js`)
 
 #### Client Environment Variables
@@ -417,7 +560,6 @@ NODE_ENV=development
 
 ```
 VITE_API_BASE=/api                    # API base path (defaults to '/api' if not set)
-VITE_NOTION_PAGE_ID=                   # Notion page UUID for direct linking (optional, unused - app uses dynamic page selector)
 ```
 
 **Important**:
@@ -427,7 +569,6 @@ VITE_NOTION_PAGE_ID=                   # Notion page UUID for direct linking (op
 * **Never put secrets in client environment variables** - they are publicly visible
 * `VITE_API_BASE` defaults to `/api` (relative path) if not set
 * In development, CORS handles routing to backend on port 3001
-* **Note:** `client/.env.example` file does not exist. Create `.env` manually if needed.
 
 ---
 
@@ -448,27 +589,29 @@ VITE_NOTION_PAGE_ID=                   # Notion page UUID for direct linking (op
 * **vitest** (v2.1.8) — Test runner with Vite integration
 * **msw** (v2.11.6) — Mock Service Worker for API mocking in tests
 * **supertest** (v7.1.4) — HTTP assertion library
-* **@types/supertest** — TypeScript types for Supertest
+* **@types/supertest** (v6.0.3) — TypeScript types for Supertest
+* **nodemon** (v3.1.10) — Auto-restart server on file changes
+* **eslint** (v8.57.1) — Linter
+* **prettier** (v3.6.2) — Code formatter
 
 ### Client Dependencies
 
 **Production**:
-* **react** (v19.1.1) — UI library (React 19 with new features like useTransition)
+* **react** (v19.1.1) — UI library (React 19 with new features)
 * **react-dom** (v19.1.1) — React DOM renderer
 * **@uiw/react-textarea-code-editor** (v2.1.0) — Code editor component
 * **react-markdown** (v9.0.0) — Markdown renderer
 * **react-syntax-highlighter** (v15.5.0) — Syntax highlighting
 * **remark-gfm** (v4.0.0) — GitHub Flavored Markdown support
 * **prismjs** (v1.30.0) — Syntax highlighting library
-* **lucide-react** (v0.552.0) — Icon library for UI elements (Clock, FileText, HelpCircle, X, etc.)
+* **lucide-react** (v0.552.0) — Icon library for UI elements (Clock, FileText, HelpCircle, X, Plus, RefreshCw, AlertTriangle, etc.)
 
 **Development**:
-* **vite** (^7.1.7) — Build tool and dev server
-* **@vitejs/plugin-react** (v5.0.1) — React plugin for Vite
+* **vite** (v7.1.7) — Build tool and dev server
+* **@vitejs/plugin-react** (v5.1.0) — React plugin for Vite
 * **tailwindcss** (v3.4.18) — Utility‑first CSS framework
 * **@tailwindcss/typography** (v0.5.19) — Typography plugin for prose styling
-* **prettier** (v3.5.1) — Code formatter
-* **prettier-plugin-tailwindcss** (v0.7.0) — Auto‑sorts Tailwind classes
+* **prettier** (v3.6.2) — Code formatter
 * **eslint** (v9.36.0) — Linter with React and a11y plugins
 * **vitest** (v2.1.9) — Test runner for client-side tests
 * **@testing-library/react** (v16.3.0) — React testing utilities
@@ -477,9 +620,21 @@ VITE_NOTION_PAGE_ID=                   # Notion page UUID for direct linking (op
 * **@testing-library/user-event** (v14.6.1) — User interaction simulation
 * **jest-axe** (v10.0.0) — Accessibility testing
 * **jsdom** (v23.2.0) — DOM implementation for testing
-* **@types/react** and **@types/react-dom** — TypeScript definitions for IDE support (not using TypeScript, but helps with editor IntelliSense)
+* **msw** (v2.11.6) — Mock Service Worker for client tests
+* **@playwright/test** (v1.56.1) — E2E testing framework (root level)
 
-**Important**: The project uses **Express 5** (v5.1.0), which has breaking changes from Express 4. Ensure middleware and patterns are compatible with Express 5.
+**Root Dependencies**:
+* **eslint** (v8.57.1) — Root linter config
+* **prettier** (v3.6.2) — Root formatter config
+* **vitest** (v2.1.8) — Monorepo test runner
+* **jsdom** (v27.0.1) — DOM implementation for root tests
+* **happy-dom** (v20.0.10) — Alternative DOM implementation
+* **@playwright/test** (v1.56.1) — E2E testing
+
+**Important**:
+* The project uses **Express 5** (v5.1.0), which has breaking changes from Express 4
+* **Node.js version**: ^20.18.0 (specified in root package.json engines)
+* Ensure middleware and patterns are compatible with Express 5
 
 ---
 
@@ -530,9 +685,9 @@ Enforced via `buildMeetingPrompt()` and `getSystemInstruction('meeting')` in `ge
 
 ---
 
-## Markdown to Notion Conversion
+## Platform Export Formats
 
-### Inline Formatting Support
+### Notion Block Format
 
 The `parseInlineMarkdown()` function in `server/src/services/notion/markdown.js` converts markdown inline formatting to Notion rich text annotations:
 
@@ -545,17 +700,7 @@ The `parseInlineMarkdown()` function in `server/src/services/notion/markdown.js`
 | `` `text` ``         | Code              | `inline code`     | ✅ Implemented |
 | `[text](url)`        | Link              | [link text](url)  | ✅ Implemented |
 
-**Implementation**:
-- Regex‑based parser that finds earliest match among all patterns
-- Splits text into rich_text segments with appropriate annotations
-- Automatically respects 2000-char limit per rich_text object
-- Handles consecutive and multiple formatting types
-- Exported for testing: `export { parseInlineMarkdown }`
-
-**Note**: Strikethrough (`~~text~~`) is supported in preview via ReactMarkdown but not yet implemented in Notion API translation.
-
-### Block Types Supported
-
+**Block Types Supported**:
 * Headings: `#`, `##`, `###` (H1, H2, H3)
 * Code blocks: ``` with language detection (python, sql, js, etc.)
 * Lists: `- ` or `* ` (bulleted), `1. ` (numbered)
@@ -563,33 +708,38 @@ The `parseInlineMarkdown()` function in `server/src/services/notion/markdown.js`
 * Quotes: `>` prefix for block quotes
 * Dividers: `---` or `***` for horizontal rules
 
-**Critical**: All block types use `parseInlineMarkdown()` for rich text, ensuring consistent formatting across headings, paragraphs, lists, and quotes.
+**Implementation**:
+- Regex‑based parser that finds earliest match among all patterns
+- Splits text into rich_text segments with appropriate annotations
+- Automatically respects 2000-char limit per rich_text object
+- Handles consecutive and multiple formatting types
+- Exported for testing: `export { parseInlineMarkdown }`
 
-### Code Block Detection
+**Notion Block Chunking**:
+* **Why**: Notion API has a hard limit of 100 blocks per `blocks.children.append` request
+* **How**: `appendBlocksChunked()` in `server/src/services/notion/client.js`
+  * Splits array into chunks of ≤100 blocks
+  * Sends chunks sequentially with **100ms delay** between requests
+  * Uses `notionCall()` retry wrapper for 429/5xx errors
+  * Returns `{ blocksAdded, chunks, responses }` with full API responses
 
-Code blocks use whitespace‑tolerant detection:
+### Confluence Storage Format
 
-````javascript
-line.trim().startsWith('```')  // Opening
-lines[i].trim().startsWith('```')  // Closing
-````
+The `markdownToConfluenceStorage()` function in `server/src/services/confluence/markdown.js` converts markdown to Confluence Storage Format (XHTML-like):
 
-This handles indented code blocks in nested contexts (e.g., within lists or quotes) without breaking parsing.
+**Supported Conversions**:
+* Headings: `#` → `<h1>`, `##` → `<h2>`, etc.
+* Bold: `**text**` → `<strong>text</strong>`
+* Italic: `*text*` → `<em>text</em>`
+* Code: `` `code` `` → `<code>code</code>`
+* Code blocks: ` ```language ` → `<ac:structured-macro ac:name="code"><ac:parameter ac:name="language">language</ac:parameter>...</ac:structured-macro>`
+* Lists: `- ` → `<ul><li>`, `1. ` → `<ol><li>`
+* Links: `[text](url)` → `<a href="url">text</a>`
+* Paragraphs: wrapped in `<p>` tags
 
----
-
-## Notion Block Chunking
-
-**Why**: Notion API has a hard limit of 100 blocks per `blocks.children.append` request.
-
-**How**: Modular Notion service implements:
-
-* `chunkBlocks(blocks, maxSize)` in `server/src/services/notion/index.js` — splits array into chunks of ≤100
-* `appendBlocksChunked()` in `server/src/services/notion/client.js` — sends chunks sequentially
-* **Throttle:** 100ms delay between requests (consistent across config.js and implementation)
-* Returns `{ blocksAdded, chunks, responses }` with full API responses from each chunk
-
-**When to modify**: If adding new Markdown patterns (e.g., tables, callouts), update `markdownToNotionBlocks()` in `server/src/services/notion/markdown.js` and ensure chunking still works.
+**Confluence Write Modes**:
+* **Append**: Adds content to the end of existing page content
+* **Overwrite**: Replaces entire page content (requires confirmation via `ConfirmDialog`)
 
 ---
 
@@ -609,83 +759,88 @@ This handles indented code blocks in nested contexts (e.g., within lists or quot
 * Auth: Bearer token in client initialization
 * Must share page with integration before first use
 
+### Confluence API
+
+* Uses REST API v2 (Cloud)
+* Endpoint: `https://{domain}/wiki/api/v2/pages/{id}`
+* Auth: Basic Auth (email + API token as password)
+* API token from: https://id.atlassian.com/manage-profile/security/api-tokens
+* Must have page edit permissions
+
 ---
 
 ## Common Pitfalls
 
-1. **Notion "unauthorized" errors**:
+1. **Platform configuration errors**:
+   * If no platforms appear in UI, check `GET /api/config` response
+   * Notion requires `NOTION_API_KEY`
+   * Confluence requires all three: `CONFLUENCE_DOMAIN`, `CONFLUENCE_USER_EMAIL`, `CONFLUENCE_API_TOKEN`
+   * Check server console for configuration warnings on startup
 
+2. **Notion "unauthorized" errors**:
    * Page not shared with integration. User must invite integration in Notion UI.
    * **OR** Environment variables not loaded before client initialization. Ensure `import 'dotenv/config'` is the **FIRST import** in `server/index.js`.
    * **OR** `NOTION_API_KEY` is invalid or expired. Generate new key at https://notion.so/my-integrations
 
-2. **100‑block limit**: If adding new block types, always test with >100 block documents to verify chunking works.
+3. **Confluence authentication errors**:
+   * Check `CONFLUENCE_DOMAIN` format (should be `company.atlassian.net`, not full URL)
+   * Ensure API token is valid (tokens don't expire but can be revoked)
+   * Verify user email matches the Atlassian account
+   * Check page permissions: user must have edit access to target page
+
+4. **100‑block limit (Notion)**: If adding new block types, always test with >100 block documents to verify chunking works.
    * Chunking logic is in `server/src/services/notion/client.js` (`appendBlocksChunked()`)
    * Verify `MAX_BLOCKS_PER_REQUEST = 100` constant in `config.js`
 
-3. **English output**: If Gemini returns output in the wrong language, check:
-
+5. **English output**: If Gemini returns output in the wrong language, check:
    * `systemInstruction` is being sent in API call (see `server/services/geminiService.js`)
    * Model supports system instructions (`gemini-2.0-flash-exp` does)
    * Prompt explicitly states "Output MUST be 100% in ENGLISH"
 
-4. **CORS errors**:
+6. **CORS errors**:
    * Backend must run on port 3001
    * Frontend uses `VITE_API_BASE` env var (defaults to `/api`)
-   * In development, ensure Vite proxy is configured or CORS is enabled in `server/src/app.js`
+   * In development, ensure CORS is enabled in `server/src/app.js`
 
-5. **Environment variables loading order**:
-
+7. **Environment variables loading order**:
    * Backend loads `.env` from server folder (`server/.env`)
    * `import 'dotenv/config'` MUST be the first import in `server/index.js`
    * `server/src/config/index.js` validates env vars using Zod schemas
-   * Notion client is initialized at module‑level in `server/src/services/notion/index.js` (not lazy)
+   * Notion/Confluence clients are initialized at module‑level (not lazy)
 
-6. **Markdown formatting not appearing in Notion**:
-
-   * Inline markdown is parsed by `parseInlineMarkdown()` in `server/src/services/notion/markdown.js`
+8. **Markdown formatting not appearing**:
+   * Notion: Inline markdown is parsed by `parseInlineMarkdown()` in `server/src/services/notion/markdown.js`
+   * Confluence: Inline markdown is converted to Storage Format in `server/src/services/confluence/markdown.js`
    * Code blocks use whitespace‑tolerant detection with `trim()`
-   * If formatting breaks, ensure all block types call `parseInlineMarkdown()`
-   * Check Notion API limits: 2000 chars per rich_text object
+   * If formatting breaks, ensure conversion functions are called
+   * Check API limits: Notion 2000 chars per rich_text object
 
-7. **Request validation errors**:
-
+9. **Request validation errors**:
    * All requests are validated via Zod schemas before processing
-   * Check `server/src/schemas/generate.js` and `server/src/schemas/notion.js` for constraints
+   * Check `server/src/schemas/` for constraints
    * Client‑side validation in `client/src/utils/validation.js` should match server schemas
 
-8. **Rate limiting**:
+10. **Rate limiting**:
+    * Gemini API: 15 RPM, 1500 RPD, 1M TPM (tokens per minute)
+    * Notion API: Uses **100ms delay** between chunk requests
+    * Confluence API: No explicit rate limit documented, but uses retry logic
+    * Express rate limit: **200 requests per 15 minutes per IP**
+    * All use `fetchWithRetry()` with exponential backoff for 429 errors
 
-   * Gemini API: 15 RPM, 1500 RPD, 1M TPM (tokens per minute)
-   * Notion API: Uses **100ms delay** between chunk requests (consistent across config and implementation)
-   * Express rate limit: **200 requests per 15 minutes per IP**
-   * Both use `fetchWithRetry()` with exponential backoff for 429 errors
+11. **Mode parameter required**:
+    * `POST /api/generate` requires `mode` field in request body ('task' | 'architecture' | 'meeting')
+    * Missing or invalid mode will fail schema validation
 
-9. **Mode parameter required**:
-
-    * `POST /api/generate` requires `mode` field in request body ('task' | 'architecture')
-    * If mode is undefined or 'task', uses TaskSchema validation and 5-section output
-    * If mode is 'architecture', uses ArchitectureSchema validation and 5-section output
-    * Missing or invalid mode will fail discriminated union validation
-
-10. **HTTP timeout**:
-
+12. **HTTP timeout**:
     * `fetchWithRetry()` has **12-second timeout** (not 30s)
     * Configurable via `config.timeoutMs` parameter
     * Uses `AbortSignal.timeout()` for cancellation
 
----
-
-## State Management
-
-See the **State Management** subsection in "Client Application Structure" above for complete details.
-
-**Summary:**
-* Component-level state with `useState` hooks in `App.jsx`
-* Mode synced to URL query parameter
-* Notion page selection persisted to localStorage
-* Context API for cross-cutting concerns (toast, announcer)
-* No Redux/global state management
+13. **Confluence overwrite confirmation**:
+    * Overwrite mode requires user confirmation via `ConfirmDialog`
+    * Dialog appears before API request is sent
+    * User can cancel to prevent data loss
+    * No undo operation available after overwrite
 
 ---
 
@@ -693,124 +848,126 @@ See the **State Management** subsection in "Client Application Structure" above 
 
 ### Automated Tests
 
-The project uses **Vitest** as the test runner with a monorepo configuration. Tests are organized by layer (unit, integration, snapshot).
+The project uses **Vitest** for unit tests and **Playwright** for E2E tests.
 
 **Test Configuration**:
-* **Root** (`vitest.config.js`) — Monorepo configuration defining server and client projects
-* **Server** (`server/vitest.config.js`) — Server‑specific test setup with MSW for API mocking
+* **Root** (`vitest.config.js`) — Monorepo configuration
+* **Server** (`server/vitest.config.js`) — Server‑specific test setup with MSW
 * **Client** (`client/vitest.config.js`) — Client‑specific test setup with React Testing Library and jsdom
 
 **Run tests**:
 ```bash
 # From root (runs all tests in monorepo)
 npm test
+npm run test:run
 npm run test:watch
 npm run test:coverage
 
-# From server directory
-cd server
-npm test              # Run all tests once
-npm run test:watch    # Run tests in watch mode
+# E2E tests
+npx playwright test
+npx playwright test --ui        # Interactive UI mode
+npx playwright test --headed    # With browser visible
 ```
 
 **Server Test Files** (`server/test/`):
-
 * **`api.generate.test.js`** — Tests for `POST /api/generate` endpoint
-  * Request validation (missing fields, invalid data)
-  * Successful generation response
-  * Error handling and status codes
-
-* **`api.notion.test.js`** — Tests for `POST /api/notion` endpoint
-  * Request validation (content, pageId formats)
-  * Successful export to Notion
-  * Error handling for API failures
-
+* **`api.notion.test.js`** — Tests for Notion endpoints
+* **`api.confluence.test.js`** — Tests for Confluence endpoints
 * **`http.fetchWithRetry.test.js`** — Tests for HTTP retry utility
-  * Timeout behavior
-  * Retry logic on 429 and 5xx errors
-  * Exponential backoff verification
-  * AbortController integration
+* **`notionService.snapshot.test.js`** — Snapshot tests for Notion markdown conversion
+* **`setup.js`** — Test setup file with MSW configuration
 
-* **`notionService.snapshot.test.js`** — Snapshot tests for markdown conversion
-  * `parseInlineMarkdown()`: 23+ tests covering bold, italic, code, links, edge cases
-  * `markdownToNotionBlocks()`: 10+ integration tests for complete document structures
-  * Ensures consistent Notion block output across changes
+**Client Test Files** (`client/test/`):
+* **`ConfirmDialog.test.jsx`** — Unit tests for ConfirmDialog component
+* **`GeneratedContent.test.jsx`** — Unit tests for GeneratedContent component
+* **`GeneratedContent.a11y.test.jsx`** — Accessibility tests using jest-axe
+* **`HistoryPanel.test.jsx`** — Unit tests for HistoryPanel component
+* **`InputForm.test.jsx`** — Unit tests for InputForm component
+* **`WriteModeSelector.test.jsx`** — Unit tests for WriteModeSelector component
+* **`Toast.test.jsx`** — Unit tests for Toast component
+* **`useAbortableRequest.test.jsx`** — Unit tests for useAbortableRequest hook
+* **`useToast.test.js`** — Unit tests for useToast hook (in hooks directory)
 
-* **`setup.js`** — Test setup file
-  * Configures MSW (Mock Service Worker) for API mocking
-  * Sets up test environment variables
-  * Global test utilities and helpers
+**E2E Test Files** (`e2e/`):
+* **`accessibility.spec.js`** — Accessibility tests (keyboard navigation, ARIA, etc.)
+* **`confirm-dialog.spec.js`** — ConfirmDialog E2E tests (appearance, cancel, escape key)
+* **`documentation-flow.spec.js`** — Full documentation generation flow tests
+* **`history-panel.spec.js`** — History panel E2E tests (open/close, search, filters)
+* **`write-mode-selector.spec.js`** — WriteModeSelector E2E tests (mode switching, warnings)
 
-**Testing Libraries (Server)**:
-* **Vitest** (v2.1.8) — Fast test runner with Vite integration
-* **MSW** (v2.11.6) — Mock Service Worker for API request mocking
-* **Supertest** (v7.1.4) — HTTP assertion library for Express routes
-
-**Client Testing Infrastructure**:
-
-While server tests are comprehensive, client testing setup includes:
-* **@testing-library/react** (v16.3.0) — React component testing utilities
-* **@testing-library/dom** (v10.4.1) — DOM testing utilities
-* **@testing-library/jest-dom** (v6.9.1) — Custom Jest/Vitest matchers for DOM assertions
+**Testing Libraries**:
+* **Vitest** (v2.1.8 server, v2.1.9 client) — Test runner
+* **MSW** (v2.11.6) — API mocking
+* **Supertest** (v7.1.4) — HTTP assertion library for Express
+* **@testing-library/react** (v16.3.0) — React testing utilities
+* **@testing-library/jest-dom** (v6.9.1) — DOM matchers
 * **@testing-library/user-event** (v14.6.1) — User interaction simulation
-* **jest-axe** (v10.0.0) — Accessibility testing with axe-core
-* **jsdom** (v23.2.0) — DOM implementation for Node.js testing
-* **vitest** (v2.1.9) — Test runner configured for React components
-
-**Note:** Client test files may not be fully implemented yet. The testing infrastructure is in place for future component and integration tests.
+* **jest-axe** (v10.0.0) — Accessibility testing
+* **@playwright/test** (v1.56.1) — E2E testing framework
 
 ### Manual Integration Testing
 
 Required for end-to-end validation:
 
+**Platform Configuration Testing:**
+1. **Both platforms configured**: Verify PlatformSelector appears
+2. **Only Notion configured**: Verify PlatformSelector doesn't appear, Notion auto-selected
+3. **Only Confluence configured**: Verify PlatformSelector doesn't appear, Confluence auto-selected
+4. **No platforms configured**: Verify error message or warning appears
+
 **Task Mode Testing:**
-1. **Basic generation**: Context only → verify 5 sections in English
-2. **With code**: Add code snippet → verify formatted in docs with language inference
-3. **Inline formatting**: Use **bold**, *italic*, `code`, [links](url) in input → verify they appear formatted in Notion
-4. **Notion send**: Click "Send to Notion" → check server logs for chunking
-5. **Large docs**: Long context + code → verify >100 blocks get chunked
-6. **Multi-language input**: Test with input in different languages → verify English output
+5. **Basic generation**: Context only → verify 5 sections in English
+6. **With code**: Add code snippet → verify formatted in docs with language inference
+7. **Inline formatting**: Use **bold**, *italic*, `code`, [links](url) in input → verify formatting in both Notion and Confluence
 
-**Architecture Mode Testing:**
-7. **Architecture generation**: Switch to Architecture tab → fill context → verify 5 sections in English (Overview, Key Components, Data & Service Flow, Technology Stack, Migration Guide)
-8. **Notion prefix**: Send architecture docs → verify `🏗️ # [ARCHITECTURE] - {title} ({date})` prefix in Notion
-9. **Mode persistence**: Reload page with `?mode=architecture` query param → verify mode persists
+**Confluence-Specific Testing:**
+8. **Append mode**: Send to Confluence with append → verify content added to end
+9. **Overwrite mode**: Send to Confluence with overwrite → verify confirmation dialog appears
+10. **Overwrite confirmation**: Click confirm → verify content replaced
+11. **Overwrite cancel**: Click cancel or Escape → verify operation cancelled
+12. **Page search**: Type in Confluence page search → verify debounced search works
+13. **Search results**: Verify pages appear with title and spaceKey
 
-**Meeting Mode Testing:**
-10. **Meeting generation**: Switch to Meeting tab → paste meeting transcript (PT/EN mix) → verify 6 sections in English (Meeting Record, Executive Summary, Key Decisions, Technical Context, Action Items, Open Questions)
-11. **Multilingual handling**: Input transcript with Portuguese and English mixed → verify all output is in English with proper translation
-12. **Filler word filtering**: Include conversational filler words (PT: "Uhum", "É"; EN: "Like", "Okay") → verify they're filtered out in output
-13. **Decision extraction**: Include both firm decisions and suggestions → verify documentation differentiates between them
-14. **Notion prefix**: Send meeting docs → verify `📅 # [MEETING] - {date}` prefix in Notion
-15. **Mode persistence**: Reload page with `?mode=meeting` query param → verify mode persists
+**History Panel Testing:**
+14. **History save**: Generate docs → verify saved to history with mode and platform
+15. **History search**: Type in search → verify filters by title/content
+16. **Mode filter**: Filter by mode → verify only matching items shown
+17. **Platform filter**: Filter by platform → verify only matching items shown
+18. **Clear filters**: Click clear filters → verify all filters reset
+19. **Load from history**: Click history item → verify documentation restored
+20. **Remove item**: Hover over item → click X → verify item removed
+21. **Clear all**: Click clear all → verify all history removed
 
-**Page Selection Testing:**
-16. **Page dropdown**: Verify all shared Notion pages appear in dropdown
-17. **Page persistence**: Select page → reload → verify selection persists from localStorage
-18. **Dynamic selection**: Change page selection → send to different page → verify correct page receives content
+**Architecture/Meeting Mode Testing:**
+22. **Architecture generation**: Switch to Architecture tab → verify 5 sections
+23. **Meeting generation**: Switch to Meeting tab → verify 6 sections
+24. **Notion prefix (Architecture)**: Send architecture docs to Notion → verify `🏗️ # [ARCHITECTURE]` prefix
+25. **Notion prefix (Meeting)**: Send meeting docs to Notion → verify `📅 # [MEETING]` prefix
 
-**History & Edit Features Testing:**
-19. **History system**: Generate docs → verify saved to history (Clock icon) → load from history → verify restored
-20. **History limit**: Generate 50+ docs → verify only last 50 saved
-21. **Edit mode**: Generate docs → toggle edit mode → modify markdown → verify changes preserved
-22. **Guide access**: Click Help (?) icon → verify Guide component displays → return to main view
-23. **Form draft auto-save**: Fill form → wait 500ms → reload page → verify draft restored
-24. **Legacy draft migration**: Manually add old-format draft to localStorage → reload → verify migrated to new format
+---
 
-Check server console for:
+## GitHub Actions CI/CD
 
-```
-Generated X Notion blocks
-Sending Y chunks to Notion
-Sending chunk 1/Y (100 blocks)
-```
+The project includes a GitHub Actions workflow for continuous integration.
 
-**Critical validation**: Open the Notion page and verify:
-- Bold text appears **bold**
-- Italic text appears *italic*
-- Inline code has `code styling`
-- Links are clickable and lead to correct URLs
-- Headings, lists, and code blocks preserve their structure
+**Workflow File**: `.github/workflows/ci.yml`
+
+**Triggers**: Push to `main` branch
+
+**Jobs**:
+1. **lint-and-format**: Runs ESLint and Prettier checks for client and server
+2. **unit-tests**: Runs Vitest unit tests for server and client (runs in parallel with lint)
+3. **e2e-tests**: Runs Playwright E2E tests (only after unit tests pass)
+
+**Key Features**:
+* Node.js 20.18.x
+* npm dependency caching
+* Playwright browser caching
+* Uploads Playwright reports and test results as artifacts on failure (7-day retention)
+* Parallel execution of lint and unit tests for speed
+* Sequential execution of E2E tests (after unit tests pass)
+
+**Status**: All jobs must pass for CI to succeed
 
 ---
 
@@ -827,23 +984,26 @@ Sending chunk 1/Y (100 blocks)
 * Modify `buildPrompt()` in `server/services/geminiService.js`
 * Update system instructions for new output format
 
+**Add new platform support**:
+* Create new service directory in `server/src/services/` (e.g., `jira/`)
+* Create route file in `server/routes/` (e.g., `jira.js`)
+* Create Zod schema in `server/src/schemas/` (e.g., `jira.js`)
+* Update `server/src/config/index.js` to add platform detection
+* Update `client/src/components/PlatformSelector.jsx` to include new platform
+* Add API client functions in `client/src/utils/api.js`
+
 **Add Notion block types**:
 * Update `markdownToNotionBlocks()` in `server/src/services/notion/markdown.js`
 * Add new block type handlers (e.g., tables, callouts, toggles)
 
-**Add inline markdown patterns**:
-* Update `parseInlineMarkdown()` in `server/src/services/notion/markdown.js`
-* Add new regex patterns to the `patterns` array
-* Handle new annotations (e.g., underline, strikethrough)
+**Add Confluence storage format support**:
+* Update `markdownToConfluenceStorage()` in `server/src/services/confluence/markdown.js`
+* Add new macro handlers for Confluence-specific features
 
 **Add API endpoints**:
 * Create new route file in `server/routes/` (e.g., `export.js`)
 * Mount route in `server/src/routes.js`
 * Create Zod schema in `server/src/schemas/` for validation
-
-**Add middleware**:
-* Create new middleware in `server/src/middleware/` (e.g., `auth.js`)
-* Apply in `server/src/app.js` or specific routes
 
 ### Frontend Modifications
 
@@ -886,20 +1046,30 @@ app.listen(PORT, () => {
 
 **Critical**: `dotenv/config` must be the **first import** in `server/index.js` to ensure all environment variables are loaded before any other modules initialize.
 
-### Notion Client Initialization
+### Platform Client Initialization
 
-The Notion client is created at **module‑level** in `server/src/services/notion/index.js`:
+Both Notion and Confluence clients are created at **module‑level**:
 
 ```javascript
+// server/src/services/notion/index.js
 import { Client } from '@notionhq/client';
 
-// Module-level initialization (not lazy)
 export const notion = new Client({
   auth: process.env.NOTION_API_KEY,
 });
 ```
 
-This works because `server/src/config/index.js` loads `dotenv/config` before the Notion service is imported.
+```javascript
+// server/src/services/confluence/client.js
+// Uses Basic Auth with email + API token
+const auth = Buffer.from(`${email}:${token}`).toString('base64');
+const headers = {
+  'Authorization': `Basic ${auth}`,
+  'Content-Type': 'application/json',
+};
+```
+
+This works because `server/src/config/index.js` loads `dotenv/config` before services are imported.
 
 ---
 
@@ -925,8 +1095,6 @@ make build
 make clean
 ```
 
-(The targets above are defined in the `Makefile` with `dev`, `backend`, `frontend`, `install(-backend/-frontend)`, `build`, and `clean`.)
-
 ---
 
 ## API Routes
@@ -934,37 +1102,57 @@ make clean
 All API routes are mounted under the `/api` prefix via `server/src/routes.js`:
 
 **Current endpoints**:
-* `POST /api/generate` — Generate documentation (task or architecture mode)
-  * Requires: `mode` ('task' | 'architecture') + `context` (unified input field)
-  * Returns: Markdown documentation (5 sections for both modes, different structure per mode)
+* `GET /api/config` — Get available platforms (Notion/Confluence)
+  * Returns: `{ success: true, platforms: { notion: boolean, confluence: boolean } }`
+  * Used by: Frontend to determine which platforms are configured
+
+* `POST /api/generate` — Generate documentation (task/architecture/meeting mode)
+  * Requires: `mode` ('task' | 'architecture' | 'meeting') + `context` (unified input field)
+  * Returns: `{ documentation: string }` - Markdown documentation
+
 * `GET /api/notion/pages` — List all Notion pages shared with integration
   * Returns: `{ pages: [{ id, title }] }`
   * Used by: Page selector dropdown in UI
+
 * `POST /api/notion` — Export documentation to Notion page
   * Requires: `content` (markdown), `pageId` (UUID), optional `mode`
-  * Behavior: Architecture mode prepends `🏗️ # [ARCHITECTURE]` header
   * Returns: `{ success, blocksAdded, chunks }`
 
+* `GET /api/confluence/pages` — Search Confluence pages
+  * Query params: `search` (optional), `limit` (default 50, max 200)
+  * Returns: `{ success: true, pages: [{ id, title, spaceKey }], count, query, limit }`
+  * Used by: PageSearchSelector with debounced search
+
+* `POST /api/confluence` — Export documentation to Confluence page
+  * Requires: `content` (markdown), `pageId`, optional `mode`, optional `writeMode` ('append' | 'overwrite')
+  * Returns: `{ success, platform: 'confluence', writeMode, message, pageId, version }`
+
 **Route mounting**:
-Routes are centralized in `server/src/routes.js` and imported into `server/src/app.js`:
 ```javascript
 import routes from './routes.js';
 app.use('/api', routes);
 ```
 
 Individual route handlers are in `server/routes/`:
-* `server/routes/generate.js` — Generate endpoint logic (dual mode support)
+* `server/routes/config.js` — Platform configuration endpoint
+* `server/routes/generate.js` — Generate endpoint logic (triple mode support)
 * `server/routes/notion.js` — Notion export and page listing endpoints
-
-**Note**: Health check endpoint (`GET /health`) is not currently implemented but can be added if needed for container orchestration or monitoring.
+* `server/routes/confluence.js` — Confluence export and page search endpoints
 
 ---
 
-## ESLint (client)
+## ESLint Configuration
 
-This codebase applies an important rule on the client:
+### Client (ESLint v9 - Flat Config)
 
-  * `'no-unused-vars': ['error', { varsIgnorePattern: '^[A-Z_]' }]` → allows **UPPER_SNAKE_CASE** constants without flagging an unused variable. Adjust constant names to this pattern when necessary.
+Uses flat config format (`eslint.config.js`):
+* `'no-unused-vars': ['error', { varsIgnorePattern: '^[A-Z_]' }]` → allows **UPPER_SNAKE_CASE** constants without flagging as unused
+
+### Server (ESLint v8 - Legacy Config)
+
+Uses `.eslintrc.json` format:
+* Standard recommended rules
+* Node.js environment
 
 ---
 
@@ -980,37 +1168,23 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE ?? '/api';
 **Configuration**:
 * Set `VITE_API_BASE` in `client/.env` to override default
 * Defaults to `/api` (relative path) for production builds
-* In development, Vite proxy or CORS handles routing to backend on port 3001
+* In development, CORS handles routing to backend on port 3001
 * Example: `VITE_API_BASE=http://localhost:3001/api` for direct backend calls
 
 ---
 
-## React 19 Features & Examples
+## React 19 Features
 
-The project uses **React 19.1.1** with new features and patterns:
+The project uses **React 19.1.1** with modern features:
 
 **New React 19 Features Used:**
 * **Lazy loading with Suspense** — `GeneratedContent` component is lazy-loaded for code splitting
 * **Context API improvements** — Used for `LiveAnnouncer` and `Toast` systems
 * **Enhanced hooks** — Better support for concurrent rendering
 
-**Example Components** (`client/src/examples/`):
-* **`UseTransitionExample.jsx`** — Demonstrates React 19's `useTransition` hook for concurrent UI updates
-  * Shows non-blocking state updates
-  * Improves perceived performance for heavy operations
-  * Example pattern for future optimizations
-
-**Note:** Example components are educational references and not used in production code.
-
 ---
 
-## Python (optional)
-
-The repository contains an independent Python module (`main.py` and `pyproject.toml`). If used, ensure **Python >= 3.12** and install the dependencies (e.g., `pathspec`). There is no direct integration with the Node server at the moment.
-
----
-
-# Repository‑Wide Guardrails & Code Style (English)
+# Repository‑Wide Guardrails & Code Style
 
 > **Audience:** Claude Code (claude.ai/code). **Obey all rules below when reading, editing, or generating code in this repo.**
 
@@ -1023,62 +1197,61 @@ The repository contains an independent Python module (`main.py` and `pyproject.t
 
 ### Required docstring tags (use as appropriate)
 
-* `@fileoverview` — file‑level overview and ownership/contact.
-* `@module` or `@packageDocumentation` (TS) — module purpose.
-* `@component` — React components.
-* `@param`, `@returns`, `@throws`, `@example`, `@async`.
-* `@typedef` / `@template` (for shapes and generics) or TypeScript types.
+* `@fileoverview` — file‑level overview
+* `@module` or `@packageDocumentation` (TS) — module purpose
+* `@component` — React components
+* `@param`, `@returns`, `@throws`, `@example`, `@async`
+* `@typedef` / `@template` (for shapes and generics) or TypeScript types
 
 > Use **JSDoc** for JavaScript files and **TSDoc** for TypeScript. Prefer TypeScript types when available; otherwise annotate with JSDoc types.
 
 ## 2. Clean Code & Design Principles
 
-* Favor **small, single‑purpose** functions and components.
-* Apply **SOLID** principles pragmatically; prefer composition over inheritance.
-* Eliminate dead code; avoid global mutable state; keep functions **pure** where possible.
-* Naming: *PascalCase* for components/classes, *camelCase* for variables/functions, *UPPER_SNAKE_CASE* for constants and env var keys.
+* Favor **small, single‑purpose** functions and components
+* Apply **SOLID** principles pragmatically; prefer composition over inheritance
+* Eliminate dead code; avoid global mutable state; keep functions **pure** where possible
+* Naming: *PascalCase* for components/classes, *camelCase* for variables/functions, *UPPER_SNAKE_CASE* for constants and env var keys
 
 ## 3. React (Vite) Standards
 
-* **Function components only.** No class components.
-* Obey the **Rules of Hooks** (call hooks at the top level; don’t call inside loops/conditions; only call from React components or custom hooks). Name custom hooks `useX`.
-* **File layout:** one component per file in `client/src/components/`; colocate tests as `ComponentName.test.jsx`.
-* **Props & state:** prefer controlled components; derive state when possible; compute expensive values with `useMemo` and stable callbacks via `useCallback` where beneficial.
-* **Effects:** include complete dependency arrays; avoid side effects in render; use cleanup functions.
-* **Exports:** prefer **named exports** to enable tree‑shaking and consistent imports.
+* **Function components only.** No class components
+* Obey the **Rules of Hooks** (call hooks at the top level; don't call inside loops/conditions; only call from React components or custom hooks). Name custom hooks `useX`
+* **File layout:** one component per file in `client/src/components/`; colocate tests as `ComponentName.test.jsx`
+* **Props & state:** prefer controlled components; derive state when possible; compute expensive values with `useMemo` and stable callbacks via `useCallback` where beneficial
+* **Effects:** include complete dependency arrays; avoid side effects in render; use cleanup functions
+* **Exports:** prefer **named exports** to enable tree‑shaking and consistent imports
 * **Vite specifics:**
-
-  * Use Node.js **20.19+** or **22.12+** (per Vite requirements).
-  * Respect required Node version and Vite’s build commands.
-  * Use `import.meta.env` for client‑side env values (never expose secrets).
-  * Keep `index.html` as the entry; assets served from `client/public/`.
+  * Use Node.js **^20.18.0** (per package.json engines)
+  * Respect required Node version and Vite's build commands
+  * Use `import.meta.env` for client‑side env values (never expose secrets)
+  * Keep `index.html` as the entry; assets served from `client/public/`
 
 ## 4. Tailwind CSS
 
-* Use the **official Prettier plugin for Tailwind CSS** to auto‑sort classes. Do not hand‑sort.
-* Prefer **theme tokens** (colors, spacing, breakpoints) over arbitrary values. Only use `[]` arbitrary values when no token exists and add a TODO to promote to a token later.
-* Extract repeated utility patterns with componentization or `@apply` (for small, stable patterns) instead of duplicating class lists.
-* Keep class strings readable and minimal; avoid conflicting utilities.
+* Use the **official Prettier plugin for Tailwind CSS** to auto‑sort classes. Do not hand‑sort
+* Prefer **theme tokens** (colors, spacing, breakpoints) over arbitrary values. Only use `[]` arbitrary values when no token exists
+* Extract repeated utility patterns with componentization or `@apply` (for small, stable patterns) instead of duplicating class lists
+* Keep class strings readable and minimal; avoid conflicting utilities
 
 ## 5. Prism.js (Syntax Highlighting)
 
-* Render code blocks with a `language-<lang>` class.
-* After content updates that inject code snippets, re‑highlight using Prism’s API (e.g., `Prism.highlightAll()` or `highlightAllUnder(container)` in a React effect).
-* For dynamic languages, use the **Autoloader** plugin to lazy‑load grammars. Avoid bundling all languages.
+* Render code blocks with a `language-<lang>` class
+* After content updates that inject code snippets, re‑highlight using Prism's API (e.g., `Prism.highlightAll()` or `highlightAllUnder(container)` in a React effect)
+* For dynamic languages, use the **Autoloader** plugin to lazy‑load grammars. Avoid bundling all languages
 
 ## 6. Node.js & Express (Backend)
 
-* **Routing:** use `express.Router()` to keep routes modular; group by feature; no logic in route files beyond wiring.
-* **Middleware:** compose small middlewares. Provide a terminal **error‑handling middleware** with signature `(err, req, res, next)` after all routes.
-* **Security:** enable TLS at the edge; use **Helmet**; validate inputs; set secure cookie flags; never trust user input.
-* **Performance:** enable gzip/deflate; avoid synchronous calls in the hot path; centralize structured logging; set `NODE_ENV=production` in prod.
-* **Config:** read configuration via environment variables; never commit secrets; load `.env` early at process start.
+* **Routing:** use `express.Router()` to keep routes modular; group by feature; no logic in route files beyond wiring
+* **Middleware:** compose small middlewares. Provide a terminal **error‑handling middleware** with signature `(err, req, res, next)` after all routes
+* **Security:** enable TLS at the edge; use **Helmet**; validate inputs; set secure cookie flags; never trust user input
+* **Performance:** enable gzip/deflate; avoid synchronous calls in the hot path; centralize structured logging; set `NODE_ENV=production` in prod
+* **Config:** read configuration via environment variables; never commit secrets; load `.env` early at process start
 
 ## 7. Formatting & Linting
 
-* **Prettier** formats codebase. **Do not** manually reflow code or classes.
-* ESLint with recommended rules plus React and JSX a11y plugins. Fix all lint errors; no `eslint-disable` unless justified at file top with a docstring rationale.
-* Tailwind Prettier plugin enforces canonical class order.
+* **Prettier** formats codebase. **Do not** manually reflow code or classes
+* ESLint with recommended rules plus React and JSX a11y plugins. Fix all lint errors; no `eslint-disable` unless justified at file top with a docstring rationale
+* Tailwind Prettier plugin enforces canonical class order
 
 ## 8. Required Docstring Templates (copy‑paste)
 
@@ -1142,190 +1315,25 @@ export async function callGemini(model, payload) { /* implementation */ }
 
 ## 9. Prohibited Actions (Claude Code)
 
-* Do **not** insert `//` or `/* */` comments anywhere.
-* Do **not** remove or rewrite existing docstrings unless they are incorrect.
-* Do **not** expose secrets or move server‑only values to the client.
-* Do **not** change public APIs without updating corresponding docstrings and usage sites in the same change.
+* Do **not** insert `//` or `/* */` comments anywhere
+* Do **not** remove or rewrite existing docstrings unless they are incorrect
+* Do **not** expose secrets or move server‑only values to the client
+* Do **not** change public APIs without updating corresponding docstrings and usage sites in the same change
 
 ## 10. Quick Checks Before Submitting Changes
 
-* ✅ All new/changed declarations have proper docstrings.
-* ✅ No inline comments were added.
-* ✅ Lint and Prettier pass locally.
-* ✅ React hooks follow the rules; effects have correct deps.
-* ✅ Tailwind classes are auto‑sorted and extracted when repetitive.
-* ✅ Prism highlighting still works after UI changes.
-* ✅ Express error handler remains last in the middleware chain.
+* ✅ All new/changed declarations have proper docstrings
+* ✅ No inline comments were added
+* ✅ Lint and Prettier pass locally
+* ✅ React hooks follow the rules; effects have correct deps
+* ✅ Tailwind classes are auto‑sorted and extracted when repetitive
+* ✅ Prism highlighting still works after UI changes
+* ✅ Express error handler remains last in the middleware chain
+* ✅ Tests pass (unit and E2E)
+* ✅ Platform-specific features work for both Notion and Confluence
 
 ---
 
-# Documentation Update Changelog
-
-This section tracks major updates to CLAUDE.md to reflect actual implementation.
-
----
-
-## 📅 Update 2025-11-05 (v3.0)
-
-### ✨ New Features Documented
-
-**History System:**
-- **Documentation History** — Saves last 50 generated documentations to localStorage
-- **History UI** — Accessible via Clock icon in header, includes timestamps
-- **History Management** — Load from history, remove individual items, clear all
-
-**Edit Mode:**
-- **Markdown Editing** — Toggle between preview and editor for generated content
-- **Pre-send Modifications** — Edit documentation before sending to Notion
-- **Live Preview** — Switch between edit and preview modes
-
-**Guide Component:**
-- **In-app Help** — Comprehensive help and onboarding system
-- **Accessible via Help Icon** — (?) button in header
-- **View State Management** — Switch between 'main' and 'guide' views
-
-**Form Draft Auto-save:**
-- **Auto-save** — Form inputs saved to localStorage every 500ms
-- **Legacy Migration** — Converts old multi-field drafts to unified context format
-- **Persistence** — Draft restored on page reload
-
-### 🔧 Critical Corrections
-
-**Architecture Mode Structure:**
-- **CORRECTED:** Architecture mode has **5 sections**, not 6
-- **Actual sections:** Overview, Key Components, Data & Service Flow, Technology Stack, Migration Guide & Developer Workflow
-- Updated throughout documentation
-
-**Input Schema Changes:**
-- **CORRECTED:** Both modes now use unified `context` field
-- **Removed:** Separate fields (overview, dataflow, decisions) no longer exist
-- **Single context dump** approach for both task and architecture modes
-
-**Dependencies Updated:**
-- **Vite:** Updated from v6.3.1 to ^7.1.7
-- **lucide-react:** Added v0.552.0 (icon library for UI elements)
-
-**Component List Corrections:**
-- **REMOVED:** ArchitectureFields.jsx (component doesn't exist)
-- **REMOVED:** ErrorMessage.jsx (component doesn't exist)
-- **ADDED:** Guide.jsx (in-app help component)
-
-**Notion Service:**
-- **CORRECTED:** 5 files, not 8 (removed exportPage.js, paginate.js, throttle.js from docs)
-- **Throttle delay:** Now consistently 100ms (config and implementation aligned)
-
-### 📦 Enhanced Documentation
-
-**State Management:**
-- Added `view` state for main/guide view switching
-- Added `docHistory` state for history management
-- Documented all localStorage keys and their purposes
-
-**localStorage Keys:**
-- `de-task-journal:selected-notion-page` — Selected Notion page ID
-- `de-task-journal:formDraft` — Form inputs (auto-saved every 500ms)
-- `de-task-journal:docHistory` — Last 50 documentations with metadata
-
-**Manual Testing:**
-- Added History system test scenarios (items 13-14)
-- Added Edit mode test scenario (item 15)
-- Added Guide component test scenario (item 16)
-- Added Form draft auto-save test scenarios (items 17-18)
-
-**Gemini Service:**
-- Clarified unified input interface: `generateDocumentation(input)`
-- Documented mode-aware system instructions: `getSystemInstruction(mode)`
-
-### ⚠️ Issues Resolved
-
-- ✅ **Throttle delay inconsistency** — RESOLVED (now consistent at 100ms)
-- ✅ **Architecture section count** — FIXED (corrected from 6 to 5)
-- ✅ **Vite version** — UPDATED to ^7.1.7
-- ✅ **Missing icon library** — ADDED lucide-react documentation
-
----
-
-## 📅 Update 2025-11-01 (v2.0)
-
-## ✨ Major Features Documented
-
-### Dual-Mode Documentation System
-- **Architecture Documentation Mode** — 5-section structure for documenting system architecture
-- **Task Documentation Mode** — Existing 5-section structure (previously the only mode)
-- **Mode Toggle UI** — Tab-based switcher with URL synchronization (`?mode=architecture`)
-- **Mode-aware Validation** — Zod schema pattern with mode field
-
-### Dynamic Notion Page Selection
-- **GET /api/notion/pages** — NEW endpoint to list all shared Notion pages
-- **Page Selector Dropdown** — UI component for selecting target Notion page
-- **localStorage Persistence** — Selected page ID saved across sessions
-- **Pagination Support** — Handles 100+ Notion pages
-
-### Enhanced State & Persistence
-- **URL State Sync** — Mode parameter synced to query string for shareable links
-- **Form Collapse** — Auto-collapse input form after successful generation
-- **Lazy Loading** — GeneratedContent component code-split with React.lazy()
-- **Skip Link** — Keyboard navigation accessibility feature
-
-## 🔧 Corrected Information
-
-### Configuration Corrections
-- **HTTP Timeout**: 12 seconds (not 30s as previously documented)
-- **Rate Limiting**: 200 requests/15min (not 100 as previously documented)
-- **Throttle Delay**: 100ms (corrected in v3.0)
-- **Notion Service**: 5 files (corrected count)
-
-### Dependency Versions
-- **React**: v19.1.1 (not "latest")
-- **@notionhq/client**: v5.3.0 (not "latest")
-- **dotenv**: v17.2.3 (not "latest")
-- **cors**: v2.8.5 (not "latest")
-- Added **prismjs** v1.30.0 to documented dependencies
-
-### Environment Variables
-- **ALLOWED_ORIGINS** — NEW, for dynamic CORS configuration
-- **NOTION_PAGE_ID** — Now optional (app uses dynamic page selector)
-- **client/.env.example** — Does not exist (documentation corrected)
-
-## 📦 Added Documentation
-
-### New Components
-- **ModeToggle.jsx** — Tab-based mode switcher
-- **useAnnouncer() hook** — Accessibility announcements via Context API
-
-### Enhanced Hook Documentation
-- **useToast** convenience methods: `showSuccess()`, `showError()`, `showInfo()`, `clearAllToasts()`
-- Duplicate toast prevention
-- Configurable auto-dismiss duration
-
-### Testing Infrastructure
-- **Client Testing Setup** — React Testing Library, jest-axe, jsdom documented
-- **Manual Testing Guide** — Added Architecture mode and Page selection test scenarios
-
-### API Documentation
-- **POST /api/generate** — Dual mode support with discriminated union
-- **GET /api/notion/pages** — Page listing endpoint
-- **POST /api/notion** — Mode-aware export with architecture prefix
-
-### Implementation Details
-- **Mock Documentation Mode** — Fallback when GEMINI_API_KEY is missing
-- **Auto-focus Validation** — Form focuses first invalid field on error
-- **Notion Response Structure** — Returns `{ blocksAdded, chunks, responses }` (not just 2 fields)
-- **Gemini Generation Config** — temperature 0.3, maxTokens 4096, topP 0.8, topK 40
-
-## ⚠️ Known Issues (from v2.0)
-
-**RESOLVED in v3.0:**
-- ✅ **Throttle Delay Mismatch** — FIXED (now consistent at 100ms)
-- ✅ **Architecture section count** — FIXED (corrected to 5 sections)
-- ✅ **Missing components** — REMOVED from documentation
-
-**Still Outstanding:**
-- Create `client/.env.example` file (currently missing)
-- Consider implementing client-side tests (infrastructure in place)
-
----
-
-**Last Updated**: 2025-11-05
-**Documentation Version**: 3.0
-**Covers Implementation**: Current production codebase as of 2025-11-05
+**Last Updated**: 2025-01-09
+**Documentation Version**: 4.0
+**Major Changes**: Confluence integration, platform selector, write modes, enhanced history panel, E2E tests, GitHub Actions CI/CD
