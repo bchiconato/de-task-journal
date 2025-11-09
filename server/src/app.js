@@ -46,6 +46,10 @@ app.use(
   }),
 );
 
+app.get('/api/health', (req, res) => {
+  res.status(200).json({ status: 'ok', timestamp: new Date().toISOString() });
+});
+
 app.use('/api', routes);
 app.use(notFound);
 app.use(errorHandler);
