@@ -5,10 +5,27 @@ import { test, expect } from '@playwright/test';
 
 test.describe('Write Mode Selector', () => {
   test.beforeEach(async ({ page }) => {
+    await page.route('**/api/config', (route) => {
+      route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          success: true,
+          platforms: {
+            notion: true,
+            confluence: true,
+          },
+        }),
+      });
+    });
+
     await page.goto('/');
-    
-    const platformButton = page.getByRole('radio', { name: /confluence/i });
-    await platformButton.click();
+
+    await page.waitForLoadState('networkidle');
+
+    const platformButton = page.locator('#platform-confluence');
+    await expect(platformButton).toBeVisible({ timeout: 15000 });
+    await platformButton.check();
   });
 
   test('should show write mode selector for Confluence', async ({ page }) => {
@@ -23,18 +40,18 @@ test.describe('Write Mode Selector', () => {
     
     await expect(appendOption).toBeChecked();
     
-    await overwriteOption.click();
+    await overwriteOption.check();
     await expect(overwriteOption).toBeChecked();
     await expect(appendOption).not.toBeChecked();
     
-    await appendOption.click();
+    await appendOption.check();
     await expect(appendOption).toBeChecked();
     await expect(overwriteOption).not.toBeChecked();
   });
 
   test('should show warning for overwrite mode', async ({ page }) => {
     const overwriteOption = page.locator('#writeMode-overwrite');
-    await overwriteOption.click();
+    await overwriteOption.check();
     
     await expect(page.getByText(/you will be asked to confirm before replacing content/i)).toBeVisible();
   });

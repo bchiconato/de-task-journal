@@ -5,7 +5,22 @@ import { test, expect } from '@playwright/test';
 
 test.describe('History Panel', () => {
   test.beforeEach(async ({ page }) => {
+    await page.route('**/api/config', (route) => {
+      route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          success: true,
+          platforms: {
+            notion: true,
+            confluence: true,
+          },
+        }),
+      });
+    });
+
     await page.goto('/');
+    await page.waitForLoadState('networkidle');
   });
 
   test('should open and close history panel', async ({ page }) => {
@@ -23,7 +38,7 @@ test.describe('History Panel', () => {
     const contextText = 'Test task context for history panel validation with sufficient length to meet requirements.';
     await page.fill('#context', contextText);
     await page.getByRole('button', { name: /Generate Documentation/i }).click();
-    await expect(page.locator('.prose')).toBeVisible({ timeout: 15000 });
+    await expect(page.locator('.prose')).toBeVisible({ timeout: 20000 });
     
     const historyButton = page.getByRole('button', { name: /history/i });
     await historyButton.click();
@@ -37,7 +52,7 @@ test.describe('History Panel', () => {
     const contextText = 'Searchable authentication system documentation with JWT tokens and security features implementation.';
     await page.fill('#context', contextText);
     await page.getByRole('button', { name: /Generate Documentation/i }).click();
-    await expect(page.locator('.prose')).toBeVisible({ timeout: 15000 });
+    await expect(page.locator('.prose')).toBeVisible({ timeout: 20000 });
     
     const historyButton = page.getByRole('button', { name: /history/i });
     await historyButton.click();

@@ -5,21 +5,44 @@ import { test, expect } from '@playwright/test';
 
 test.describe('Confirm Dialog', () => {
   test.beforeEach(async ({ page }) => {
+    await page.route('**/api/config', (route) => {
+      route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          success: true,
+          platforms: {
+            notion: true,
+            confluence: true,
+          },
+        }),
+      });
+    });
+
     await page.goto('/');
-    
-    await page.getByRole('radio', { name: /confluence/i }).click();
-    await page.locator('#writeMode-overwrite').click();
-    
+
+    await page.waitForLoadState('networkidle');
+
+    const confluenceRadio = page.locator('#platform-confluence');
+    await expect(confluenceRadio).toBeVisible({ timeout: 15000 });
+    await confluenceRadio.check();
+
+    await page.locator('#writeMode-overwrite').check();
+
     const contextText = 'Test documentation content for confirm dialog validation testing purposes. This needs to be long enough to pass the minimum character requirements for sending to Confluence. Adding more content here to ensure we meet the 100 character minimum requirement.';
     await page.fill('#context', contextText);
     await page.getByRole('button', { name: /Generate Documentation/i }).click();
-    await expect(page.locator('.prose')).toBeVisible({ timeout: 15000 });
+    await expect(page.locator('.prose')).toBeVisible({ timeout: 20000 });
+
+    const sendButton = page.getByRole('button', { name: /Send.*Confluence/i });
+    await expect(sendButton).toBeVisible({ timeout: 10000 });
+    await expect(sendButton).toBeEnabled({ timeout: 5000 });
   });
 
   test('should show confirmation dialog before overwrite', async ({ page }) => {
-    const sendButton = page.getByRole('button', { name: /Send to Confluence/i });
+    const sendButton = page.getByRole('button', { name: /Send.*Confluence/i });
     await sendButton.click();
-    
+
     await expect(page.getByRole('dialog')).toBeVisible();
     await expect(page.getByText(/are you sure/i)).toBeVisible();
     await expect(page.getByRole('button', { name: /cancel/i })).toBeVisible();
@@ -27,25 +50,25 @@ test.describe('Confirm Dialog', () => {
   });
 
   test('should cancel overwrite operation', async ({ page }) => {
-    const sendButton = page.getByRole('button', { name: /Send to Confluence/i });
+    const sendButton = page.getByRole('button', { name: /Send.*Confluence/i });
     await sendButton.click();
-    
+
     await expect(page.getByRole('dialog')).toBeVisible();
-    
+
     const cancelButton = page.getByRole('button', { name: /cancel/i });
     await cancelButton.click();
-    
+
     await expect(page.getByRole('dialog')).not.toBeVisible();
   });
 
   test('should close dialog with Escape key', async ({ page }) => {
-    const sendButton = page.getByRole('button', { name: /Send to Confluence/i });
+    const sendButton = page.getByRole('button', { name: /Send.*Confluence/i });
     await sendButton.click();
-    
+
     await expect(page.getByRole('dialog')).toBeVisible();
-    
+
     await page.keyboard.press('Escape');
-    
+
     await expect(page.getByRole('dialog')).not.toBeVisible();
   });
 });

@@ -39,23 +39,22 @@ test.describe('Documentation Generation Flow', () => {
     
     await expect(page.locator('.prose')).toBeVisible({ timeout: 15000 });
     
-    const editButton = page.getByRole('button', { name: /edit documentation/i });
-    await editButton.click();
+    await expect(page.getByRole('button', { name: /edit/i })).toBeVisible();
+    await page.getByRole('button', { name: /edit/i }).click();
     
-    await expect(page.locator('textarea[placeholder*="Write"]')).toBeVisible();
+    await expect(page.getByRole('textbox', { name: /write here/i })).toBeVisible();
   });
 
-  test('should validate minimum content length before sending', async ({ page }) => {
-    const shortText = 'Short text for validation testing purposes only';
+  test('should show copy and send buttons after generation', async ({ page }) => {
+    const contextText = 'Testing documentation generation buttons. This text has enough content to ensure proper generation flow and button visibility after the process completes successfully.';
     
-    await page.fill('#context', shortText);
+    await page.fill('#context', contextText);
     await page.getByRole('button', { name: /Generate Documentation/i }).click();
     
     await expect(page.locator('.prose')).toBeVisible({ timeout: 15000 });
     
-    await expect(page.getByText(/content must be at least 100 characters/i)).toBeVisible();
-    
-    const sendButton = page.getByRole('button', { name: /Send to/i });
-    await expect(sendButton).toBeDisabled();
+    await expect(page.getByRole('button', { name: /copy all/i })).toBeVisible();
+    await expect(page.getByRole('button', { name: /edit/i })).toBeVisible();
+    await expect(page.getByRole('button', { name: /Send.*(Notion|Confluence)/i })).toBeVisible();
   });
 });

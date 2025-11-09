@@ -34,7 +34,7 @@ export default defineConfig({
 
   webServer: [
     {
-      command: 'cd server && GEMINI_API_KEY= CONFLUENCE_API_KEY=mock-key CONFLUENCE_BASE_URL=https://test.atlassian.net CONFLUENCE_USER_EMAIL=test@test.com npm run dev',
+      command: 'cd server && ./test-server.sh',
       url: 'http://localhost:3001/api/health',
       reuseExistingServer: !process.env.CI,
       timeout: 120 * 1000,
