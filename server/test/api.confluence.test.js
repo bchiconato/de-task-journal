@@ -144,34 +144,31 @@ describe('Confluence API Routes', () => {
 
       expect(response.body).toHaveProperty('success', true);
       expect(response.body).toHaveProperty('platform', 'confluence');
-      expect(response.body).toHaveProperty('docMode', 'task');
+      expect(response.body).toHaveProperty('writeMode', 'append');
       expect(response.body).toHaveProperty('pageId', 'test-page-123');
       expect(response.body).toHaveProperty('version', 2);
     });
 
-    it('adds architecture prefix for architecture mode', async () => {
+    it('uses append mode by default', async () => {
       const response = await request(app)
         .post('/api/confluence')
-        .send({
-          ...validPayload,
-          mode: 'architecture',
-        })
+        .send(validPayload)
         .expect(200);
 
-      expect(response.body).toHaveProperty('docMode', 'architecture');
+      expect(response.body).toHaveProperty('writeMode', 'append');
       expect(response.body).toHaveProperty('success', true);
     });
 
-    it('adds meeting prefix for meeting mode', async () => {
+    it('respects overwrite mode when specified', async () => {
       const response = await request(app)
         .post('/api/confluence')
         .send({
           ...validPayload,
-          mode: 'meeting',
+          writeMode: 'overwrite',
         })
         .expect(200);
 
-      expect(response.body).toHaveProperty('docMode', 'meeting');
+      expect(response.body).toHaveProperty('writeMode', 'overwrite');
       expect(response.body).toHaveProperty('success', true);
     });
 
