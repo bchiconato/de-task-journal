@@ -1,4 +1,4 @@
-.PHONY: help all install lint lint-fix format check build dev test
+.PHONY: help install lint format build dev test
 
 help: ## Displays this help message.
 	@echo "Usage: make [target]"
@@ -7,8 +7,6 @@ help: ## Displays this help message.
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | \
 		sort | \
 		awk 'BEGIN {FS = ":.*?## "}; {printf "  %-12s %s\n", $$1, $$2}'
-
-all: install check ## Installs dependencies and runs all checks.
 
 install: ## Installs dependencies for both client and server.
 	@echo "Installing client dependencies..."
@@ -24,26 +22,12 @@ lint: ## Lints both client and server code.
 	@npm run lint --prefix ./server
 	@echo "✔ Linting complete."
 
-lint-fix: ## Fixes linting issues in both client and server.
-	@echo "Fixing client lint issues..."
-	@npm run lint:fix --prefix ./client
-	@echo "Fixing server lint issues..."
-	@npm run lint:fix --prefix ./server
-	@echo "✔ Lint fixing complete."
-
 format: ## Formats both client and server code.
 	@echo "Formatting client code..."
 	@npm run format --prefix ./client
 	@echo "Formatting server code..."
 	@npm run format --prefix ./server
 	@echo "✔ Formatting complete."
-
-check: lint ## Runs linting and format checks on both client and server.
-	@echo "Checking client code formatting..."
-	@npm run format:check --prefix ./client
-	@echo "Checking server code formatting..."
-	@npm run format:check --prefix ./server
-	@echo "✔ All checks passed successfully."
 
 build: ## Builds the client application.
 	@echo "Building client application..."
@@ -57,6 +41,13 @@ dev: ## Starts the development servers for both client and server.
 		cd ./client && npm run dev
 	@echo "✔ Development servers are running."
 
-test: ## Runs the entire Vitest suite across client and server.
-	@echo "Running full test suite..."
+test: ## Runs ALL tests (unit tests + E2E tests).
+	@echo "Running unit tests (client + server)..."
 	@npm test -- --run
+	@echo "✔ Unit tests complete."
+	@echo ""
+	@echo "Running E2E tests..."
+	@npx playwright test
+	@echo "✔ E2E tests complete."
+	@echo ""
+	@echo "✔ All tests passed!"
