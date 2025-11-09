@@ -1,86 +1,107 @@
 # Task Journal
 
-An AI-powered documentation generator that transforms your raw notes and task descriptions into polished technical documentation, with seamless Notion integration.
+**AI-Powered Documentation Generator for Data Engineers & Technical Teams**
+
+Transform unstructured notes, code snippets, and meeting transcripts into polished, professional technical documentation using Google Gemini AI. Export directly to Notion or Confluence with a single click.
 
 ## Table of Contents
 
 - [Overview](#overview)
-- [Features](#features)
+- [Key Features](#key-features)
 - [Tech Stack](#tech-stack)
 - [Prerequisites](#prerequisites)
-- [Installation](#installation)
+- [Installation & Setup](#installation--setup)
 - [Configuration](#configuration)
+- [Getting Started](#getting-started)
+- [Documentation Modes](#documentation-modes)
+- [API Reference](#api-reference)
 - [Development](#development)
-- [Usage](#usage)
-- [Project Structure](#project-structure)
 - [Testing](#testing)
+- [Project Structure](#project-structure)
+- [Accessibility](#accessibility)
+- [Troubleshooting](#troubleshooting)
 
 ## Overview
 
-**Task Journal** is a full-stack web application designed for data engineers, software developers, and technical professionals who need to generate comprehensive technical documentation quickly. Instead of crafting documentation from scratch, you can dump all your notes, code snippets, challenges, and learnings into a single text field, and the application uses AI to structure and format them into professional documentation.
+**Task Journal** is a full-stack web application that automates technical documentation generation for data engineering teams, software developers, and technical professionals. The application features **three documentation modes** (Task, Architecture, and Meeting) that generate structured, professional documentation in English from any language input.
 
-The application operates in two specialized modes:
+The system supports two platforms for document export:
+- **Notion**: With automatic block chunking for large documents
+- **Confluence**: With append and overwrite modes for flexible content management
 
-- **Task Mode**: For day-to-day engineering work. Submit your problem statement, solution outline, code snippets, challenges, and lessons learned—the AI synthesizes them into clear task documentation.
-- **Architecture Mode**: For systems and platform-level documentation. Provide your overview, components, data flows, design decisions, and risks—the AI structures it into comprehensive architecture documentation.
+Perfect for teams that struggle with documentation debt, meeting follow-ups, or keeping architecture records current.
 
-Once generated, documentation can be edited in-app and sent directly to your Notion workspace with automatic chunking to respect API limits.
+## Key Features
 
-## Features
+### Documentation Generation
+- **Task Mode**: Documents completed tasks with structured sections (Summary, Problem Solved, Solution Implemented, Code Highlights, Challenges & Learnings)
+- **Architecture Mode**: Creates comprehensive system documentation (Overview, Key Components, Data & Service Flow, Technology Stack, Migration Guide & Developer Workflow)
+- **Meeting Mode**: Synthesizes meeting transcripts into actionable documentation (Executive Summary, Key Decisions, Technical Context, Action Items, Open Questions & Risks)
 
-- **Dual Documentation Modes**: Task-focused and architecture-focused modes tailored to different documentation needs
-- **AI-Powered Generation**: Uses Google Gemini API to generate professional documentation from unstructured notes
-- **Notion Integration**: Send generated documentation directly to Notion with automatic large-content handling
-- **In-App Editing**: Edit generated documentation with a syntax-highlighted Markdown editor before sending
-- **Auto-Saving Drafts**: Form inputs are automatically saved to browser storage as you type
-- **Generation History**: Keep track of your 50 most recent generated documents with one-click restoration
-- **Accessible UI**: WCAG-compliant interface with keyboard navigation, screen reader support, and reduced-motion support
-- **Responsive Design**: Fully responsive two-column layout for desktop and mobile
-- **Real-Time Feedback**: Toast notifications and live announcements for user actions and system status
+### Platform Integration
+- **Notion Export**: Direct page integration with automatic block chunking (100 blocks per request)
+- **Confluence Export**: Support for both append and overwrite modes with visual warnings
+- **Dynamic Platform Selection**: Automatically detects and displays configured platforms
+
+### User Experience
+- **AI-Powered**: Google Gemini API generates professional documentation
+- **In-App Editor**: Live markdown preview and edit capabilities before export
+- **Browser Persistence**: Auto-saves form drafts every 500ms to localStorage
+- **Generation History**: Restore up to 50 past documentations with searchable history panel
+- **Page Search**: Debounced search with caching for Confluence and Notion pages
+
+### Quality & Accessibility
+- **WCAG 2.1 Compliant**: Fully accessible with keyboard navigation, ARIA labels, and screen reader support
+- **Reduced Motion Support**: Respects user preferences for animations
+- **Responsive Design**: Optimized for desktop and mobile experiences
+- **Error Boundaries**: Graceful error handling with user-friendly messages
 
 ## Tech Stack
 
 ### Frontend
-- **React 19** — Modern UI framework with hooks and concurrent features
-- **Vite** — Fast build tool and development server
-- **Tailwind CSS** — Utility-first CSS framework for styling
-- **React Markdown & React Syntax Highlighter** — Markdown rendering and syntax highlighting
-- **Lucide React** — Lightweight icon library
-- **Vitest & Testing Library** — Testing framework and utilities
-- **MSW (Mock Service Worker)** — API mocking for tests
+- **React 19.1.1** — Modern UI with hooks and concurrent rendering
+- **Vite 7.1.7** — Lightning-fast build tool and dev server
+- **Tailwind CSS 3.4.18** — Utility-first CSS framework with typography plugin
+- **React Markdown 9.0.0** — Markdown rendering
+- **React Syntax Highlighter 15.5.0** — Code block syntax highlighting
+- **Lucide React 0.552.0** — Icon library
+- **Vitest 2.1.9** — Unit testing framework
+- **@testing-library/react 16.3.0** — React component testing
+- **@playwright/test 1.56.1** — End-to-end testing (root level)
 
 ### Backend
-- **Node.js & Express** — Server runtime and HTTP framework
-- **Google Gemini API** — Large language model for documentation generation
-- **Notion API** — Integration for sending documentation to Notion
-- **Vitest** — Testing framework for backend tests
-- **Zod** — Schema validation library
+- **Node.js ^20.18.0** — JavaScript runtime
+- **Express 5.1.0** — Web framework
+- **@notionhq/client 5.3.0** — Official Notion SDK
+- **Zod 4.1.12** — Schema validation and type safety
+- **Helmet 8.1.0** — Security middleware
+- **express-rate-limit 8.1.0** — Rate limiting
+- **dotenv 17.2.3** — Environment variable management
+- **Vitest 2.1.8** — Unit testing
+- **MSW 2.11.6** — Mock Service Worker for API mocking
+- **Supertest 7.1.4** — HTTP assertion testing
 
-### DevOps & Build
-- **Makefile** — Build automation and script orchestration
-- **ESLint** — Code linting and quality checks
-- **Prettier** — Code formatting
+### DevOps
+- **GitHub Actions** — CI/CD pipeline (lint, test, E2E)
+- **Makefile** — Build automation and development commands
+- **ESLint & Prettier** — Code quality and formatting
+- **Playwright** — Cross-browser E2E testing
 
 ## Prerequisites
 
-Before you get started, ensure you have the following installed on your system:
+Before you begin, ensure you have:
 
-- **Node.js** — Version 18.x or higher (check with `node --version`)
-- **npm** — Version 9.x or higher (check with `npm --version`)
-- **Make** — Optional but recommended for running commands (check with `make --version`)
+- **Node.js**: v20.18.0 or higher
+- **npm**: v9.x or higher
+- **Make**: Recommended (optional, can run commands manually)
+- **API Keys**:
+  - **Google Gemini API Key**: [Get it here](https://aistudio.google.com/app/apikey)
+  - **Notion Integration Token**: [Create integration](https://www.notion.so/my-integrations) (optional)
+  - **Confluence Domain & API Token**: [Generate API token](https://id.atlassian.com/manage-profile/security/api-tokens) (optional)
 
-### API Keys Required
+**At least one platform (Notion or Confluence) must be configured.**
 
-1. **Google Gemini API Key** — For AI-powered documentation generation
-   - Sign up at [Google AI Studio](https://makersuite.google.com/app/apikey)
-   - Create a new API key
-
-2. **Notion API Key & Database Access** — For Notion integration
-   - Create an integration at [Notion Developers](https://www.notion.so/my-integrations)
-   - Copy your internal integration token
-   - Share target Notion pages with your integration (click "Share" → "Invite" → select integration)
-
-## Installation
+## Installation & Setup
 
 ### 1. Clone the Repository
 
@@ -91,385 +112,261 @@ cd de-task-journal
 
 ### 2. Install Dependencies
 
+Using Make (recommended):
 ```bash
 make install
 ```
 
-This command installs dependencies for both the client and server:
-
+Or manually:
 ```bash
-npm install --prefix ./client
-npm install --prefix ./server
+npm install
+cd client && npm install && cd ..
+cd server && npm install && cd ..
 ```
 
-### 3. Set Up Environment Variables
-
-#### Server Configuration
+### 3. Configure Environment Variables
 
 Create a `.env` file in the `server/` directory:
 
 ```bash
-# Google Gemini API Configuration
-GEMINI_API_KEY=your-gemini-api-key-here
+# Required
+GEMINI_API_KEY=your-google-gemini-api-key
+GEMINI_MODEL=gemini-2.0-flash-exp
 
-# Notion API Configuration
+# Notion Integration (optional, but recommended)
 NOTION_API_KEY=your-notion-integration-token
-NOTION_PAGE_ID=your-default-notion-page-id-optional
+
+# Confluence Integration (optional)
+CONFLUENCE_DOMAIN=your-company.atlassian.net
+CONFLUENCE_USER_EMAIL=your-email@company.com
+CONFLUENCE_API_TOKEN=your-confluence-api-token
 
 # Server Configuration
 PORT=3001
 NODE_ENV=development
 ```
 
-#### Client Configuration
-
-No environment variables are required for the client in development. The client communicates with the backend server.
-
-### 4. Verify Installation
+**Optional Client Configuration** (`.env` in `client/` directory):
 
 ```bash
-make build
+VITE_API_BASE=/api
 ```
 
-This will build the client application and verify everything is set up correctly.
+### 4. Set Up Notion Integration (Optional)
+
+1. Go to [Notion Developers](https://www.notion.so/my-integrations)
+2. Create a new integration and copy the API token
+3. Share target Notion pages with your integration
+4. Paste the token into your `.env` file
+
+### 5. Set Up Confluence Integration (Optional)
+
+1. Generate an API token at [Atlassian Account Settings](https://id.atlassian.com/manage-profile/security/api-tokens)
+2. Configure `CONFLUENCE_DOMAIN`, `CONFLUENCE_USER_EMAIL`, and `CONFLUENCE_API_TOKEN` in `.env`
 
 ## Configuration
 
-### Notion Integration Setup
+### Platform Availability
 
-1. **Create a Notion Integration**
-   - Go to [Notion Developers](https://www.notion.so/my-integrations)
-   - Click "New integration"
-   - Name it "Task Journal"
-   - Copy the integration token (this is your `NOTION_API_KEY`)
+The application automatically detects which platforms are configured:
 
-2. **Share Pages with the Integration**
-   - Open each Notion page you want to use
-   - Click the "Share" button (top-right)
-   - Click "Invite"
-   - Select your "Task Journal" integration
-   - Ensure it has "Insert content" permissions
+| Configuration | Notion Available | Confluence Available | UI Behavior |
+|---|---|---|---|
+| Only `NOTION_API_KEY` set | ✅ Yes | ❌ No | Notion auto-selected |
+| Only Confluence env vars set | ❌ No | ✅ Yes | Confluence auto-selected |
+| Both configured | ✅ Yes | ✅ Yes | Platform selector shown |
+| Neither configured | ❌ No | ❌ No | Error message displayed |
 
-3. **Set Default Page (Optional)**
-   - Add `NOTION_PAGE_ID` to your `.env` file
-   - This page will be pre-selected when the app loads
+### Gemini Model Selection
 
-### Google Gemini API Configuration
+Configure which Gemini model to use via `GEMINI_MODEL`:
 
-1. **Generate API Key**
-   - Visit [Google AI Studio](https://makersuite.google.com/app/apikey)
-   - Click "Create API Key"
-   - Copy the key and add it to `.env` as `GEMINI_API_KEY`
+```bash
+GEMINI_MODEL=gemini-2.0-flash-exp  # Default (recommended)
+GEMINI_MODEL=gemini-pro-vision
+GEMINI_MODEL=gemini-1.5-pro
+```
 
-2. **Rate Limits**
-   - Free tier: 60 requests per minute
-   - Paid tier: Up to 1,000 requests per minute
-   - Adjust usage according to your plan
+### Rate Limiting
 
-## Development
+Express rate limit is configured to **200 requests per 15 minutes per IP**. Adjust in `server/src/app.js` if needed.
 
-### Start Development Servers
+## Getting Started
+
+### Development Mode
+
+Start both backend and frontend with hot reload:
 
 ```bash
 make dev
 ```
 
-This command starts both the backend and frontend development servers:
+Or manually:
+```bash
+# Terminal 1 - Backend (port 3001)
+cd server && npm run dev
 
-- **Backend**: http://localhost:3001 (Express server with hot-reload)
-- **Frontend**: http://localhost:5173 (Vite dev server with hot-reload)
+# Terminal 2 - Frontend (port 5173)
+cd client && npm run dev
+```
 
-The frontend will automatically connect to the backend API.
+Visit **http://localhost:5173** in your browser.
 
-### Available Development Commands
+### Production Build
+
+Build the client for production:
 
 ```bash
-# Install dependencies
-make install
-
-# Lint code in client and server
-make lint
-
-# Fix linting issues
-make lint-fix
-
-# Format code
-make format
-
-# Check formatting without making changes
-make check
-
-# Build the client for production
 make build
-
-# Run the full test suite
-make test
-
-# Run linting, format checks, and build
-make all
 ```
 
-### Development Workflow
+Output will be in `client/dist/`. Deploy the backend separately using your preferred Node.js hosting.
 
-1. **Frontend Development**: The Vite dev server supports Hot Module Replacement (HMR)—changes are reflected instantly without refreshing
-2. **Backend Development**: Express server restarts automatically on file changes
-3. **Testing**: Run `make test` to execute the full Vitest suite across both client and server
-
-### Project Structure
-
-```
-de-task-journal/
-├── client/                          # React frontend application
-│   ├── public/                      # Static assets
-│   ├── src/
-│   │   ├── components/              # Reusable React components
-│   │   │   ├── AppErrorBoundary.jsx # Error boundary for error handling
-│   │   │   ├── GeneratedContent.jsx # Markdown preview and editor
-│   │   │   ├── InputForm.jsx        # Form for collecting documentation inputs
-│   │   │   ├── ModeToggle.jsx       # Task/Architecture mode switcher
-│   │   │   ├── Toast.jsx            # Toast notifications
-│   │   │   └── Guide.jsx            # In-app help guide
-│   │   ├── hooks/                   # Custom React hooks
-│   │   │   ├── useAbortableRequest.js  # Abort controller management
-│   │   │   ├── useAnnouncer.js         # Live region announcements
-│   │   │   └── useToast.js             # Toast state management
-│   │   ├── utils/
-│   │   │   ├── api.js              # API client functions
-│   │   │   └── validation.js       # Form validation logic
-│   │   ├── styles/                 # Global and component styles
-│   │   ├── App.jsx                 # Main application component
-│   │   ├── main.jsx                # React entry point
-│   │   └── index.css               # Global styles
-│   ├── test/                       # Frontend tests
-│   │   ├── setup.js                # Vitest configuration
-│   │   ├── msw.js                  # API mocking setup
-│   │   └── *.test.jsx              # Component tests
-│   ├── package.json                # Frontend dependencies
-│   ├── vite.config.js              # Vite configuration
-│   ├── vitest.config.js            # Vitest configuration
-│   └── tailwind.config.cjs         # Tailwind CSS configuration
-├── server/                         # Express backend application
-│   ├── src/
-│   │   ├── config/
-│   │   │   └── index.js           # Environment and config management
-│   │   ├── middleware/
-│   │   │   ├── validate.js        # Request validation middleware
-│   │   │   └── errors.js          # Error handling middleware
-│   │   ├── schemas/
-│   │   │   ├── generate.js        # Zod schema for /generate endpoint
-│   │   │   └── notion.js          # Zod schema for /notion endpoint
-│   │   ├── services/
-│   │   │   └── notion/
-│   │   │       ├── client.js      # Notion API client
-│   │   │       ├── markdown.js    # Markdown-to-Notion conversion
-│   │   │       ├── search.js      # Notion page search utilities
-│   │   │       └── config.js      # Notion configuration
-│   │   ├── lib/
-│   │   │   └── http.js            # HTTP utilities (fetch with retry)
-│   │   ├── routes.js              # API route definitions
-│   │   └── app.js                 # Express app setup
-│   ├── services/
-│   │   └── geminiService.js       # Google Gemini API integration
-│   ├── routes/
-│   │   ├── generate.js            # POST /api/generate endpoint
-│   │   └── notion.js              # POST /api/notion endpoint
-│   ├── test/                      # Backend tests
-│   │   ├── setup.js               # Vitest configuration
-│   │   └── *.test.js              # API and service tests
-│   ├── index.js                   # Server entry point
-│   ├── package.json               # Backend dependencies
-│   └── vitest.config.js           # Vitest configuration
-├── scripts/
-│   ├── run-eslint.mjs             # ESLint runner
-│   └── run-format.mjs             # Prettier formatter runner
-├── Makefile                       # Build and development automation
-├── package.json                   # Monorepo root package.json
-└── README.md                      # This file
-```
-
-## Usage
-
-### Starting the Application
-
-1. **Ensure servers are running**:
-   ```bash
-   make dev
-   ```
-   This starts both the backend (port 3001) and frontend (port 5173) servers.
-
-2. **Open your browser**:
-   Navigate to http://localhost:5173
-
-### Generating Documentation
-
-#### Step 1: Select Your Documentation Mode
-
-Click the **"Task"** or **"Architecture"** tab in the header to switch between modes:
-
-- **Task Mode**: For individual tasks, tickets, and day-to-day work
-- **Architecture Mode**: For systems, platforms, and high-level designs
-
-#### Step 2: Select a Notion Target Page
-
-Use the **"Notion Target"** dropdown to select where you want the documentation sent. The list is populated with pages your Notion integration has access to.
-
-> **Tip**: If the dropdown is empty, ensure you've shared the target Notion pages with your integration (see Configuration).
-
-#### Step 3: Fill Out the Context Field
-
-Paste all your notes, code snippets, and information into the single **"Context"** text field. The AI handles the separation and structuring automatically.
-
-**Example for Task Mode**:
-```
-# Task Overview
-We needed to implement a caching layer for user profile data
-
-# Problem
-Response times were slow due to repeated database queries
-
-# Solution Implemented
-Used Redis with a 5-minute TTL for profile cache
-
-# Code
-const redis = require('redis');
-const client = redis.createClient();
-
-async function getProfile(userId) {
-  const cached = await client.get(`profile:${userId}`);
-  if (cached) return JSON.parse(cached);
-  
-  const profile = await db.getProfile(userId);
-  await client.setex(`profile:${userId}`, 300, JSON.stringify(profile));
-  return profile;
-}
-
-# Challenges
-Memory usage spiked initially—resolved by implementing LRU eviction
-```
-
-#### Step 4: Generate Documentation
-
-Click the **"Generate Documentation"** button. The AI will process your input and generate professional documentation in the right panel.
-
-#### Step 5: Edit (Optional)
-
-Click the **"Edit"** button to modify the generated Markdown directly. Click **"Save"** to return to the preview.
-
-#### Step 6: Send to Notion
-
-Click **"Send to Notion"** to push the documentation to your selected Notion page. The system automatically handles large documents by splitting them into Notion-compatible chunks.
-
-### Using History
-
-Click the **"Clock"** icon in the header to view your 50 most recent generated documents:
-
-- **Click an item** to restore its documentation and inputs
-- **Click the ×** to remove an item from history
-- **Click "Clear"** to clear the entire history
-
-All history is stored locally in your browser.
-
-## Testing
-
-### Run All Tests
+### Makefile Commands
 
 ```bash
-make test
+make install       # Install all dependencies
+make dev          # Start development servers
+make build        # Build client for production
+make lint         # Run ESLint on both client and server
+make format       # Auto-format code with Prettier
+make test         # Run all tests (unit + E2E)
+make clean        # Remove dependencies and artifacts
 ```
 
-This runs the complete Vitest suite for both client and server components.
+## Documentation Modes
 
-### Run Tests for Specific Packages
+### Task Documentation Mode
 
-```bash
-# Frontend tests only
-npm test --prefix ./client -- --run
+Ideal for documenting completed tickets, bugfixes, or daily engineering work.
 
-# Backend tests only
-npm test --prefix ./server -- --run
-```
+**Input**: Paste unstructured notes, code snippets, challenges, and lessons.
 
-### Test Organization
+**Output Structure**:
+1. **Summary** — 1-2 sentence overview
+2. **Problem Solved** — Business or technical problem addressed
+3. **Solution Implemented** — Technical approach and decisions
+4. **Code Highlights** — Key code snippets with explanations
+5. **Challenges & Learnings** — Obstacles, mitigations, and insights
 
-- **Frontend Tests**: Located in `client/test/`
-  - Component tests with React Testing Library
-  - Hook tests with Vitest
-  - Accessibility tests with jest-axe
-  - API mocking with MSW
+### Architecture Documentation Mode
 
-- **Backend Tests**: Located in `server/test/`
-  - API endpoint integration tests
-  - Service layer tests
-  - Notion integration tests with snapshots
-  - HTTP utility tests (retry logic, timeouts)
+Perfect for documenting system design, migrations, or component architecture.
 
-## Code Quality
+**Input**: Paste system overview, components, data flows, decisions, risks, and technical context.
 
-### Linting and Formatting
+**Output Structure**:
+1. **Overview** — System purpose and business context
+2. **Key Components** — Services/modules and responsibilities
+3. **Data & Service Flow** — Runtime interaction and data movement
+4. **Technology Stack** — Technologies, frameworks, and infrastructure
+5. **Migration Guide & Developer Workflow** — Setup steps and developer how-to
 
-```bash
-# Lint code
-make lint
+### Meeting Documentation Mode
 
-# Fix linting issues
-make lint-fix
+Extract actionable documentation from meeting transcripts (supports Portuguese/English mix).
 
-# Format code
-make format
+**Input**: Paste meeting transcript or notes (multilingual supported).
 
-# Check formatting without changes
-make check
-```
+**Output Structure**:
+1. **Meeting Record** — Topic-focused title
+2. **Executive Summary** — 3-5 sentence overview and sentiment
+3. **Key Decisions & Definitions** — Explicit agreements made
+4. **Technical Context Extracted** — Technologies and architectural items discussed
+5. **Action Items & Next Steps** — Tasks with inferred owners and deadlines
+6. **Open Questions & Risks** — Unresolved items and potential problems
 
-### Tools Used
-
-- **ESLint** — JavaScript linting with React hooks and accessibility plugins
-- **Prettier** — Code formatting for consistency
-- **Tailwind CSS** — Utility-first CSS for maintainable styles
-
-## Accessibility
-
-The application prioritizes accessibility and follows WCAG 2.1 guidelines:
-
-- **Keyboard Navigation**: All interactive elements are keyboard accessible
-- **Screen Reader Support**: Proper ARIA labels, live regions, and semantic HTML
-- **Focus Management**: Clear focus indicators and logical tab order
-- **Reduced Motion**: Respects `prefers-reduced-motion` media query
-- **Color Contrast**: Meets WCAG AA standards
-- **Error Messages**: Clear, accessible error handling
+**Special Features**:
+- Filters conversational filler automatically
+- Differentiates decisions from suggestions
+- Attempts owner inference from speaker context
+- Outputs in English regardless of input language
 
 ## API Reference
 
-### POST /api/generate
+### Platform Configuration
 
-Generates technical documentation using the Gemini API.
+```
+GET /api/config
+```
+
+Returns which platforms are available based on environment configuration.
+
+**Response**:
+```json
+{
+  "success": true,
+  "platforms": {
+    "notion": true,
+    "confluence": false
+  }
+}
+```
+
+### Generate Documentation
+
+```
+POST /api/generate
+```
+
+Generates documentation based on mode and context input.
 
 **Request Body**:
 ```json
 {
-  "context": "string (required, minimum 50 characters)",
-  "mode": "task|architecture (optional, defaults to 'task')"
+  "mode": "task|architecture|meeting",
+  "context": "Unstructured input (min 10 chars)"
 }
 ```
 
 **Response**:
 ```json
 {
-  "documentation": "string (markdown formatted)"
+  "documentation": "# Generated Markdown\n\n## Section 1\n...",
+  "mode": "task"
 }
 ```
 
-### POST /api/notion
+**Status Codes**:
+- `200` — Success
+- `400` — Invalid input or validation error
+- `500` — Server error
 
-Sends documentation to a Notion page.
+### Notion Pages
+
+```
+GET /api/notion/pages
+```
+
+Lists all Notion pages shared with the integration.
+
+**Response**:
+```json
+{
+  "success": true,
+  "pages": [
+    {
+      "id": "12345678-1234-1234-1234-123456789012",
+      "title": "Engineering Notes"
+    }
+  ]
+}
+```
+
+### Export to Notion
+
+```
+POST /api/notion
+```
+
+Appends documentation blocks to a Notion page.
 
 **Request Body**:
 ```json
 {
-  "content": "string (required, markdown formatted)",
-  "pageId": "string (optional if using NOTION_PAGE_ID)",
-  "title": "string (optional, for creating new page)",
-  "mode": "task|architecture (optional)"
+  "content": "# Markdown Documentation\n\n...",
+  "pageId": "12345678-1234-1234-1234-123456789012",
+  "mode": "task"
 }
 ```
 
@@ -482,44 +379,391 @@ Sends documentation to a Notion page.
 }
 ```
 
-## Environment Variables
+### Search Confluence Pages
 
-### Server `.env` File
+```
+GET /api/confluence/pages?search=query&limit=50
+```
+
+Searches Confluence pages by title or content.
+
+**Query Parameters**:
+- `search` (optional): Search term
+- `limit` (optional, default: 50, max: 200): Result limit
+
+**Response**:
+```json
+{
+  "success": true,
+  "pages": [
+    {
+      "id": "12345",
+      "title": "Architecture Overview",
+      "spaceKey": "ENG"
+    }
+  ],
+  "count": 1,
+  "query": "architecture",
+  "limit": 50
+}
+```
+
+### Export to Confluence
+
+```
+POST /api/confluence
+```
+
+Exports documentation to a Confluence page (append or overwrite).
+
+**Request Body**:
+```json
+{
+  "content": "# Markdown Documentation\n\n...",
+  "pageId": "12345",
+  "mode": "task",
+  "writeMode": "append|overwrite"
+}
+```
+
+**Response**:
+```json
+{
+  "success": true,
+  "platform": "confluence",
+  "writeMode": "append",
+  "message": "Content appended successfully",
+  "pageId": "12345",
+  "version": 5
+}
+```
+
+## Development
+
+### Project Structure
+
+```
+de-task-journal/
+├── client/                          # React frontend
+│   ├── src/
+│   │   ├── components/             # Reusable React components
+│   │   ├── hooks/                  # Custom React hooks
+│   │   ├── utils/                  # Helper functions (API, validation)
+│   │   ├── styles/                 # Global and component styles
+│   │   ├── App.jsx                 # Main application component
+│   │   └── main.jsx                # Entry point
+│   ├── test/                       # Unit and component tests
+│   ├── vite.config.js              # Vite build configuration
+│   ├── vitest.config.js            # Vitest configuration
+│   └── package.json
+│
+├── server/                          # Node.js/Express backend
+│   ├── src/
+│   │   ├── app.js                  # Express app setup
+│   │   ├── routes.js               # Route aggregator
+│   │   ├── config/                 # Configuration and env validation
+│   │   ├── middleware/             # Custom middleware (validation, errors)
+│   │   ├── lib/                    # Utility libraries (HTTP, retry)
+│   │   ├── schemas/                # Zod request schemas
+│   │   └── services/               # Business logic (Gemini, Notion, Confluence)
+│   ├── routes/                     # API route handlers
+│   ├── test/                       # Unit and integration tests
+│   ├── index.js                    # Application entry point
+│   ├── vitest.config.js            # Vitest configuration
+│   └── package.json
+│
+├── e2e/                             # Playwright E2E tests
+│   ├── accessibility.spec.js
+│   ├── confirm-dialog.spec.js
+│   ├── documentation-flow.spec.js
+│   ├── history-panel.spec.js
+│   └── write-mode-selector.spec.js
+│
+├── .github/workflows/               # CI/CD pipelines
+│   └── ci.yml
+│
+├── .claude/                         # Claude AI assistant configs
+│   ├── CLAUDE.md                   # Development guidelines
+│   ├── agents/                     # AI agents for tasks
+│   └── settings.json               # Permissions
+│
+├── Makefile                         # Build automation
+├── playwright.config.js             # Playwright configuration
+├── vitest.workspace.js              # Monorepo test workspace
+├── package.json                     # Root package dependencies
+└── README.md                        # This file
+```
+
+### Key Backend Patterns
+
+**Service-Oriented Architecture**: Business logic is organized in modular services:
+- `server/src/services/gemini/` — AI documentation generation
+- `server/src/services/notion/` — Notion API integration
+- `server/src/services/confluence/` — Confluence API integration
+
+**Middleware Stack**:
+- Request validation via Zod schemas
+- Error handling with terminal middleware
+- Rate limiting and security headers
+- CORS support
+
+**HTTP Resilience**:
+- `fetchWithRetry()` with exponential backoff (12s timeout, 3 attempts)
+- Automatic retry on 429 (rate limit) and 5xx errors
+- Used by all external API calls
+
+### Key Frontend Patterns
+
+**Component Architecture**:
+- Function components with React hooks
+- Reusable UI components in `client/src/components/`
+- Custom hooks for cross-cutting concerns (`useToast`, `usePageSearch`, `useAbortableRequest`)
+
+**State Management**:
+- React `useState` for component-level state
+- Context API for toast notifications and screen reader announcements
+- localStorage for persistence (form drafts, selected page, history)
+
+**Data Flow**:
+1. User selects mode and platform
+2. Form validates and auto-saves
+3. User clicks Generate → API call to `/api/generate`
+4. Generated markdown displayed in editor
+5. User selects target page (debounced search)
+6. User clicks Send → API call to `/api/notion` or `/api/confluence`
+
+## Testing
+
+### Unit Tests
+
+Run all unit tests:
 
 ```bash
-# Required
-GEMINI_API_KEY=your-google-gemini-api-key
-NOTION_API_KEY=your-notion-integration-token
-
-# Optional
-NOTION_PAGE_ID=default-page-id-for-sending-docs
-PORT=3001
-NODE_ENV=development
+npm run test:run
 ```
+
+Watch mode (auto-reload on changes):
+
+```bash
+npm run test:watch
+```
+
+With coverage:
+
+```bash
+npm run test:coverage
+```
+
+### Test Organization
+
+**Frontend** (`client/test/`):
+- Component tests (ConfirmDialog, GeneratedContent, HistoryPanel, InputForm, Toast, WriteModeSelector)
+- Hook tests (useAbortableRequest, useToast)
+- Accessibility tests with jest-axe
+
+**Backend** (`server/test/`):
+- API endpoint tests (config, generate, notion, confluence)
+- Service tests (Notion markdown conversion, HTTP retry logic)
+- Integration tests with MSW mocking
+
+### E2E Tests
+
+Run Playwright E2E tests:
+
+```bash
+npx playwright test
+```
+
+Interactive mode:
+
+```bash
+npx playwright test --ui
+```
+
+With browser visible:
+
+```bash
+npx playwright test --headed
+```
+
+**Test Coverage** (`e2e/`):
+- Accessibility (keyboard navigation, ARIA attributes)
+- Confirm Dialog (appearance, escape key, cancel/confirm)
+- Documentation generation flow (all three modes)
+- History Panel (search, filters, item removal)
+- Write Mode Selector (mode switching, warnings)
+
+### GitHub Actions CI/CD
+
+The repository includes automated testing on every push to `main`:
+
+1. **Lint & Format Check** — ESLint and Prettier validation
+2. **Unit Tests** — Vitest (runs in parallel with lint)
+3. **E2E Tests** — Playwright (only after unit tests pass)
+
+All jobs must pass for CI to succeed.
+
+## Project Structure Details
+
+### Client Components
+
+**Form & Input**:
+- `InputForm.jsx` — Main form with unified context field and auto-save
+- `PlatformSelector.jsx` — Dynamic platform selection (Notion/Confluence)
+- `PageSearchSelector.jsx` — Searchable page selector with debounce
+- `WriteModeSelector.jsx` — Confluence write mode selector (append/overwrite)
+
+**Output & Interaction**:
+- `GeneratedContent.jsx` — Markdown preview and editor (lazy-loaded)
+- `HistoryPanel.jsx` — Searchable history with filters
+- `ConfirmDialog.jsx` — Modal for destructive action confirmation
+- `ModeToggle.jsx` — Documentation mode switcher (tab navigation)
+
+**Utilities & Support**:
+- `AppErrorBoundary.jsx` — Error boundary for graceful error handling
+- `LoadingSpinner.jsx` — Loading indicator with ARIA live region
+- `Toast.jsx` — Notification system
+- `LiveAnnouncer.jsx` — Screen reader announcements
+- `CharacterCounter.jsx` — Text length display
+- `Guide.jsx` — In-app help and onboarding
+
+### Server Routes
+
+**API Endpoints** (mounted under `/api`):
+- `routes/config.js` — Platform availability check
+- `routes/generate.js` — Documentation generation
+- `routes/notion.js` — Notion integration (export & page listing)
+- `routes/confluence.js` — Confluence integration (export & page search)
+
+### Services
+
+**Gemini Service** (`server/src/services/gemini/`):
+- Direct REST API calls (no SDK)
+- Mode-aware prompts and system instructions
+- Configurable model via `GEMINI_MODEL` env var
+- Mock mode support when API key is unavailable
+
+**Notion Service** (`server/src/services/notion/`):
+- **markdown.js** — Markdown to Notion block conversion
+- **client.js** — Notion API operations
+- **index.js** — Client initialization and retry logic
+- **config.js** — Constants and limits (100 blocks per request)
+- **search.js** — Page search and listing
+
+**Confluence Service** (`server/src/services/confluence/`):
+- **markdown.js** — Markdown to Confluence Storage Format conversion
+- **client.js** — REST API operations (append/overwrite)
+- **index.js** — Service exports
+- **config.js** — API version and configuration
+- **search.js** — Page search functionality
+
+## Accessibility
+
+The application is fully compliant with **WCAG 2.1 Level AA** standards:
+
+### Keyboard Navigation
+- Tab through all interactive elements
+- Escape to close modals and panels
+- Arrow keys for tab navigation and option selection
+- Home/End keys in tabbed interfaces
+
+### Screen Readers
+- Semantic HTML with ARIA labels
+- Live regions for status announcements (`useAnnouncer` hook)
+- Form validation messages announced to assistive tech
+- Focus management in modals
+
+### Visual
+- Minimum 4.5:1 color contrast ratio for text
+- Focus indicators visible on all interactive elements
+- Reduced motion CSS respects `prefers-reduced-motion` media query
+- Readable font sizes and line heights
+
+### Assistive Technology
+- Compatible with NVDA, JAWS, and VoiceOver
+- Proper heading hierarchy
+- Form labels linked to inputs
+- Error messages explicitly associated with fields
 
 ## Troubleshooting
 
-### Notion Integration Issues
+### Platform Configuration Issues
 
-**Problem**: "No pages available" in the dropdown
-- **Solution**: Ensure the Notion integration is shared with the target pages (Share → Invite → Select integration)
+**No platforms appear in the UI**:
+1. Check `GET /api/config` response in browser DevTools
+2. Verify environment variables are set in `server/.env`
+3. Ensure `server/index.js` has `import 'dotenv/config'` as the first line
+4. Restart the backend server
 
-**Problem**: "Failed to send to Notion"
-- **Solution**: Verify `NOTION_API_KEY` is correct and the integration has "Insert content" permissions
+**"Unauthorized" errors with Notion**:
+- Verify page is shared with the integration in Notion UI
+- Check `NOTION_API_KEY` is valid (regenerate at notion.so/my-integrations if needed)
+- Ensure correct page ID format (UUID)
+
+**Confluence authentication fails**:
+- Verify `CONFLUENCE_DOMAIN` format (e.g., `company.atlassian.net`, not a full URL)
+- Check API token validity at atlassian.com/manage-profile
+- Ensure user email matches Atlassian account
+- Verify page permissions (user must have edit access)
 
 ### Generation Issues
 
-**Problem**: Generation times out
-- **Solution**: Ensure `GEMINI_API_KEY` is valid and you haven't exceeded rate limits
-- **Solution**: Reduce the amount of context (aim for under 10,000 characters)
+**Empty or incorrect documentation**:
+- Ensure context field has at least 10 characters
+- Check that input is not just whitespace
+- Try simplifying context or providing more specific details
+- Verify `GEMINI_API_KEY` is valid and has quota
 
-**Problem**: Empty or incomplete documentation
-- **Solution**: Ensure the context field has at least 50 characters of meaningful content
+**Timeout errors**:
+- Check internet connection
+- Verify API key quota (Google Gemini rate limits apply)
+- Try with shorter context
+- Check server logs for detailed error messages
+
+**Wrong language in output**:
+- Verify model supports system instructions (default `gemini-2.0-flash-exp` does)
+- Check that `systemInstruction` is in API request
+- Restart generation with clearer English instructions
+
+### Notion Export Issues
+
+**429 (Rate Limit) errors**:
+- Notion API rate limit hit; implementation automatically retries with backoff
+- Check Notion service logs for detailed errors
+- Consider spreading requests over time
+
+**"100-block limit" hit**:
+- This is handled automatically by chunking logic
+- Chunks are sent sequentially with 100ms throttle
+- If issues persist, check block structure in generated markdown
+
+### Confluence Export Issues
+
+**Page not found**:
+- Verify page ID is correct
+- Ensure page is accessible to authenticated user
+- Check page still exists in Confluence
+
+**Overwrite confirmation dialog doesn't appear**:
+- Ensure `writeMode` is set to `overwrite` in request
+- Check browser console for JavaScript errors
+- Try refreshing the page
 
 ### Development Issues
 
-**Problem**: Port 3001 or 5173 already in use
-- **Solution**: Kill existing processes or change ports in configuration files
+**Hot reload not working**:
+- Ensure both `npm run dev` servers are running
+- Clear browser cache (Ctrl+Shift+R or Cmd+Shift+R)
+- Check for console errors in DevTools
 
-**Problem**: Dependencies fail to install
-- **Solution**: Delete `node_modules/` and `package-lock.json`, then run `make install` again
+**Tests failing**:
+1. Ensure dependencies are installed: `npm install`
+2. Verify Node.js version: `node --version` (should be ^20.18.0)
+3. Run `npm run test:run` to see detailed errors
+4. Check that no other service is running on ports 3001/5173
+
+**CORS errors**:
+- Backend must run on port 3001
+- Frontend must run on port 5173
+- CORS is enabled in `server/src/app.js`
+- Check `VITE_API_BASE` in `client/.env` (defaults to `/api`)
