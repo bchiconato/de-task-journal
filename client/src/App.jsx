@@ -1,7 +1,8 @@
-import { useState, useEffect, useRef, lazy, Suspense } from 'react';
+import { useState, useEffect, lazy, Suspense } from 'react';
 import { InputForm } from './components/InputForm';
 import { Toast } from './components/Toast';
 import { ModeToggle } from './components/ModeToggle';
+import { HistoryPanel } from './components/HistoryPanel';
 import { useToast } from './hooks/useToast';
 import { useAbortableRequest } from './hooks/useAbortableRequest';
 import { useAnnouncer } from './hooks/useAnnouncer';
@@ -12,7 +13,7 @@ import {
   getNotionPages,
   getAvailablePlatforms,
 } from './utils/api';
-import { FileText, Clock, HelpCircle, X } from 'lucide-react';
+import { FileText, HelpCircle } from 'lucide-react';
 import { Guide } from './components/Guide';
 
 const GeneratedContent = lazy(() =>
@@ -69,10 +70,6 @@ function App() {
       return [];
     }
   });
-
-  const [isHistoryOpen, setIsHistoryOpen] = useState(false);
-  const historyButtonRef = useRef(null);
-  const historyMenuRef = useRef(null);
 
   const persistHistory = (nextHistory) => {
     try {
@@ -184,6 +181,7 @@ function App() {
         id: new Date().toISOString(),
         timestamp: new Date().toLocaleString(),
         mode: formData.mode || mode,
+        platform: selectedPlatform,
         title:
           extractTitle(result) || `Task - ${new Date().toLocaleDateString()}`,
         inputs: formData,
@@ -272,7 +270,6 @@ function App() {
 
   const handleNavigateToMain = () => {
     setView('main');
-    setIsHistoryOpen(false);
   };
 
   const handleModeChange = (newMode) => {
@@ -338,41 +335,6 @@ function App() {
     announcer.announcePolite('History entry removed.');
   };
 
-  useEffect(() => {
-    if (!isHistoryOpen) {
-      return undefined;
-    }
-
-    const handleClickOutside = (event) => {
-      const buttonEl = historyButtonRef.current;
-      const menuEl = historyMenuRef.current;
-      if (!buttonEl || !menuEl) {
-        return;
-      }
-
-      const target = event.target;
-      if (menuEl.contains(target) || buttonEl.contains(target)) {
-        return;
-      }
-
-      setIsHistoryOpen(false);
-    };
-
-    const handleEscape = (event) => {
-      if (event.key === 'Escape') {
-        setIsHistoryOpen(false);
-      }
-    };
-
-    document.addEventListener('mousedown', handleClickOutside);
-    document.addEventListener('keydown', handleEscape);
-
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-      document.removeEventListener('keydown', handleEscape);
-    };
-  }, [isHistoryOpen]);
-
   /**
    * @function handleLoadFromHistory
    * @description Loads a documentation item from history
@@ -384,7 +346,6 @@ function App() {
     setMode(historyItem.mode);
     setDocumentation(historyItem.documentation);
     setView('main');
-    setIsHistoryOpen(false);
     showSuccess(`Loaded "${historyItem.title}" from history!`);
     announcer.announcePolite(`Loaded "${historyItem.title}" from history.`);
   };
@@ -451,83 +412,12 @@ function App() {
               >
                 <HelpCircle className="w-4 h-4" strokeWidth={1.5} />
               </button>
-              <div className="relative">
-                <button
-                  ref={historyButtonRef}
-                  onClick={() => setIsHistoryOpen(!isHistoryOpen)}
-                  aria-label="History"
-                  aria-haspopup="menu"
-                  aria-expanded={isHistoryOpen}
-                  className="h-9 w-9 grid place-items-center rounded-md hover:bg-[#004850] text-white/70 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#60E7A9]/50 transition-colors"
-                >
-                  <Clock className="w-4 h-4" strokeWidth={1.5} />
-                </button>
-
-                {isHistoryOpen && (
-                  <div
-                    role="menu"
-                    ref={historyMenuRef}
-                    className="absolute right-0 mt-2 min-w-64 max-h-80 rounded-lg border border-[#004850] bg-[#003740] shadow-lg overflow-auto"
-                  >
-                    <div className="flex items-center justify-between px-3 py-2 border-b border-white/10">
-                      <span className="text-xs font-semibold uppercase tracking-wide text-white/60">
-                        History
-                      </span>
-                      <button
-                        type="button"
-                        onClick={handleClearHistory}
-                        disabled={history.length === 0}
-                        className="text-xs font-medium text-white/60 hover:text-white disabled:opacity-40 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#60E7A9]/50 rounded px-2 py-1 transition-colors"
-                      >
-                        Clear
-                      </button>
-                    </div>
-                    {history.length === 0 ? (
-                      <p className="px-4 py-8 text-center text-sm text-white/70">
-                        No history yet
-                      </p>
-                    ) : (
-                      <ul className="py-1 space-y-1">
-                        {history.slice(0, 10).map((item) => (
-                          <li key={item.id} className="group relative px-1">
-                            <button
-                              type="button"
-                              role="menuitem"
-                              onClick={() => {
-                                handleLoadFromHistory(item);
-                                setIsHistoryOpen(false);
-                              }}
-                              className="w-full text-left px-3 pr-20 py-2 rounded-md flex flex-col gap-0.5 transition-colors hover:bg-[#004850] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#60E7A9]/50"
-                            >
-                              <p
-                                className="font-medium text-sm text-white/90 truncate"
-                                title={item.title}
-                              >
-                                {item.title}
-                              </p>
-                              <p className="text-xs text-white/60">
-                                {item.timestamp}
-                              </p>
-                            </button>
-                            <button
-                              type="button"
-                              aria-label="Remove from history"
-                              onClick={(e) => {
-                                e.preventDefault();
-                                e.stopPropagation();
-                                handleRemoveHistoryItem(item.id);
-                              }}
-                              className="absolute right-4 top-1/2 -translate-y-1/2 p-1 rounded hover:bg-[#60E7A9]/10 text-white/60 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#60E7A9]/50 opacity-0 group-hover:opacity-100 focus-visible:opacity-100 transition-[opacity,color]"
-                            >
-                              <X className="w-3 h-3" aria-hidden="true" />
-                            </button>
-                          </li>
-                        ))}
-                      </ul>
-                    )}
-                  </div>
-                )}
-              </div>
+              <HistoryPanel
+                history={history}
+                onLoadItem={handleLoadFromHistory}
+                onRemoveItem={handleRemoveHistoryItem}
+                onClear={handleClearHistory}
+              />
             </div>
           </div>
         </header>
