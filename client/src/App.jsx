@@ -114,7 +114,9 @@ function App() {
   useEffect(() => {
     const fetchPlatforms = async () => {
       try {
+        console.log('🔍 Fetching platforms...');
         const platforms = await getAvailablePlatforms();
+        console.log('✅ Platforms received:', platforms);
         setAvailablePlatforms(platforms);
 
         if (!platforms.notion && platforms.confluence) {
@@ -123,7 +125,7 @@ function App() {
           setSelectedPlatform('notion');
         }
       } catch (err) {
-        console.error('Error fetching available platforms:', err);
+        console.error('❌ Error fetching available platforms:', err);
       }
     };
 
@@ -493,6 +495,7 @@ function App() {
                         onToggleEditing={toggleEditing}
                         onDocumentationChange={handleDocumentationChange}
                         platform={selectedPlatform}
+                        writeMode={writeMode}
                       />
                     </Suspense>
                   )}

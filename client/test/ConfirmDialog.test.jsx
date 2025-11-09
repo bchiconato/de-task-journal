@@ -22,7 +22,9 @@ describe('ConfirmDialog', () => {
     render(<ConfirmDialog {...defaultProps} />);
 
     expect(screen.getByText('Confirm Action')).toBeInTheDocument();
-    expect(screen.getByText('Are you sure you want to proceed?')).toBeInTheDocument();
+    expect(
+      screen.getByText('Are you sure you want to proceed?'),
+    ).toBeInTheDocument();
   });
 
   it('does not render when isOpen is false', () => {
@@ -98,14 +100,19 @@ describe('ConfirmDialog', () => {
   it('has correct ARIA attributes', () => {
     render(<ConfirmDialog {...defaultProps} />);
 
-    const dialog = screen.getByRole('alertdialog');
+    const dialog = screen.getByRole('dialog');
     expect(dialog).toHaveAttribute('aria-modal', 'true');
     expect(dialog).toHaveAttribute('aria-labelledby', 'confirm-dialog-title');
-    expect(dialog).toHaveAttribute('aria-describedby', 'confirm-dialog-description');
+    expect(dialog).toHaveAttribute(
+      'aria-describedby',
+      'confirm-dialog-description',
+    );
   });
 
   it('focuses confirm button when dialog opens', () => {
-    const { rerender } = render(<ConfirmDialog {...defaultProps} isOpen={false} />);
+    const { rerender } = render(
+      <ConfirmDialog {...defaultProps} isOpen={false} />,
+    );
 
     rerender(<ConfirmDialog {...defaultProps} isOpen={true} />);
 

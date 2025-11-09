@@ -7,6 +7,7 @@ import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { tomorrow } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import remarkGfm from 'remark-gfm';
 import { CodeImplementationEditor } from './CodeImplementationEditor';
+import { ConfirmDialog } from './ConfirmDialog';
 import { AlertTriangle } from 'lucide-react';
 
 /**
@@ -20,6 +21,7 @@ import { AlertTriangle } from 'lucide-react';
  * @param {Function} props.onToggleEditing - Toggle edit mode handler
  * @param {Function} props.onDocumentationChange - Update documentation handler
  * @param {'notion'|'confluence'} props.platform - Currently selected platform
+ * @param {'append'|'overwrite'} props.writeMode - Write mode for Confluence
  * @param {Object|null} props.lastFailedOperation - Last failed send operation
  * @param {Function} props.onRetry - Retry failed operation handler
  * @returns {JSX.Element|null} Rendered markdown preview or editor, or null if no content
@@ -32,10 +34,12 @@ export function GeneratedContent({
   onToggleEditing,
   onDocumentationChange,
   platform = 'notion',
+  writeMode = 'append',
   lastFailedOperation = null,
   onRetry = () => {},
 }) {
   const [justCopied, setJustCopied] = useState(false);
+  const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const headingRef = useRef(null);
 
   useEffect(() => {
@@ -69,7 +73,20 @@ export function GeneratedContent({
   }, [justCopied]);
 
   const handleSend = async () => {
+    if (platform === 'confluence' && writeMode === 'overwrite') {
+      setShowConfirmDialog(true);
+    } else {
+      await onSend(content);
+    }
+  };
+
+  const handleConfirmSend = async () => {
+    setShowConfirmDialog(false);
     await onSend(content);
+  };
+
+  const handleCancelSend = () => {
+    setShowConfirmDialog(false);
   };
 
   const platformLabel = platform === 'notion' ? 'Notion' : 'Confluence';
@@ -286,6 +303,17 @@ export function GeneratedContent({
           </ReactMarkdown>
         </div>
       )}
+
+      <ConfirmDialog
+        isOpen={showConfirmDialog}
+        title="Overwrite Confluence Page?"
+        message="Are you sure you want to overwrite the existing content on this Confluence page? This action cannot be undone."
+        confirmText="Confirm Overwrite"
+        cancelText="Cancel"
+        onConfirm={handleConfirmSend}
+        onCancel={handleCancelSend}
+        variant="danger"
+      />
     </section>
   );
 }
