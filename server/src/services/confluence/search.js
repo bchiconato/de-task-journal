@@ -82,19 +82,31 @@ export async function searchConfluencePages({
     limit,
   });
 
+  const normalizedSpaceKey = String(spaceKey || '').trim();
   let spaceIdFilter = null;
-  if (spaceKey) {
-    try {
-      spaceIdFilter = await getSpaceIdFromKey({
-        domain,
-        email,
-        token,
-        spaceKey,
-      });
-      console.log(`[Confluence] Using server-side space filter: ${spaceIdFilter}`);
-    } catch (error) {
-      console.error(`[Confluence] Space lookup failed:`, error.message);
-      console.log(`[Confluence] Proceeding without space filter`);
+  if (normalizedSpaceKey) {
+    const isNumericSpaceId = /^\d+$/.test(normalizedSpaceKey);
+
+    if (isNumericSpaceId) {
+      spaceIdFilter = normalizedSpaceKey;
+      console.log(
+        `[Confluence] Using supplied numeric space ID without lookup: ${spaceIdFilter}`,
+      );
+    } else {
+      try {
+        spaceIdFilter = await getSpaceIdFromKey({
+          domain,
+          email,
+          token,
+          spaceKey: normalizedSpaceKey,
+        });
+        console.log(
+          `[Confluence] Using server-side space filter: ${spaceIdFilter}`,
+        );
+      } catch (error) {
+        console.error(`[Confluence] Space lookup failed:`, error.message);
+        console.log(`[Confluence] Proceeding without space filter`);
+      }
     }
   }
 
