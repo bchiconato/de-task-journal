@@ -3,6 +3,12 @@
  */
 const API_BASE_URL = import.meta.env.VITE_API_BASE ?? '/api';
 
+const isAbortSignal = (value) =>
+  value &&
+  typeof value === 'object' &&
+  typeof value.aborted === 'boolean' &&
+  typeof value.addEventListener === 'function';
+
 /**
  * @async
  * @function generateDocumentation
@@ -103,26 +109,81 @@ export async function getNotionPages(
  * @function getConfluencePages
  * @description Retrieves Confluence pages with optional search and limit
  * @param {string} [searchQuery=''] - Search query to filter pages by title
- * @param {number} [limit=50] - Maximum number of results
- * @param {AbortSignal} [signal] - Optional AbortSignal for request cancellation
+ * @param {string|number|Object} [spaceOrOptions=50] - Either the limit, a space key, or an options object
+ * @param {number|AbortSignal} [limitOrSignal] - Optional limit or AbortSignal (kept for backward compatibility)
+ * @param {AbortSignal} [maybeSignal] - Optional AbortSignal when passing space + limit
  * @returns {Promise<Array<{id: string, title: string, spaceKey: string}>>} Array of pages
  * @throws {Error} When the request fails or response is malformed
  */
-export async function getConfluencePages(searchQuery = '', spaceKey = '', limit = 50, signal) {
+export async function getConfluencePages(
+  searchQuery = '',
+  spaceOrOptions = 50,
+  limitOrSignal,
+  maybeSignal,
+) {
+  let spaceKey = '';
+  let limit = 50;
+  let signal = undefined;
+
+  if (typeof spaceOrOptions === 'number') {
+    limit = spaceOrOptions;
+    signal = limitOrSignal;
+  } else if (typeof spaceOrOptions === 'string') {
+    spaceKey = spaceOrOptions;
+    if (typeof limitOrSignal === 'number') {
+      limit = limitOrSignal;
+      signal = maybeSignal;
+    } else if (isAbortSignal(limitOrSignal)) {
+      signal = limitOrSignal;
+    }
+  } else if (spaceOrOptions && typeof spaceOrOptions === 'object') {
+    if (isAbortSignal(spaceOrOptions)) {
+      signal = spaceOrOptions;
+    } else {
+      spaceKey = spaceOrOptions.spaceKey || '';
+      if (typeof spaceOrOptions.limit === 'number') {
+        limit = spaceOrOptions.limit;
+      }
+      signal = spaceOrOptions.signal || limitOrSignal || maybeSignal;
+    }
+  }
+
+  if (!signal && isAbortSignal(limitOrSignal)) {
+    signal = limitOrSignal;
+  }
+  if (!signal && isAbortSignal(maybeSignal)) {
+    signal = maybeSignal;
+  }
+
   const params = new URLSearchParams();
   if (searchQuery) params.append('search', searchQuery);
   if (spaceKey) params.append('space', spaceKey);
-  if (limit) params.append('limit', limit.toString());
-
-  const response = await fetch(`${API_BASE_URL}/confluence/pages?${params.toString()}`, {
-    signal,
-  });
-
-  if (!response.ok) {
-    throw new Error(`Failed to fetch Confluence pages: ${response.status}`);
+  if (Number.isFinite(limit) && limit > 0) {
+    params.append('limit', limit.toString());
   }
 
-  return response.json();
+  const response = await fetch(
+    `${API_BASE_URL}/confluence/pages?${params.toString()}`,
+    {
+      signal,
+    },
+  );
+
+  const text = await response.text().catch(() => '');
+  let data;
+  try {
+    data = JSON.parse(text || '{}');
+  } catch {
+    data = {};
+  }
+
+  if (!response.ok) {
+    throw new Error(
+      data.message || data.error || 'Failed to fetch Confluence pages',
+    );
+  }
+
+  return data.pages || [];
 }
 
 export async function getConfluenceSpaces(signal) {

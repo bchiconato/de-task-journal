@@ -9,6 +9,8 @@ import { PageSearchSelector } from './PageSearchSelector';
 import { WriteModeSelector } from './WriteModeSelector';
 import { getConfluencePages, getNotionPages } from '../utils/api';
 
+const DEFAULT_CONFLUENCE_SPACE_KEY = 'DAIN';
+
 const CONTEXT_COPY = {
   task: {
     title: 'Task Context',
@@ -161,6 +163,16 @@ export function InputForm({
     return getInitialFormData();
   });
 
+  const fetchConfluencePages = useCallback(
+    (query, limit, signal) =>
+      getConfluencePages(query, {
+        spaceKey: DEFAULT_CONFLUENCE_SPACE_KEY,
+        limit,
+        signal,
+      }),
+    [],
+  );
+
   const [errors, setErrors] = useState({});
   const [touched, setTouched] = useState({});
 
@@ -279,7 +291,7 @@ export function InputForm({
           {selectedPlatform === 'confluence' ? (
             <>
               <PageSearchSelector
-                fetchPages={getConfluencePages}
+                fetchPages={fetchConfluencePages}
                 selectedPageId={selectedPageId}
                 onPageSelect={handlePageSelect}
                 platform="Confluence"
