@@ -58,8 +58,10 @@ export async function generateDocumentation({ context, mode = 'task' }) {
             topK: 40,
           },
         }),
-        timeoutMs: 60000,
-        attempts: 3,
+        timeoutMs: 90000,
+        attempts: 2,
+        baseDelayMs: 1000,
+        maxDelayMs: 60000,
       },
     );
 

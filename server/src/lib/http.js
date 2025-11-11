@@ -11,7 +11,7 @@ const clamp = (n, min, max) => Math.min(Math.max(n, min), max);
  * @function fetchWithRetry
  * @description Fetch wrapper with configurable timeout, retry logic, and exponential backoff
  * @param {string} url - URL to fetch
- * @param {Object} [options] - Fetch options with additional retry configuration
+ * @param {Object} [options] - Combined fetch options and retry configuration
  * @param {number} [options.timeoutMs=12000] - Request timeout in milliseconds
  * @param {number} [options.attempts=3] - Maximum number of retry attempts
  * @param {number} [options.baseDelayMs=400] - Base delay for exponential backoff
@@ -33,34 +33,183 @@ export async function fetchWithRetry(url, options = {}) {
     baseDelayMs = 400,
     maxDelayMs = 4000,
     retryOn = (res) => res.status >= 500 || res.status === 429,
+    ...fetchOptions
   } = options;
 
   let lastErr;
-  for (let i = 0; i < attempts; i++) {
-    const controller = AbortSignal.timeout(timeoutMs);
-    try {
-      const res = await fetch(url, { ...options, signal: controller });
-      if (!retryOn(res)) return res;
+  let lastResponse;
+  let lastResponseBody;
 
-      const ra = res.headers.get('retry-after');
-      if (ra) {
-        const wait = Number.parseInt(ra, 10) * 1000 || 0;
-        if (wait > 0) await sleep(wait);
-      } else {
-        const exp = Math.pow(2, i) * baseDelayMs;
-        const jitter = Math.random() * exp;
-        await sleep(clamp(jitter, baseDelayMs, maxDelayMs));
+  for (let i = 0; i < attempts; i++) {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => {
+      console.log(
+        `[fetchWithRetry] Attempt ${i + 1}/${attempts} - Request timeout after ${timeoutMs}ms`,
+      );
+      controller.abort();
+    }, timeoutMs);
+
+    try {
+      console.log(
+        `[fetchWithRetry] Attempt ${i + 1}/${attempts} - Starting request (timeout: ${timeoutMs}ms)`,
+      );
+
+      const res = await fetch(url, {
+        ...fetchOptions,
+        signal: controller.signal,
+      });
+
+      clearTimeout(timeoutId);
+
+      console.log(
+        `[fetchWithRetry] Attempt ${i + 1}/${attempts} - Response received (status: ${res.status})`,
+      );
+
+      if (!retryOn(res)) {
+        console.log(
+          `[fetchWithRetry] Attempt ${i + 1}/${attempts} - Success, returning response`,
+        );
+        return res;
+      }
+
+      console.log(
+        `[fetchWithRetry] Attempt ${i + 1}/${attempts} - Response status ${res.status} triggers retry`,
+      );
+      lastResponse = res.clone();
+
+      try {
+        lastResponseBody = await res.json();
+        console.log(
+          `[fetchWithRetry] Response body:`,
+          JSON.stringify(lastResponseBody, null, 2),
+        );
+      } catch (e) {
+        console.log(`[fetchWithRetry] Could not parse response body as JSON`);
+      }
+
+      if (i < attempts - 1) {
+        let delay;
+
+        if (res.status === 429) {
+          const ra = res.headers.get('retry-after');
+          if (ra) {
+            const parsed = Number.parseInt(ra, 10);
+            delay = isNaN(parsed) ? 60000 : parsed * 1000;
+            console.log(
+              `[fetchWithRetry] Rate limited (429). Retry-After header: ${ra}s. Waiting ${delay}ms`,
+            );
+          } else {
+            delay = 60000;
+            console.log(
+              `[fetchWithRetry] Rate limited (429). No Retry-After header. Waiting ${delay}ms (60s)`,
+            );
+          }
+        } else {
+          const exp = Math.pow(2, i) * baseDelayMs;
+          const jitter = Math.random() * exp;
+          delay = clamp(jitter, baseDelayMs, maxDelayMs);
+          console.log(
+            `[fetchWithRetry] Waiting ${Math.round(delay)}ms before retry`,
+          );
+        }
+
+        await sleep(delay);
       }
     } catch (err) {
+      clearTimeout(timeoutId);
       lastErr = err;
-      const exp = Math.pow(2, i) * baseDelayMs;
-      const jitter = Math.random() * exp;
-      await sleep(clamp(jitter, baseDelayMs, maxDelayMs));
+
+      const errorName = err.name || 'Unknown';
+      const errorMsg = err.message || 'No message';
+
+      console.error(
+        `[fetchWithRetry] Attempt ${i + 1}/${attempts} - Error caught:`,
+        {
+          name: errorName,
+          message: errorMsg,
+          code: err.code,
+          cause: err.cause,
+        },
+      );
+
+      if (err.name === 'AbortError') {
+        console.error(
+          `[fetchWithRetry] Request aborted after ${timeoutMs}ms timeout`,
+        );
+      }
+
+      if (i < attempts - 1) {
+        const exp = Math.pow(2, i) * baseDelayMs;
+        const jitter = Math.random() * exp;
+        const delay = clamp(jitter, baseDelayMs, maxDelayMs);
+        console.log(
+          `[fetchWithRetry] Waiting ${Math.round(delay)}ms before retry after error`,
+        );
+        await sleep(delay);
+      }
     }
   }
+
+  console.error(
+    `[fetchWithRetry] All ${attempts} attempts exhausted. Last error:`,
+    lastErr,
+  );
+  console.error(
+    `[fetchWithRetry] Last response status:`,
+    lastResponse?.status,
+  );
+
+  if (lastResponse?.status === 429) {
+    let errorMessage = 'Rate limit exceeded. ';
+    let retrySeconds = null;
+
+    if (lastResponseBody?.error) {
+      const geminiError = lastResponseBody.error;
+      const originalMessage = geminiError.message || '';
+
+      const retryMatch = originalMessage.match(/retry in ([\d.]+)s/);
+      if (retryMatch) {
+        retrySeconds = Math.ceil(parseFloat(retryMatch[1]));
+      }
+
+      if (originalMessage.includes('quota') || originalMessage.includes('RESOURCE_EXHAUSTED')) {
+        errorMessage = `API quota exhausted. `;
+        
+        if (retrySeconds) {
+          errorMessage += `Please wait ${retrySeconds} seconds and try again. `;
+        } else {
+          errorMessage += `Please wait and try again later. `;
+        }
+
+        if (originalMessage.includes('free_tier')) {
+          errorMessage += `\n\nYour free tier quota has been exceeded. Options:\n`;
+          errorMessage += `1. Wait for quota reset (check https://ai.dev/usage?tab=rate-limit)\n`;
+          errorMessage += `2. Reduce input size significantly (try 5,000 chars max instead of 20,000)\n`;
+          errorMessage += `3. Upgrade to a paid plan for higher limits\n`;
+          errorMessage += `4. Use a different API key if available`;
+        } else {
+          errorMessage += `\n\nCheck your usage: https://ai.dev/usage?tab=rate-limit`;
+        }
+      } else {
+        errorMessage += originalMessage;
+      }
+    } else {
+      errorMessage += 'Please wait at least 60 seconds before trying again.';
+    }
+
+    const e = new Error(errorMessage);
+    e.code = 'rate_limit_exceeded';
+    e.status = 429;
+    e.cause = lastErr;
+    e.retryAfterSeconds = retrySeconds;
+    e.details = lastResponseBody;
+    throw e;
+  }
+
   const e = new Error('Upstream request failed after retries');
   e.code = 'upstream_unavailable';
   e.status = 502;
   e.cause = lastErr;
+  e.lastResponse = lastResponse;
   throw e;
 }
