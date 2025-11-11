@@ -108,36 +108,33 @@ export async function getNotionPages(
  * @returns {Promise<Array<{id: string, title: string, spaceKey: string}>>} Array of pages
  * @throws {Error} When the request fails or response is malformed
  */
-export async function getConfluencePages(searchQuery = '', limit = 50, signal) {
+export async function getConfluencePages(searchQuery = '', spaceKey = '', limit = 50, signal) {
   const params = new URLSearchParams();
   if (searchQuery) params.append('search', searchQuery);
-  params.append('limit', limit.toString());
+  if (spaceKey) params.append('space', spaceKey);
+  if (limit) params.append('limit', limit.toString());
 
-  const url = `${API_BASE_URL}/confluence/pages?${params.toString()}`;
-
-  const response = await fetch(url, {
-    method: 'GET',
-    headers: {
-      'Content-Type': 'application/json',
-    },
+  const response = await fetch(`${API_BASE_URL}/confluence/pages?${params.toString()}`, {
     signal,
   });
 
-  const text = await response.text().catch(() => '');
-  let data;
-  try {
-    data = JSON.parse(text || '{}');
-  } catch {
-    data = {};
+  if (!response.ok) {
+    throw new Error(`Failed to fetch Confluence pages: ${response.status}`);
   }
+
+  return response.json();
+}
+
+export async function getConfluenceSpaces(signal) {
+  const response = await fetch(`${API_BASE_URL}/confluence/spaces`, {
+    signal,
+  });
 
   if (!response.ok) {
-    throw new Error(
-      data.message || data.error || 'Failed to fetch Confluence pages',
-    );
+    throw new Error(`Failed to fetch Confluence spaces: ${response.status}`);
   }
 
-  return data.pages || [];
+  return response.json();
 }
 
 /**
