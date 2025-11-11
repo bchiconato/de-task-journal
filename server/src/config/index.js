@@ -3,85 +3,74 @@
  * @module config
  */
 
-import dotenv from 'dotenv';
-import { fileURLToPath } from 'url';
-import { dirname, join } from 'path';
+import 'dotenv/config';
 import { z } from 'zod';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
-
-dotenv.config({ path: join(__dirname, '../../.env') });
-
-const Env = z.object({
-  PORT: z.string().default('3001'),
+const envSchema = z.object({
   GEMINI_API_KEY: z.string().optional(),
   GEMINI_MODEL: z.string().default('gemini-2.0-flash-exp'),
+  GROQ_API_KEY: z.string().optional(),
+  GROQ_MODEL: z.string().default('llama-3.3-70b-versatile'),
   NOTION_API_KEY: z.string().optional(),
-  NOTION_PAGE_ID: z.string().optional(),
-  NOTION_PARENT_PAGE_ID: z.string().optional(),
   CONFLUENCE_DOMAIN: z.string().optional(),
   CONFLUENCE_USER_EMAIL: z.string().optional(),
   CONFLUENCE_API_TOKEN: z.string().optional(),
+  PORT: z.string().default('3001'),
   NODE_ENV: z.string().default('development'),
 });
 
-/**
- * @description Validated environment configuration object. Warns if API keys are missing in dev mode.
- * @type {Object}
- * @property {string} PORT - Server port number
- * @property {string} GEMINI_API_KEY - Google Gemini API key
- * @property {string} NOTION_API_KEY - Notion integration token
- * @property {string} CONFLUENCE_DOMAIN - Confluence domain (e.g., mycompany.atlassian.net)
- * @property {string} CONFLUENCE_USER_EMAIL - Confluence user email
- * @property {string} CONFLUENCE_API_TOKEN - Confluence API token
- */
-export const env = (() => {
-  const parsed = Env.safeParse(process.env);
-  if (!parsed.success) {
-    console.error(parsed.error.format());
-    console.warn(
-      '⚠️  Environment validation failed. Continuing with partial config for local development.',
-    );
-    return process.env;
-  }
+const parseResult = envSchema.safeParse(process.env);
 
-  const data = parsed.data;
+if (!parseResult.success) {
+  console.error('Environment variable validation failed:');
+  console.error(parseResult.error.format());
+}
 
-  if (!data.GEMINI_API_KEY) {
-    console.warn(
-      '⚠️  GEMINI_API_KEY not set. Generate endpoint will return mock data.',
-    );
-  }
+const rawEnv = parseResult.success ? parseResult.data : envSchema.parse({});
 
-  if (!data.NOTION_API_KEY) {
-    console.warn('⚠️  NOTION_API_KEY not set. Notion endpoint will fail.');
-  }
-
-  if (!data.CONFLUENCE_API_TOKEN) {
-    console.warn(
-      '⚠️  CONFLUENCE_API_TOKEN not set. Confluence endpoint will be unavailable.',
-    );
-  }
-
-  return data;
-})();
+export const env = {
+  ...rawEnv,
+  PORT: parseInt(rawEnv.PORT, 10),
+};
 
 /**
  * @function getAvailablePlatforms
- * @description Returns which documentation platforms are configured and available
+ * @description Checks which documentation platforms are configured
  * @returns {{notion: boolean, confluence: boolean}}
- * @example
- *   const platforms = getAvailablePlatforms();
- *   // { notion: true, confluence: false }
  */
 export function getAvailablePlatforms() {
+  const hasNotion = !!env.NOTION_API_KEY;
+  
+  const hasConfluence =
+    !!env.CONFLUENCE_DOMAIN &&
+    !!env.CONFLUENCE_USER_EMAIL &&
+    !!env.CONFLUENCE_API_TOKEN;
+
   return {
-    notion: Boolean(process.env.NOTION_API_KEY),
-    confluence: Boolean(
-      process.env.CONFLUENCE_API_TOKEN &&
-        process.env.CONFLUENCE_DOMAIN &&
-        process.env.CONFLUENCE_USER_EMAIL,
-    ),
+    notion: hasNotion,
+    confluence: hasConfluence,
   };
+}
+
+if (!env.GROQ_API_KEY && !env.GEMINI_API_KEY) {
+  console.warn('[Config] WARNING: No LLM provider configured! Set GROQ_API_KEY or GEMINI_API_KEY');
+}
+
+if (env.GROQ_API_KEY) {
+  console.log(`[Config] Groq API configured (model: ${env.GROQ_MODEL})`);
+}
+
+if (env.GEMINI_API_KEY) {
+  console.log(`[Config] Gemini API configured (model: ${env.GEMINI_MODEL})`);
+}
+
+const platforms = getAvailablePlatforms();
+if (platforms.notion) {
+  console.log('[Config] Notion integration enabled');
+}
+if (platforms.confluence) {
+  console.log('[Config] Confluence integration enabled');
+}
+if (!platforms.notion && !platforms.confluence) {
+  console.warn('[Config] WARNING: No documentation platform configured! Set Notion or Confluence credentials');
 }
