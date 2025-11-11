@@ -15,6 +15,7 @@ const envSchema = z.object({
   CONFLUENCE_DOMAIN: z.string().optional(),
   CONFLUENCE_USER_EMAIL: z.string().optional(),
   CONFLUENCE_API_TOKEN: z.string().optional(),
+  CONFLUENCE_DEFAULT_SPACE_KEY: z.string().optional(),
   PORT: z.string().default('3001'),
   NODE_ENV: z.string().default('development'),
 });
@@ -70,6 +71,11 @@ if (platforms.notion) {
 }
 if (platforms.confluence) {
   console.log('[Config] Confluence integration enabled');
+  if (env.CONFLUENCE_DEFAULT_SPACE_KEY) {
+    console.log(
+      `[Config] Confluence default space key: ${env.CONFLUENCE_DEFAULT_SPACE_KEY}`,
+    );
+  }
 }
 if (!platforms.notion && !platforms.confluence) {
   console.warn('[Config] WARNING: No documentation platform configured! Set Notion or Confluence credentials');

@@ -89,7 +89,8 @@ async function listPagesHandler(req, res, next) {
     }
 
     const searchQuery = req.query.search || '';
-    const spaceKey = req.query.space || 'DAI';
+    const spaceKey =
+      req.query.space || process.env.CONFLUENCE_DEFAULT_SPACE_KEY || '';
     const limit = Math.min(parseInt(req.query.limit, 10) || 50, 200);
 
     const pages = await searchConfluencePages({

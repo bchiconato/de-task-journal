@@ -6,6 +6,7 @@
 export const CONFLUENCE = {
   version: 'v2',
   basePath: '/wiki/api/v2',
+  restBasePath: '/wiki/rest/api',
 };
 
 export const CONFLUENCE_LIMITS = {
@@ -38,4 +39,15 @@ export function getConfluenceHeaders(email, token) {
  */
 export function getConfluenceUrl(domain, path) {
   return `https://${domain}${CONFLUENCE.basePath}${path}`;
+}
+
+/**
+ * @function getConfluenceRestUrl
+ * @description Constructs full Confluence REST API v1 URL
+ * @param {string} domain - Confluence domain
+ * @param {string} path - REST API endpoint path
+ * @returns {string} Full REST API URL
+ */
+export function getConfluenceRestUrl(domain, path) {
+  return `https://${domain}${CONFLUENCE.restBasePath}${path}`;
 }

@@ -4,7 +4,167 @@
  */
 
 import { fetchWithRetry } from '../../lib/http.js';
-import { getConfluenceUrl, getConfluenceHeaders } from './config.js';
+import {
+  getConfluenceUrl,
+  getConfluenceHeaders,
+  getConfluenceRestUrl,
+} from './config.js';
+
+const DEFAULT_PAGE_SIZE = 250;
+const MAX_SEARCH_BATCH = 50;
+const MAX_FALLBACK_REQUESTS = 20;
+
+const escapeCqlValue = (value = '') =>
+  value.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+
+const escapeLuceneTerm = (value = '') =>
+  value
+    .replace(/\\/g, '\\\\')
+    .replace(/([+"\-!(){}\[\]^~*?:/]|&&|\|\|)/g, '\\$1');
+
+function buildTextSearchClause(query) {
+  const trimmed = query.trim();
+  if (!trimmed) return '';
+
+  const escapedPhrase = escapeLuceneTerm(trimmed);
+  const phraseClause = `(${['title', 'text']
+    .map((field) => `${field} ~ "\\\"${escapedPhrase}\\\""`)
+    .join(' OR ')})`;
+
+  const tokens = trimmed
+    .split(/\s+/)
+    .map((token) => token.trim())
+    .filter(Boolean)
+    .map((token) => escapeLuceneTerm(token));
+
+  const tokenClauses =
+    tokens.length > 1
+      ? `(${tokens
+          .map(
+            (token) =>
+              `(${['title', 'text']
+                .map((field) => `${field} ~ "${token}"`)
+                .join(' OR ')})`,
+          )
+          .join(' AND ')})`
+      : '';
+
+  const fallbackClause = `(${['title', 'text']
+    .map((field) => `${field} ~ "${escapedPhrase}"`)
+    .join(' OR ')})`;
+
+  return [phraseClause, tokenClauses, fallbackClause]
+    .filter(Boolean)
+    .join(' OR ');
+}
+
+function buildPageSearchCql({ query, spaceKey }) {
+  const clauses = ['type="page"'];
+
+  if (spaceKey) {
+    clauses.push(`space = "${escapeCqlValue(spaceKey)}"`);
+  }
+
+  if (query) {
+    const textClause = buildTextSearchClause(query);
+    if (textClause) {
+      clauses.push(`(${textClause})`);
+    }
+  }
+
+  return `${clauses.join(' AND ')} ORDER BY lastmodified DESC`;
+}
+
+async function searchPagesViaCql({
+  domain,
+  email,
+  token,
+  searchQuery,
+  cqlSpaceKey,
+  limit,
+}) {
+  const pages = [];
+  let cursor = null;
+  const cql = buildPageSearchCql({
+    query: searchQuery,
+    spaceKey: cqlSpaceKey,
+  });
+
+  const contextPayload = {
+    contentStatuses: ['current'],
+  };
+  if (cqlSpaceKey) {
+    contextPayload.spaceKey = cqlSpaceKey;
+  }
+  const cqlContext = JSON.stringify(contextPayload);
+
+  while (pages.length < limit) {
+    const batchLimit = Math.min(MAX_SEARCH_BATCH, limit - pages.length);
+    const params = new URLSearchParams({
+      cql,
+      limit: batchLimit.toString(),
+      expand: 'space',
+    });
+
+    if (cursor) {
+      params.append('cursor', cursor);
+    }
+
+    params.append('cqlcontext', cqlContext);
+
+    const url = getConfluenceRestUrl(
+      domain,
+      `/content/search?${params.toString()}`,
+    );
+    console.log(
+      `[Confluence] CQL search request: cursor=${cursor ?? 'start'}, limit=${batchLimit}`,
+    );
+
+    const response = await fetchWithRetry(url, {
+      method: 'GET',
+      headers: getConfluenceHeaders(email, token),
+      timeoutMs: 15000,
+      attempts: 3,
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(
+        `Failed to search pages: ${response.status} - ${
+          errorData.message || errorData.error?.message || 'Unknown error'
+        }`,
+      );
+    }
+
+    const data = await response.json();
+    const results = data.results || [];
+
+    for (const result of results) {
+      const content = result.content || result || {};
+      if (!content || content.type !== 'page') continue;
+      const pageId = content.id || content.uuid;
+      if (!pageId) continue;
+
+      pages.push({
+        id: pageId,
+        title: content.title || result.title || 'Untitled',
+        spaceKey: content.space?.key || content.spaceKey || '',
+      });
+
+      if (pages.length >= limit) {
+        break;
+      }
+    }
+
+    cursor = data._links?.next ? extractCursor(data._links.next) : null;
+
+    if (!cursor || results.length === 0) {
+      break;
+    }
+  }
+
+  return pages;
+}
 
 /**
  * @async
@@ -50,6 +210,29 @@ async function getSpaceIdFromKey({ domain, email, token, spaceKey }) {
   return space.id;
 }
 
+async function getSpaceKeyFromId({ domain, email, token, spaceId }) {
+  const url = getConfluenceUrl(domain, `/spaces/${spaceId}`);
+
+  const response = await fetchWithRetry(url, {
+    method: 'GET',
+    headers: getConfluenceHeaders(email, token),
+    timeoutMs: 10000,
+    attempts: 3,
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(
+      `Space ${spaceId} not accessible: ${response.status} - ${
+        errorData.message || 'Unknown error'
+      }`,
+    );
+  }
+
+  const data = await response.json();
+  return data.key;
+}
+
 /**
  * @async
  * @function searchConfluencePages
@@ -83,6 +266,7 @@ export async function searchConfluencePages({
   });
 
   const normalizedSpaceKey = String(spaceKey || '').trim();
+  let cqlSpaceKey = normalizedSpaceKey;
   let spaceIdFilter = null;
   if (normalizedSpaceKey) {
     const isNumericSpaceId = /^\d+$/.test(normalizedSpaceKey);
@@ -92,6 +276,21 @@ export async function searchConfluencePages({
       console.log(
         `[Confluence] Using supplied numeric space ID without lookup: ${spaceIdFilter}`,
       );
+      try {
+        cqlSpaceKey = await getSpaceKeyFromId({
+          domain,
+          email,
+          token,
+          spaceId: normalizedSpaceKey,
+        });
+        console.log(`[Confluence] Resolved space key ${cqlSpaceKey} from id ${spaceIdFilter}`);
+      } catch (error) {
+        console.error(
+          `[Confluence] Unable to resolve space key from id ${spaceIdFilter}:`,
+          error.message,
+        );
+        cqlSpaceKey = '';
+      }
     } else {
       try {
         spaceIdFilter = await getSpaceIdFromKey({
@@ -110,15 +309,47 @@ export async function searchConfluencePages({
     }
   }
 
-  const normalizedQuery = searchQuery.toLowerCase().trim();
+  const trimmedQuery = (searchQuery || '').trim();
+  const normalizedQuery = trimmedQuery.toLowerCase();
   const pages = [];
   let cursor = null;
   let hasMore = true;
-  const pageSize = 250;
+  const pageSize = DEFAULT_PAGE_SIZE;
   let requestCount = 0;
   let totalPagesChecked = 0;
 
-  while (hasMore && pages.length < limit) {
+  try {
+    console.log(
+      '[Confluence] Using CQL search',
+      trimmedQuery ? `for query "${trimmedQuery}"` : '(no query provided)',
+    );
+
+    const cqlResults = await searchPagesViaCql({
+      domain,
+      email,
+      token,
+      searchQuery: trimmedQuery,
+      cqlSpaceKey,
+      limit,
+    });
+
+    console.log(
+      `[Confluence] CQL search returned ${cqlResults.length} pages (limit ${limit})`,
+    );
+
+    return cqlResults.slice(0, limit);
+  } catch (error) {
+    console.error(
+      '[Confluence] CQL search failed, falling back to page listing:',
+      error.message,
+    );
+  }
+
+  while (
+    hasMore &&
+    pages.length < limit &&
+    requestCount < MAX_FALLBACK_REQUESTS
+  ) {
     let apiUrl = `/pages?limit=${pageSize}`;
     
     if (spaceIdFilter) {
@@ -187,9 +418,15 @@ export async function searchConfluencePages({
     hasMore = Boolean(cursor) && pages.length < limit;
   }
 
-  console.log(
-    `[Confluence] Search complete: ${pages.length} pages matched (${requestCount} requests, ${totalPagesChecked} pages checked)`,
-  );
+  if (requestCount >= MAX_FALLBACK_REQUESTS && pages.length < limit) {
+    console.warn(
+      `[Confluence] Fallback search aborted after ${requestCount} requests (checked ${totalPagesChecked} pages)`,
+    );
+  } else {
+    console.log(
+      `[Confluence] Search complete: ${pages.length} pages matched (${requestCount} requests, ${totalPagesChecked} pages checked)`,
+    );
+  }
 
   return pages;
 }
