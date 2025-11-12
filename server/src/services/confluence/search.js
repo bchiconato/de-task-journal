@@ -22,14 +22,21 @@ const escapeLuceneTerm = (value = '') =>
     .replace(/\\/g, '\\\\')
     .replace(/([+"\-!(){}\[\]^~*?:/]|&&|\|\|)/g, '\\$1');
 
+/**
+ * @function buildTextSearchClause
+ * @description Builds CQL text search clause with tiered matching: exact title, exact phrase, then tokens
+ * @param {string} query - Search query
+ * @returns {string} CQL clause for title search
+ */
 function buildTextSearchClause(query) {
   const trimmed = query.trim();
   if (!trimmed) return '';
 
   const escapedPhrase = escapeLuceneTerm(trimmed);
-  const phraseClause = `(${['title', 'text']
-    .map((field) => `${field} ~ "\\\"${escapedPhrase}\\\""`)
-    .join(' OR ')})`;
+
+  const exactTitleClause = `title = "${escapedPhrase}"`;
+
+  const exactPhraseClause = `title ~ "\\\"${escapedPhrase}\\\""`;
 
   const tokens = trimmed
     .split(/\s+/)
@@ -39,25 +46,24 @@ function buildTextSearchClause(query) {
 
   const tokenClauses =
     tokens.length > 1
-      ? `(${tokens
-          .map(
-            (token) =>
-              `(${['title', 'text']
-                .map((field) => `${field} ~ "${token}"`)
-                .join(' OR ')})`,
-          )
-          .join(' AND ')})`
+      ? `(${tokens.map((token) => `title ~ "${token}"`).join(' AND ')})`
       : '';
 
-  const fallbackClause = `(${['title', 'text']
-    .map((field) => `${field} ~ "${escapedPhrase}"`)
-    .join(' OR ')})`;
+  const fallbackClause = `title ~ "${escapedPhrase}"`;
 
-  return [phraseClause, tokenClauses, fallbackClause]
+  return [exactTitleClause, exactPhraseClause, tokenClauses, fallbackClause]
     .filter(Boolean)
     .join(' OR ');
 }
 
+/**
+ * @function buildPageSearchCql
+ * @description Builds CQL query for page search with space and text filters
+ * @param {Object} params - Parameters
+ * @param {string} [params.query] - Search query for title matching
+ * @param {string} [params.spaceKey] - Space key to filter by
+ * @returns {string} Complete CQL query string
+ */
 function buildPageSearchCql({ query, spaceKey }) {
   const clauses = ['type="page"'];
 
@@ -72,7 +78,7 @@ function buildPageSearchCql({ query, spaceKey }) {
     }
   }
 
-  return `${clauses.join(' AND ')} ORDER BY lastmodified DESC`;
+  return clauses.join(' AND ');
 }
 
 async function searchPagesViaCql({
@@ -100,7 +106,7 @@ async function searchPagesViaCql({
 
   while (pages.length < limit) {
     const batchLimit = Math.min(MAX_SEARCH_BATCH, limit - pages.length);
-    const params = new URLSearchParams({
+    const params = new globalThis.URLSearchParams({
       cql,
       limit: batchLimit.toString(),
       expand: 'space',
@@ -180,7 +186,7 @@ async function searchPagesViaCql({
  */
 async function getSpaceIdFromKey({ domain, email, token, spaceKey }) {
   const url = getConfluenceUrl(domain, `/spaces?keys=${spaceKey}`);
-  
+
   console.log(`[Confluence] Looking up space ID for key: ${spaceKey}`);
 
   const response = await fetchWithRetry(url, {
@@ -199,14 +205,14 @@ async function getSpaceIdFromKey({ domain, email, token, spaceKey }) {
   }
 
   const data = await response.json();
-  
+
   if (!data.results || data.results.length === 0) {
     throw new Error(`Space ${spaceKey} not found in results`);
   }
 
   const space = data.results[0];
   console.log(`[Confluence] Found space: ${space.name} (ID: ${space.id})`);
-  
+
   return space.id;
 }
 
@@ -283,7 +289,9 @@ export async function searchConfluencePages({
           token,
           spaceId: normalizedSpaceKey,
         });
-        console.log(`[Confluence] Resolved space key ${cqlSpaceKey} from id ${spaceIdFilter}`);
+        console.log(
+          `[Confluence] Resolved space key ${cqlSpaceKey} from id ${spaceIdFilter}`,
+        );
       } catch (error) {
         console.error(
           `[Confluence] Unable to resolve space key from id ${spaceIdFilter}:`,
@@ -351,11 +359,11 @@ export async function searchConfluencePages({
     requestCount < MAX_FALLBACK_REQUESTS
   ) {
     let apiUrl = `/pages?limit=${pageSize}`;
-    
+
     if (spaceIdFilter) {
       apiUrl += `&space-id=${spaceIdFilter}`;
     }
-    
+
     if (cursor) {
       apiUrl += `&cursor=${cursor}`;
     }
@@ -363,7 +371,9 @@ export async function searchConfluencePages({
     const url = getConfluenceUrl(domain, apiUrl);
 
     requestCount++;
-    console.log(`[Confluence] Request #${requestCount}: ${apiUrl.substring(0, 100)}...`);
+    console.log(
+      `[Confluence] Request #${requestCount}: ${apiUrl.substring(0, 100)}...`,
+    );
 
     const response = await fetchWithRetry(url, {
       method: 'GET',

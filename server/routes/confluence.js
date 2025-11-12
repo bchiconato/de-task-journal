@@ -93,6 +93,13 @@ async function listPagesHandler(req, res, next) {
       req.query.space || process.env.CONFLUENCE_DEFAULT_SPACE_KEY || '';
     const limit = Math.min(parseInt(req.query.limit, 10) || 50, 200);
 
+    console.log('[Confluence API] Page search request:', {
+      searchQuery: searchQuery || '(empty)',
+      spaceKey: spaceKey || '(no space filter)',
+      limit,
+      defaultSpaceEnv: process.env.CONFLUENCE_DEFAULT_SPACE_KEY || '(not set)',
+    });
+
     const pages = await searchConfluencePages({
       domain: process.env.CONFLUENCE_DOMAIN,
       email: process.env.CONFLUENCE_USER_EMAIL,
@@ -101,6 +108,8 @@ async function listPagesHandler(req, res, next) {
       spaceKey,
       limit,
     });
+
+    console.log(`[Confluence API] Returning ${pages.length} pages`);
 
     res.json({
       success: true,
