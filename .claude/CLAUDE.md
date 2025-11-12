@@ -247,10 +247,14 @@ The Confluence integration mirrors Notion structure with 5 specialized files:
   * Confluence base URL construction from domain
 
 * **`search.js`** — Page search functionality
-  * `searchConfluencePages()` searches pages with optional query
-  * Supports search filtering by title
+  * `searchConfluencePages()` searches pages with intelligent title-only matching
+  * **Tiered search strategy:** Exact title → Exact phrase → Token matching → Fuzzy fallback
+  * **Title-only search:** Searches only in page titles (not content) for more relevant results
+  * **Exact match priority:** Pages with titles matching query exactly appear first
+  * **Natural relevance ranking:** Uses Confluence's built-in relevance scoring (no chronological sorting)
+  * **Space filtering:** Supports `CONFLUENCE_DEFAULT_SPACE_KEY` env var for scoped searches
   * Returns page id, title, and spaceKey
-  * Used by `GET /api/confluence/pages` endpoint
+  * Used by `GET /api/confluence/pages` endpoint with debounced search (500ms)
 
 ### Server Application Structure
 
@@ -342,6 +346,22 @@ router.post('/generate', validate(GenerateSchema), generateHandler);
   * **AbortSignal.timeout()**: Uses modern API for request timeout cancellation
   * **Error structure**: Returns `{ code: 'upstream_unavailable', status: 502, ... }` on failure
   * Used by Gemini, Notion, and Confluence services for reliable external API calls
+
+**`server/src/services/inputOptimizer.js`** — Input optimization for large contexts
+
+* `analyzeInput(context)` — Analyzes input size and determines if optimization is needed
+* `optimizeInput(context, mode)` — Intelligently reduces large inputs while preserving key information
+* **Thresholds** (aligned with 30k character validation limit):
+  * `MAX_CHARS_SAFE = 25000` — No optimization below this threshold
+  * `MAX_CHARS_WARNING = 20000` — Warning threshold for large inputs
+  * `MAX_CHARS_ABSOLUTE = 30000` — Hard limit matching schema validation
+* **Target sizes:** Critical: 20000 chars, Warning: 25000 chars
+* **Preservation strategy:**
+  * 80% text allocation, 20% code preservation
+  * Base 50 code lines, scales with target size
+  * Removes filler words, redundant whitespace, and non-essential content
+* **Use case:** Automatically optimizes inputs >25k chars to fit LLM context windows
+* Used by LLM router before sending to Groq/Gemini providers
 
 ### Client Application Structure
 
@@ -1334,6 +1354,10 @@ export async function callGemini(model, payload) { /* implementation */ }
 
 ---
 
-**Last Updated**: 2025-01-09
-**Documentation Version**: 4.0
-**Major Changes**: Confluence integration, platform selector, write modes, enhanced history panel, E2E tests, GitHub Actions CI/CD
+**Last Updated**: 2025-11-12
+**Documentation Version**: 4.1
+**Recent Changes**:
+* **Confluence Search Improvements** (2025-11-11): Title-only search with exact match priority, tiered search strategy, natural relevance ranking
+* **Input Optimization Thresholds** (2025-11-11): Adjusted thresholds to 25k safe, 20k warning, 30k absolute to align with validation limits
+* **Repository Cleanup** (2025-11-12): Removed obsolete Python files, duplicate configs, relocated services to correct directories
+* **Previous Major Changes** (v4.0): Confluence integration, platform selector, write modes, enhanced history panel, E2E tests, GitHub Actions CI/CD
