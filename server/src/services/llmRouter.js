@@ -4,7 +4,7 @@
  */
 
 import * as groqService from './groqService.js';
-import * as geminiService from '../../services/geminiService.js';
+import * as geminiService from './geminiService.js';
 import { optimizeInput, analyzeInput } from './inputOptimizer.js';
 import { env } from '../config/index.js';
 
@@ -21,7 +21,9 @@ async function selectProvider(context) {
   const hasGemini = !!env.GEMINI_API_KEY;
 
   if (!hasGroq && !hasGemini) {
-    throw new Error('No LLM providers configured. Set GROQ_API_KEY or GEMINI_API_KEY in .env');
+    throw new Error(
+      'No LLM providers configured. Set GROQ_API_KEY or GEMINI_API_KEY in .env',
+    );
   }
 
   if (!hasGemini && hasGroq) {
@@ -55,13 +57,15 @@ export async function generateDocumentation({ context, mode = 'task' }) {
   let processedContext = context;
 
   const analysis = analyzeInput(context);
-  
+
   if (analysis.needsOptimization) {
     optimization = optimizeInput(context, mode);
     processedContext = optimization.optimizedContext;
 
     if (optimization.wasOptimized) {
-      console.log(`[LLMRouter] Input optimized: ${optimization.originalSize} → ${optimization.optimizedSize} chars (${optimization.reductionPercent}% reduction)`);
+      console.log(
+        `[LLMRouter] Input optimized: ${optimization.originalSize} → ${optimization.optimizedSize} chars (${optimization.reductionPercent}% reduction)`,
+      );
     }
   }
 
@@ -136,7 +140,10 @@ export async function generateDocumentation({ context, mode = 'task' }) {
         },
       };
     } catch (fallbackError) {
-      console.error(`[LLMRouter] Fallback to ${fallbackProvider} also failed:`, fallbackError.message);
+      console.error(
+        `[LLMRouter] Fallback to ${fallbackProvider} also failed:`,
+        fallbackError.message,
+      );
       throw new Error(
         `All LLM providers failed. Primary (${selection.provider}): ${error.message}. Fallback (${fallbackProvider}): ${fallbackError.message}`,
       );

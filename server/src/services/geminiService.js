@@ -4,8 +4,8 @@
  * @description Uses REST API with fetchWithRetry for robustness
  */
 
-import { fetchWithRetry } from '../src/lib/http.js';
-import { env } from '../src/config/index.js';
+import { fetchWithRetry } from '../lib/http.js';
+import { env } from '../config/index.js';
 
 const GEMINI_API_BASE =
   'https://generativelanguage.googleapis.com/v1beta/models';

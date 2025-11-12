@@ -7,7 +7,7 @@ import { validate } from '../src/middleware/validate.js';
 import { GenerateSchema } from '../src/schemas/generate.js';
 import { errorHandler } from '../src/middleware/errors.js';
 import { generateDocsHandler } from '../routes/generate.js';
-import * as geminiService from '../services/geminiService.js';
+import * as geminiService from '../src/services/geminiService.js';
 import { env } from '../src/config/index.js';
 
 const validator = validate(GenerateSchema);
