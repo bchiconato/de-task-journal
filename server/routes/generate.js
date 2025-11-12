@@ -36,9 +36,10 @@ async function generateDocsHandler(req, res, next) {
     });
   } catch (error) {
     console.error('[GenerateHandler] Error:', error);
-    
-    const statusCode = error.status || error.code === 'rate_limit_exceeded' ? 429 : 500;
-    
+
+    const statusCode =
+      error.status || error.code === 'rate_limit_exceeded' ? 429 : 500;
+
     next({
       status: statusCode,
       message: error.message,

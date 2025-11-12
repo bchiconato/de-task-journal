@@ -154,10 +154,7 @@ export async function fetchWithRetry(url, options = {}) {
     `[fetchWithRetry] All ${attempts} attempts exhausted. Last error:`,
     lastErr,
   );
-  console.error(
-    `[fetchWithRetry] Last response status:`,
-    lastResponse?.status,
-  );
+  console.error(`[fetchWithRetry] Last response status:`, lastResponse?.status);
 
   if (lastResponse?.status === 429) {
     let errorMessage = 'Rate limit exceeded. ';
@@ -172,9 +169,12 @@ export async function fetchWithRetry(url, options = {}) {
         retrySeconds = Math.ceil(parseFloat(retryMatch[1]));
       }
 
-      if (originalMessage.includes('quota') || originalMessage.includes('RESOURCE_EXHAUSTED')) {
+      if (
+        originalMessage.includes('quota') ||
+        originalMessage.includes('RESOURCE_EXHAUSTED')
+      ) {
         errorMessage = `API quota exhausted. `;
-        
+
         if (retrySeconds) {
           errorMessage += `Please wait ${retrySeconds} seconds and try again. `;
         } else {

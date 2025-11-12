@@ -42,36 +42,33 @@ export async function generateDocumentation({ context, mode = 'task' }) {
     console.log(`[Groq] Model: ${model}`);
     console.log(`[Groq] Input size: ${context.length} chars`);
 
-    const response = await fetchWithRetry(
-      `${GROQ_API_BASE}/chat/completions`,
-      {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${apiKey}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          model: model,
-          messages: [
-            {
-              role: 'system',
-              content: systemPrompt,
-            },
-            {
-              role: 'user',
-              content: userPrompt,
-            },
-          ],
-          temperature: 0.3,
-          max_tokens: 4096,
-          top_p: 0.8,
-        }),
-        timeoutMs: 90000,
-        attempts: 2,
-        baseDelayMs: 1000,
-        maxDelayMs: 10000,
+    const response = await fetchWithRetry(`${GROQ_API_BASE}/chat/completions`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
       },
-    );
+      body: JSON.stringify({
+        model: model,
+        messages: [
+          {
+            role: 'system',
+            content: systemPrompt,
+          },
+          {
+            role: 'user',
+            content: userPrompt,
+          },
+        ],
+        temperature: 0.3,
+        max_tokens: 4096,
+        top_p: 0.8,
+      }),
+      timeoutMs: 90000,
+      attempts: 2,
+      baseDelayMs: 1000,
+      maxDelayMs: 10000,
+    });
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
@@ -98,7 +95,9 @@ export async function generateDocumentation({ context, mode = 'task' }) {
     return stripMarkdownFence(messageContent);
   } catch (error) {
     console.error('[Groq] Error:', error);
-    throw new Error(`Failed to generate documentation with Groq: ${error.message}`);
+    throw new Error(
+      `Failed to generate documentation with Groq: ${error.message}`,
+    );
   }
 }
 

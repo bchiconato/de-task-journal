@@ -41,7 +41,7 @@ export const env = {
  */
 export function getAvailablePlatforms() {
   const hasNotion = !!env.NOTION_API_KEY;
-  
+
   const hasConfluence =
     !!env.CONFLUENCE_DOMAIN &&
     !!env.CONFLUENCE_USER_EMAIL &&
@@ -54,7 +54,9 @@ export function getAvailablePlatforms() {
 }
 
 if (!env.GROQ_API_KEY && !env.GEMINI_API_KEY) {
-  console.warn('[Config] WARNING: No LLM provider configured! Set GROQ_API_KEY or GEMINI_API_KEY');
+  console.warn(
+    '[Config] WARNING: No LLM provider configured! Set GROQ_API_KEY or GEMINI_API_KEY',
+  );
 }
 
 if (env.GROQ_API_KEY) {
@@ -78,5 +80,7 @@ if (platforms.confluence) {
   }
 }
 if (!platforms.notion && !platforms.confluence) {
-  console.warn('[Config] WARNING: No documentation platform configured! Set Notion or Confluence credentials');
+  console.warn(
+    '[Config] WARNING: No documentation platform configured! Set Notion or Confluence credentials',
+  );
 }

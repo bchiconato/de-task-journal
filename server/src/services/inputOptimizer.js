@@ -3,9 +3,9 @@
  * @module services/inputOptimizer
  */
 
-const MAX_CHARS_SAFE = 8000;
-const MAX_CHARS_WARNING = 6000;
-const MAX_CHARS_ABSOLUTE = 15000;
+const MAX_CHARS_SAFE = 25000;
+const MAX_CHARS_WARNING = 20000;
+const MAX_CHARS_ABSOLUTE = 30000;
 
 /**
  * @function estimateTokenCount
@@ -26,7 +26,7 @@ function estimateTokenCount(text) {
 export function analyzeInput(context) {
   const charCount = context.length;
   const tokenEstimate = estimateTokenCount(context);
-  
+
   let level = 'safe';
   let needsOptimization = false;
 
@@ -83,7 +83,7 @@ function extractCodeBlocks(text) {
  */
 function summarizeCodeBlock(code, maxLines = 20) {
   const lines = code.split('\n');
-  
+
   if (lines.length <= maxLines) {
     return code;
   }
@@ -102,17 +102,17 @@ function summarizeCodeBlock(code, maxLines = 20) {
 
   const scoredLines = lines.map((line, index) => {
     let score = 0;
-    
+
     for (const pattern of importantPatterns) {
       if (pattern.test(line)) {
         score += 10;
       }
     }
-    
+
     if (index < 5 || index >= lines.length - 5) {
       score += 5;
     }
-    
+
     if (line.trim().length > 10 && line.trim().length < 100) {
       score += 2;
     }
@@ -121,7 +121,7 @@ function summarizeCodeBlock(code, maxLines = 20) {
   });
 
   scoredLines.sort((a, b) => b.score - a.score);
-  
+
   const selectedLines = scoredLines
     .slice(0, maxLines)
     .sort((a, b) => a.index - b.index);
@@ -158,7 +158,7 @@ function extractKeyInformation(text) {
   ];
 
   const extracted = [];
-  
+
   for (const pattern of keyPatterns) {
     const matches = text.match(pattern);
     if (matches) {
@@ -180,7 +180,7 @@ function intelligentSummarize(text, maxChars) {
   const paragraphs = text.split(/\n\n+/);
   const sections = [];
   let currentSection = [];
-  
+
   for (const para of paragraphs) {
     if (para.match(/^#+\s/) || para.match(/^[A-Z\s]{3,}:?\s*$/)) {
       if (currentSection.length > 0) {
@@ -192,7 +192,7 @@ function intelligentSummarize(text, maxChars) {
       currentSection.push(para);
     }
   }
-  
+
   if (currentSection.length > 0) {
     sections.push(currentSection.join('\n\n'));
   }
@@ -205,14 +205,21 @@ function intelligentSummarize(text, maxChars) {
       summarized.push(section);
     } else {
       const lines = section.split('\n');
-      const header = lines.find(l => l.match(/^#+\s/) || l.match(/^[A-Z\s]{3,}:?\s*$/));
-      
+      const header = lines.find(
+        (l) => l.match(/^#+\s/) || l.match(/^[A-Z\s]{3,}:?\s*$/),
+      );
+
       if (header) {
         summarized.push(header);
-        const remaining = lines.filter(l => l !== header).join('\n');
-        summarized.push(remaining.substring(0, charsPerSection - header.length - 50) + '\n...(truncated)');
+        const remaining = lines.filter((l) => l !== header).join('\n');
+        summarized.push(
+          remaining.substring(0, charsPerSection - header.length - 50) +
+            '\n...(truncated)',
+        );
       } else {
-        summarized.push(section.substring(0, charsPerSection) + '\n...(truncated)');
+        summarized.push(
+          section.substring(0, charsPerSection) + '\n...(truncated)',
+        );
       }
     }
   }
@@ -240,19 +247,21 @@ export function optimizeInput(context, mode = 'task') {
     };
   }
 
-  console.log(`[InputOptimizer] Input size: ${analysis.charCount} chars (~${analysis.tokenEstimate} tokens). Level: ${analysis.level}`);
+  console.log(
+    `[InputOptimizer] Input size: ${analysis.charCount} chars (~${analysis.tokenEstimate} tokens). Level: ${analysis.level}`,
+  );
   console.log(`[InputOptimizer] Applying intelligent optimization...`);
 
-  const targetSize = analysis.level === 'critical' ? 6000 : 7500;
-  
+  const targetSize = analysis.level === 'critical' ? 20000 : 25000;
+
   const { blocks: codeBlocks, textWithoutCode } = extractCodeBlocks(context);
-  
+
   const keyInfo = extractKeyInformation(textWithoutCode);
-  
-  let summarizedText = intelligentSummarize(textWithoutCode, targetSize * 0.6);
-  
-  const summarizedCodeBlocks = codeBlocks.map(block => {
-    const maxLines = Math.ceil(20 * (targetSize / 8000));
+
+  let summarizedText = intelligentSummarize(textWithoutCode, targetSize * 0.8);
+
+  const summarizedCodeBlocks = codeBlocks.map((block) => {
+    const maxLines = Math.ceil(50 * (targetSize / 25000));
     return {
       language: block.language,
       code: summarizeCodeBlock(block.code, maxLines),
@@ -262,22 +271,26 @@ export function optimizeInput(context, mode = 'task') {
   let optimized = `[AUTO-OPTIMIZED INPUT - Original: ${analysis.charCount} chars]\n\n`;
   optimized += `KEY INFORMATION EXTRACTED:\n${keyInfo}\n\n`;
   optimized += `CONTEXT:\n${summarizedText}\n\n`;
-  
+
   if (summarizedCodeBlocks.length > 0) {
     optimized += `CODE ARTIFACTS:\n`;
     for (const block of summarizedCodeBlocks.slice(0, 3)) {
       optimized += `\`\`\`${block.language}\n${block.code}\n\`\`\`\n\n`;
     }
-    
+
     if (summarizedCodeBlocks.length > 3) {
       optimized += `(${summarizedCodeBlocks.length - 3} additional code blocks omitted)\n`;
     }
   }
 
   const finalSize = optimized.length;
-  const reduction = Math.round(((analysis.charCount - finalSize) / analysis.charCount) * 100);
+  const reduction = Math.round(
+    ((analysis.charCount - finalSize) / analysis.charCount) * 100,
+  );
 
-  console.log(`[InputOptimizer] Optimization complete: ${finalSize} chars (${reduction}% reduction)`);
+  console.log(
+    `[InputOptimizer] Optimization complete: ${finalSize} chars (${reduction}% reduction)`,
+  );
 
   return {
     optimizedContext: optimized,
