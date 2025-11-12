@@ -86,9 +86,20 @@ export function Guide({ onBack }) {
             </li>
             <li>
               <strong>Target Page:</strong> Select the destination page where
-              you want to send the final document. The dropdown shows pages your
-              integration has access to (Notion or Confluence, depending on your
-              selection).
+              you want to send the final document. The behavior differs by
+              platform:
+              <ul className="list-disc pl-5 mt-1 space-y-1">
+                <li>
+                  <strong>Notion:</strong> Shows all pages shared with your
+                  integration in a simple dropdown.
+                </li>
+                <li>
+                  <strong>Confluence:</strong> Features an intelligent search
+                  with 500ms debounce. Type to search for pages by title. The
+                  search prioritizes exact matches and searches only in page
+                  titles for more relevant results.
+                </li>
+              </ul>
             </li>
             <li>
               <strong>Single Field:</strong> All context lives in one textarea.
@@ -103,6 +114,47 @@ export function Guide({ onBack }) {
               <strong>Content Validation:</strong> The system validates that
               your documentation has at least 100 characters before allowing you
               to send it to a platform.
+            </li>
+          </ul>
+        </FeatureCard>
+
+        <FeatureCard icon={<Search size={20} />} title="Confluence Page Search">
+          <p>
+            When using Confluence, the page search includes intelligent features
+            to help you find the right page quickly:
+          </p>
+          <ul className="list-disc pl-5 space-y-1">
+            <li>
+              <strong>Exact Match Priority:</strong> Pages with titles matching
+              your search exactly appear first, followed by partial matches.
+            </li>
+            <li>
+              <strong>Title-Only Search:</strong> Searches are performed only in
+              page titles, not in page content, ensuring more relevant results.
+            </li>
+            <li>
+              <strong>Debounced Search:</strong> The search waits 500ms after
+              you stop typing before querying the API, reducing unnecessary
+              requests.
+            </li>
+            <li>
+              <strong>Result Caching:</strong> Previous search results are
+              cached to prevent redundant API calls if you search for the same
+              term again.
+            </li>
+            <li>
+              <strong>Space Filtering:</strong> If you've configured a default
+              space via{' '}
+              <code className="text-xs bg-slate-200 px-1 py-0.5 rounded">
+                CONFLUENCE_DEFAULT_SPACE_KEY
+              </code>
+              , searches are automatically scoped to that space for faster, more
+              focused results.
+            </li>
+            <li>
+              <strong>Lazy Loading:</strong> Pages are only fetched when you
+              click the search field or start typing, minimizing initial load
+              time.
             </li>
           </ul>
         </FeatureCard>
@@ -240,11 +292,58 @@ export function Guide({ onBack }) {
             integration from the list.
           </p>
           <p>
-            <strong>For Confluence:</strong> Ensure your API token has the
-            correct permissions. Go to Confluence Settings → API Tokens and
-            verify your token has read/write access to the space containing your
-            page.
+            <strong>For Confluence:</strong> The page search is powered by
+            intelligent filtering. Try these tips:
           </p>
+          <ul className="list-disc pl-5 space-y-1">
+            <li>
+              Type the exact page title for best results (e.g., "DAI SCRUM
+              Teams")
+            </li>
+            <li>
+              The search looks only in page titles, not content, for more
+              precise matches
+            </li>
+            <li>
+              If configured, searches are limited to your default space via{' '}
+              <code className="text-xs bg-slate-200 px-1 py-0.5 rounded">
+                CONFLUENCE_DEFAULT_SPACE_KEY
+              </code>
+            </li>
+            <li>
+              Ensure your API token has read/write access to the space
+              containing the page
+            </li>
+          </ul>
+
+          <p className="mt-4">
+            <strong>
+              I see too many irrelevant pages in Confluence search. What's
+              wrong?
+            </strong>
+          </p>
+          <p>
+            The latest version of the app searches only in page titles and
+            prioritizes exact matches. If you're still seeing many results:
+          </p>
+          <ul className="list-disc pl-5 space-y-1">
+            <li>Try typing the exact page title for better filtering</li>
+            <li>
+              Configure{' '}
+              <code className="text-xs bg-slate-200 px-1 py-0.5 rounded">
+                CONFLUENCE_DEFAULT_SPACE_KEY
+              </code>{' '}
+              in your server's{' '}
+              <code className="text-xs bg-slate-200 px-1 py-0.5 rounded">
+                .env
+              </code>{' '}
+              file to limit searches to a specific space
+            </li>
+            <li>
+              Use more specific search terms (e.g., "Sprint Planning 2025"
+              instead of just "Planning")
+            </li>
+          </ul>
 
           <p className="mt-4">
             <strong>Why did I get an error when sending documentation?</strong>
@@ -293,7 +392,9 @@ export function Guide({ onBack }) {
           <p>
             A confirmation dialog appears to prevent accidental data loss. You
             must explicitly confirm before any content is replaced. This safety
-            feature only applies to Confluence overwrite mode.
+            feature only applies to Confluence overwrite mode. There is no undo
+            operation, so make sure you want to replace the entire page content
+            before confirming.
           </p>
 
           <p className="mt-4">
@@ -304,8 +405,33 @@ export function Guide({ onBack }) {
             <code className="text-xs bg-slate-200 px-1 py-0.5 rounded">
               .env
             </code>{' '}
-            file. If both are set up, you'll see a platform selector at the top
-            of the form allowing you to choose where to send each document.
+            file. Required variables:
+          </p>
+          <ul className="list-disc pl-5 space-y-1">
+            <li>
+              <strong>Notion:</strong>{' '}
+              <code className="text-xs bg-slate-200 px-1 py-0.5 rounded">
+                NOTION_API_KEY
+              </code>
+            </li>
+            <li>
+              <strong>Confluence:</strong>{' '}
+              <code className="text-xs bg-slate-200 px-1 py-0.5 rounded">
+                CONFLUENCE_DOMAIN
+              </code>
+              ,{' '}
+              <code className="text-xs bg-slate-200 px-1 py-0.5 rounded">
+                CONFLUENCE_USER_EMAIL
+              </code>
+              ,{' '}
+              <code className="text-xs bg-slate-200 px-1 py-0.5 rounded">
+                CONFLUENCE_API_TOKEN
+              </code>
+            </li>
+          </ul>
+          <p className="mt-2">
+            If both are configured, you'll see a platform selector at the top of
+            the form allowing you to choose where to send each document.
           </p>
 
           <p className="mt-4">
@@ -316,6 +442,33 @@ export function Guide({ onBack }) {
             remove an item or clear history, it cannot be recovered. Always
             ensure important documentation has been sent to your platform before
             removing it from history.
+          </p>
+
+          <p className="mt-4">
+            <strong>
+              What's the difference between the three documentation modes?
+            </strong>
+          </p>
+          <ul className="list-disc pl-5 space-y-1">
+            <li>
+              <strong>Task Mode:</strong> 5-section structure for day-to-day
+              engineering work (Summary, Problem, Solution, Code, Learnings)
+            </li>
+            <li>
+              <strong>Architecture Mode:</strong> 5-section structure for
+              systems and design (Overview, Components, Flow, Tech Stack,
+              Migration)
+            </li>
+            <li>
+              <strong>Meeting Mode:</strong> 6-section structure for meeting
+              notes (Record, Summary, Decisions, Technical Context, Actions,
+              Risks)
+            </li>
+          </ul>
+          <p className="mt-2">
+            All modes accept input in any language but always generate output in
+            English. Meeting mode is specially designed to handle multilingual
+            transcripts (PT/EN mix) and filter out conversational noise.
           </p>
         </FeatureCard>
       </div>
